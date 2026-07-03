@@ -7,7 +7,7 @@
 -- ============================================================
 
 -- Enable UUID generation
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- uuid-ossp extension not needed; gen_random_uuid() is built-in to PostgreSQL 13+
 
 -- ──────────────────────────────────────────────────────────────
 -- SHARED: updated_at auto-update trigger function
@@ -28,7 +28,7 @@ $$ LANGUAGE plpgsql;
 -- Decoupled from companies so plans can change without modifying companies.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE plans (
-  id              UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id              UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   name            TEXT          NOT NULL,
   description     TEXT,
   price_monthly   NUMERIC(10,2) NOT NULL DEFAULT 0,
@@ -52,7 +52,7 @@ CREATE TRIGGER trg_plans_updated_at
 -- All tenant tables reference company_id for strict isolation.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE companies (
-  id                  UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   name                TEXT        NOT NULL,
   slug                TEXT        NOT NULL UNIQUE,         -- URL-safe identifier
   industry            TEXT,
@@ -82,7 +82,7 @@ CREATE TRIGGER trg_companies_updated_at
 -- of plan changes and billing events.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE subscriptions (
-  id                       UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                       UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id               UUID          NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   plan_id                  UUID          NOT NULL REFERENCES plans(id) ON DELETE RESTRICT,
   status                   TEXT          NOT NULL DEFAULT 'trialing'
@@ -110,7 +110,7 @@ CREATE TRIGGER trg_subscriptions_updated_at
 -- and multi-location companies in the future.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE branches (
-  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id  UUID        NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   name        TEXT        NOT NULL,
   address     TEXT,
@@ -135,7 +135,7 @@ CREATE TRIGGER trg_branches_updated_at
 -- is_system = true means the role is built-in and cannot be deleted.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE roles (
-  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id  UUID        REFERENCES companies(id) ON DELETE CASCADE, -- NULL = system-level role
   name        TEXT        NOT NULL,
   description TEXT,
@@ -157,7 +157,7 @@ CREATE TRIGGER trg_roles_updated_at
 -- action   = the operation (create, read, update, delete, approve)
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE permissions (
-  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   resource    TEXT        NOT NULL,
   action      TEXT        NOT NULL,
   description TEXT,
@@ -207,7 +207,7 @@ CREATE TRIGGER trg_users_updated_at
 -- branch_id NULL = company-wide access (not restricted to one branch).
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE company_users (
-  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id  UUID        NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   user_id     UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role_id     UUID        NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,

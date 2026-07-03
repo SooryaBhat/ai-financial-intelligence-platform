@@ -15,7 +15,7 @@
 -- Stores versioning, algorithm metadata, and performance scores.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE ml_models (
-  id             UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id             UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id     UUID         REFERENCES companies(id) ON DELETE CASCADE, -- NULL = platform-wide model
   name           TEXT         NOT NULL,
   model_type     TEXT         NOT NULL
@@ -45,7 +45,7 @@ CREATE TRIGGER trg_ml_models_updated_at
 -- reproducibility and explainability.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE predictions (
-  id               UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id       UUID          NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   ml_model_id      UUID          REFERENCES ml_models(id) ON DELETE SET NULL,
   prediction_type  TEXT          NOT NULL
@@ -75,7 +75,7 @@ CREATE TRIGGER trg_predictions_updated_at
 -- clean and fast to query. Append-only (no updated_at).
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE prediction_logs (
-  id            UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   prediction_id UUID        NOT NULL REFERENCES predictions(id) ON DELETE CASCADE,
   stage         TEXT        NOT NULL
                   CHECK (stage IN ('preprocessing','inference','postprocessing')),
@@ -92,7 +92,7 @@ CREATE TABLE prediction_logs (
 -- Assistant. A user can have many sessions per company.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE chat_sessions (
-  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id  UUID        NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   user_id     UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title       TEXT,                                    -- Auto-generated or user-named
@@ -116,7 +116,7 @@ CREATE TRIGGER trg_chat_sessions_updated_at
 -- Append-only: no updated_at.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE chat_messages (
-  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id  UUID        NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
   role        TEXT        NOT NULL CHECK (role IN ('user','assistant','system')),
   content     TEXT        NOT NULL,
@@ -134,7 +134,7 @@ CREATE TABLE chat_messages (
 -- file_url points to an exported PDF/Excel if generated.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE reports (
-  id           UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id   UUID        NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   user_id      UUID        REFERENCES users(id) ON DELETE SET NULL,
   report_type  TEXT        NOT NULL

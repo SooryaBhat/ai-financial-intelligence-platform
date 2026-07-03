@@ -17,7 +17,7 @@
 -- business logic (Accounts Receivable vs Accounts Payable).
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE customers (
-  id            UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id    UUID          NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   name          TEXT          NOT NULL,
   email         TEXT,
@@ -46,7 +46,7 @@ CREATE TRIGGER trg_customers_updated_at
 -- significantly as the platform grows.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE suppliers (
-  id                 UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                 UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id         UUID        NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   name               TEXT        NOT NULL,
   email              TEXT,
@@ -75,7 +75,7 @@ CREATE TRIGGER trg_suppliers_updated_at
 -- near-identical tables. Supports subcategories via parent_id.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE categories (
-  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id  UUID        NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   name        TEXT        NOT NULL,
   type        TEXT        NOT NULL CHECK (type IN ('product','expense')),
@@ -98,7 +98,7 @@ CREATE TRIGGER trg_categories_updated_at
 -- type = 'service' means no inventory tracking is applied.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE products (
-  id            UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id    UUID          NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   category_id   UUID          REFERENCES categories(id) ON DELETE SET NULL,
   name          TEXT          NOT NULL,
@@ -131,7 +131,7 @@ CREATE TRIGGER trg_products_updated_at
 -- and multi-branch stock tracking.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE warehouses (
-  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id  UUID        NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   branch_id   UUID        REFERENCES branches(id) ON DELETE SET NULL,  -- NULL if not branch-specific
   name        TEXT        NOT NULL,
@@ -154,7 +154,7 @@ CREATE TRIGGER trg_warehouses_updated_at
 -- quantity is updated by stock_movements (the source of truth).
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE inventory (
-  id            UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id    UUID          NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   product_id    UUID          NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   warehouse_id  UUID          NOT NULL REFERENCES warehouses(id) ON DELETE CASCADE,
@@ -173,7 +173,7 @@ CREATE TABLE inventory (
 -- No updated_at: stock movements are append-only, never modified.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE stock_movements (
-  id             UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id             UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id     UUID          NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   product_id     UUID          NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
   warehouse_id   UUID          NOT NULL REFERENCES warehouses(id) ON DELETE RESTRICT,
@@ -194,7 +194,7 @@ CREATE TABLE stock_movements (
 -- Represents a single sale event. customer_id NULL = walk-in customer.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE sales (
-  id              UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id              UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id      UUID          NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   branch_id       UUID          REFERENCES branches(id) ON DELETE SET NULL,
   customer_id     UUID          REFERENCES customers(id) ON DELETE SET NULL,  -- NULL = walk-in
@@ -226,7 +226,7 @@ CREATE TRIGGER trg_sales_updated_at
 -- at the time of the sale — not a live reference to product pricing.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE sale_items (
-  id           UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id           UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   sale_id      UUID          NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
   product_id   UUID          NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
   warehouse_id UUID          REFERENCES warehouses(id) ON DELETE SET NULL,
@@ -245,7 +245,7 @@ CREATE TABLE sale_items (
 -- from a supplier. Drives AP invoice generation.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE purchases (
-  id               UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id               UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id       UUID          NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   branch_id        UUID          REFERENCES branches(id) ON DELETE SET NULL,
   supplier_id      UUID          REFERENCES suppliers(id) ON DELETE SET NULL,
@@ -277,7 +277,7 @@ CREATE TRIGGER trg_purchases_updated_at
 -- received_qty supports partial delivery receipts.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE purchase_items (
-  id           UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id           UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   purchase_id  UUID          NOT NULL REFERENCES purchases(id) ON DELETE CASCADE,
   product_id   UUID          NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
   warehouse_id UUID          REFERENCES warehouses(id) ON DELETE SET NULL,  -- Receiving warehouse
@@ -298,7 +298,7 @@ CREATE TABLE purchase_items (
 -- amount_due is a generated column: total_amount - amount_paid.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE invoices (
-  id             UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id             UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id     UUID          NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   invoice_type   TEXT          NOT NULL CHECK (invoice_type IN ('receivable','payable')),
   invoice_number TEXT          NOT NULL,
@@ -335,7 +335,7 @@ CREATE TRIGGER trg_invoices_updated_at
 -- exchange_rate supports multi-currency transactions.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE payments (
-  id             UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id             UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id     UUID          NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   invoice_id     UUID          NOT NULL REFERENCES invoices(id) ON DELETE RESTRICT,
   payment_date   DATE          NOT NULL DEFAULT CURRENT_DATE,
@@ -362,7 +362,7 @@ CREATE TRIGGER trg_payments_updated_at
 -- Supports approval workflow via status + approved_by.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE expenses (
-  id             UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id             UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id     UUID          NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   branch_id      UUID          REFERENCES branches(id) ON DELETE SET NULL,
   category_id    UUID          REFERENCES categories(id) ON DELETE SET NULL,

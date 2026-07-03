@@ -15,7 +15,7 @@
 -- Append-only from the system side (is_read is the only update).
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE notifications (
-  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id  UUID        NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   user_id     UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type        TEXT        NOT NULL CHECK (type IN ('alert','info','warning','success')),
@@ -36,7 +36,7 @@ CREATE TABLE notifications (
 -- Never updated or deleted — append-only by design.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE audit_logs (
-  id            UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id    UUID        NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   user_id       UUID        REFERENCES users(id) ON DELETE SET NULL,
   action        TEXT        NOT NULL CHECK (action IN ('CREATE','UPDATE','DELETE')),
@@ -58,7 +58,7 @@ CREATE TABLE audit_logs (
 -- financial audit trail with non-mutating events.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE activity_logs (
-  id            UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id    UUID        NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   user_id       UUID        REFERENCES users(id) ON DELETE SET NULL,
   action        TEXT        NOT NULL,                 -- e.g. 'login', 'view', 'export', 'download'
@@ -77,7 +77,7 @@ CREATE TABLE activity_logs (
 --           low_stock_alert_enabled, ai_features_enabled.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE settings (
-  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id  UUID        NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   key         TEXT        NOT NULL,
   value       JSONB       NOT NULL,
@@ -101,7 +101,7 @@ CREATE TRIGGER trg_settings_updated_at
 -- Supports: Odoo, ERPNext, Zoho Books, QuickBooks, Bank APIs, CSV, Excel.
 -- ──────────────────────────────────────────────────────────────
 CREATE TABLE integrations (
-  id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id      UUID        NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   provider        TEXT        NOT NULL
                     CHECK (provider IN ('odoo','erpnext','zoho','quickbooks','bank_api','csv','excel')),
