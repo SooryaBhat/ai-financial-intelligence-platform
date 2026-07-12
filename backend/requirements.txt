@@ -1,0 +1,41 @@
+# ──────────────────────────────────────────────────────────────
+# AI Financial Intelligence Platform — Backend Dependencies
+# Python 3.12 | FastAPI | Supabase | Pydantic v2
+# ──────────────────────────────────────────────────────────────
+
+# Web framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+# Supabase SDK (gotrue is bundled — do NOT pin separately)
+supabase==2.10.0
+
+# Data validation
+pydantic[email]==2.10.3
+pydantic-settings==2.6.1
+
+# Auth / JWT
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# HTTP client (used by supabase SDK internally)
+httpx==0.27.2
+
+# Environment variables
+python-dotenv==1.0.1
+
+# Logging
+loguru==0.7.3
+
+# Multipart / file upload
+python-multipart==0.0.12
+
+# Date/time utilities
+python-dateutil==2.9.0.post0
+
+# ──────────────────────────────────────────────────────────────
+# Dev / Testing
+# ──────────────────────────────────────────────────────────────
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-mock==3.14.0
