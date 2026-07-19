@@ -3,10 +3,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 
+from app.core.logging import logger
 from app.dependencies.auth import get_request_context
+from app.exceptions import NotFoundError, ValidationError
 from app.repositories.expenses import ExpenseRepository
 from app.schemas.common import MessageResponse, SuccessResponse
 from app.schemas.expenses import ExpenseApproveRequest, ExpenseCreate, ExpenseUpdate
+from app.services.audit import audit_service
 from app.services.context import RequestContext
 
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
@@ -41,6 +44,11 @@ def create_expense(payload: ExpenseCreate, ctx: RequestContext = Depends(get_req
         if data.get(uuid_field):
             data[uuid_field] = str(data[uuid_field])
     result = repo.create(data)
+    logger.info("Expense created | company={} amount={}", ctx.company_id, payload.amount)
+    audit_service.log_create(
+        ctx.company_id, "expense", UUID(result["id"]),
+        result, ctx.user_id, ctx.ip_address, ctx.user_agent,
+    )
     return SuccessResponse(data=result)
 
 
@@ -57,7 +65,12 @@ def update_expense(
     ctx: RequestContext = Depends(get_request_context),
 ):
     repo = ExpenseRepository(ctx.user_client)
+    old = repo.get_by_id(expense_id, ctx.company_id)
     data = repo.update(expense_id, payload.model_dump(exclude_none=True), ctx.company_id)
+    audit_service.log_update(
+        ctx.company_id, "expense", expense_id,
+        old, data, ctx.user_id, ctx.ip_address, ctx.user_agent,
+    )
     return SuccessResponse(data=data)
 
 
@@ -68,12 +81,27 @@ def approve_expense(
     ctx: RequestContext = Depends(get_request_context),
 ):
     repo = ExpenseRepository(ctx.user_client)
+    old = repo.get_by_id(expense_id, ctx.company_id)
     data = repo.approve(expense_id, ctx.user_id, payload.status.value)
+    logger.info(
+        "Expense {} | expense={} company={}",
+        payload.status.value, expense_id, ctx.company_id
+    )
+    audit_service.log_update(
+        ctx.company_id, "expense", expense_id,
+        {"status": old.get("status")}, {"status": payload.status.value},
+        ctx.user_id, ctx.ip_address, ctx.user_agent,
+    )
     return SuccessResponse(data=data)
 
 
 @router.delete("/{expense_id}", response_model=MessageResponse, summary="Delete expense")
 def delete_expense(expense_id: UUID, ctx: RequestContext = Depends(get_request_context)):
     repo = ExpenseRepository(ctx.user_client)
+    old = repo.get_by_id(expense_id, ctx.company_id)
     repo.soft_delete(expense_id, ctx.company_id)
+    audit_service.log_delete(
+        ctx.company_id, "expense", expense_id,
+        old, ctx.user_id, ctx.ip_address, ctx.user_agent,
+    )
     return MessageResponse(message="Expense deleted.")

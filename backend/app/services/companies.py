@@ -16,9 +16,10 @@ class CompanyService:
         self._repo = repo
 
     def get(self, company_id: UUID, ctx: RequestContext) -> Dict[str, Any]:
-        return self._repo.get_with_plan(company_id) or (
-            (_ for _ in ()).throw(NotFoundError("Company", str(company_id)))
-        )
+        result = self._repo.get_with_plan(company_id)
+        if not result:
+            raise NotFoundError("Company", str(company_id))
+        return result
 
     def list_all(self, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
         return self._repo.list_all(limit=limit, offset=offset)
