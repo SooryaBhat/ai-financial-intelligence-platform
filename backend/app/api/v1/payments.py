@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 
 from app.dependencies.auth import get_request_context
+from app.dependencies.rbac import require_permission
 from app.repositories.invoices import InvoiceRepository
 from app.repositories.payments import PaymentRepository
 from app.schemas.common import SuccessResponse
@@ -37,6 +38,7 @@ def create_payment(
     payload: PaymentCreate,
     ctx: RequestContext = Depends(get_request_context),
     svc: PaymentService = Depends(_get_service),
+    _: None = Depends(require_permission("payments", "create")),
 ):
     data = svc.create(payload, ctx)
     return SuccessResponse(data=data)
@@ -49,9 +51,22 @@ def get_payment(payment_id: UUID, ctx: RequestContext = Depends(get_request_cont
     return SuccessResponse(data=data)
 
 
+@router.patch("/{payment_id}", response_model=SuccessResponse, summary="Update payment")
+def update_payment(
+    payment_id: UUID,
+    payload: PaymentUpdate,
+    ctx: RequestContext = Depends(get_request_context),
+    svc: PaymentService = Depends(_get_service),
+    _: None = Depends(require_permission("payments", "update")),
+):
+    data = svc.update(payment_id, payload, ctx)
+    return SuccessResponse(data=data)
+
+
 @router.get("/by-invoice/{invoice_id}", response_model=SuccessResponse, summary="List payments for an invoice")
 def payments_by_invoice(
     invoice_id: UUID,
     svc: PaymentService = Depends(_get_service),
 ):
     return SuccessResponse(data=svc.list_by_invoice(invoice_id))
+

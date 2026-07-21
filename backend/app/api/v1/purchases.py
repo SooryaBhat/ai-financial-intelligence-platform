@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 
 from app.dependencies.auth import get_request_context
+from app.dependencies.rbac import require_permission
 from app.repositories.purchases import PurchaseRepository
 from app.schemas.common import MessageResponse, SuccessResponse
 from app.schemas.purchases import PurchaseCreate, PurchaseUpdate
@@ -33,6 +34,7 @@ def create_purchase(
     payload: PurchaseCreate,
     ctx: RequestContext = Depends(get_request_context),
     svc: PurchaseService = Depends(_get_service),
+    _: None = Depends(require_permission("purchases", "create")),
 ):
     data = svc.create(payload, ctx)
     return SuccessResponse(data=data)
@@ -53,6 +55,7 @@ def update_purchase(
     payload: PurchaseUpdate,
     ctx: RequestContext = Depends(get_request_context),
     svc: PurchaseService = Depends(_get_service),
+    _: None = Depends(require_permission("purchases", "update")),
 ):
     return SuccessResponse(data=svc.update(purchase_id, payload, ctx))
 
@@ -62,6 +65,7 @@ def delete_purchase(
     purchase_id: UUID,
     ctx: RequestContext = Depends(get_request_context),
     svc: PurchaseService = Depends(_get_service),
+    _: None = Depends(require_permission("purchases", "delete")),
 ):
     svc.delete(purchase_id, ctx)
     return MessageResponse(message="Purchase deleted.")

@@ -16,15 +16,21 @@ class CompanyRepository(BaseRepository):
         return response.data[0] if response.data else None
 
     def get_with_plan(self, company_id: UUID) -> Optional[Dict[str, Any]]:
-        response = (
-            self._query()
-            .select("*, plans(*)")
-            .eq("id", str(company_id))
-            .is_("deleted_at", "null")
-            .single()
-            .execute()
-        )
-        return response.data
+        try:
+            response = (
+                self._query()
+                .select("*, plans(*)")
+                .eq("id", str(company_id))
+                .is_("deleted_at", "null")
+                .single()
+                .execute()
+            )
+            return response.data
+        except Exception as exc:
+            # PostgREST PGRST116 = "The result contains 0 rows" (not found)
+            if "PGRST116" in str(exc) or "0 rows" in str(exc):
+                return None
+            raise
 
     def list_all(self, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
         """Admin: list all companies (bypasses company scoping)."""

@@ -12,16 +12,21 @@ class PurchaseRepository(BaseRepository):
         super().__init__(client, "purchases")
 
     def get_with_items(self, purchase_id: UUID, company_id: UUID) -> Optional[Dict[str, Any]]:
-        response = (
-            self._query()
-            .select("*, purchase_items(*), suppliers(name, email)")
-            .eq("id", str(purchase_id))
-            .eq("company_id", str(company_id))
-            .is_("deleted_at", "null")
-            .single()
-            .execute()
-        )
-        return response.data
+        try:
+            response = (
+                self._query()
+                .select("*, purchase_items(*), suppliers(name, email)")
+                .eq("id", str(purchase_id))
+                .eq("company_id", str(company_id))
+                .is_("deleted_at", "null")
+                .single()
+                .execute()
+            )
+            return response.data
+        except Exception as exc:
+            if "PGRST116" in str(exc) or "0 rows" in str(exc):
+                return None
+            raise
 
     def create_with_items(self, purchase_data: Dict[str, Any], items: List[Dict[str, Any]]) -> Dict[str, Any]:
         purchase_response = self._query().insert(purchase_data).execute()

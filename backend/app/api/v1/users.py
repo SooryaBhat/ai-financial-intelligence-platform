@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 
 from app.dependencies.auth import get_request_context
+from app.dependencies.rbac import require_permission
 from app.repositories.users import UserRepository
 from app.schemas.common import MessageResponse, PaginatedResponse, SuccessResponse
 from app.schemas.users import (
@@ -71,3 +72,70 @@ def update_membership(
         raise NotFoundError("Company membership", str(user_id))
     data = repo.update_company_user(UUID(membership["id"]), payload.model_dump(exclude_none=True))
     return SuccessResponse(data=data)
+
+
+@router.post(
+    "/invite",
+    response_model=SuccessResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Invite a user to the company",
+)
+def invite_user(
+    payload: InviteUserRequest,
+    ctx: RequestContext = Depends(get_request_context),
+    _: None = Depends(require_permission("users", "invite")),
+):
+    """
+    Send an email invite via Supabase Auth Admin API and create a pending
+    company_users membership record. The invited user can then sign up and
+    will be automatically linked to the company.
+    """
+    from app.core.logging import logger
+    from app.database.client import get_admin_client
+    from app.exceptions import ConflictError
+
+    admin = get_admin_client()
+    user_repo = UserRepository(admin)
+
+    # Check if user already has a membership in this company
+    existing_user = user_repo.get_by_email(str(payload.email))
+    if existing_user:
+        membership = user_repo.get_company_user(ctx.company_id, UUID(existing_user["id"]))
+        if membership:
+            raise ConflictError(
+                f"User '{payload.email}' is already a member of this company."
+            )
+
+    # Send invite via Supabase Admin (creates auth user + sends magic link)
+    try:
+        resp = admin.auth.admin.invite_user_by_email(str(payload.email))
+        invited_user_id = resp.user.id if resp.user else None
+    except Exception as exc:
+        logger.warning("Supabase invite failed (user may already exist): {}", str(exc))
+        # If user already exists in auth but not in our users table, find or create profile
+        if existing_user:
+            invited_user_id = existing_user["id"]
+        else:
+            raise
+
+    # Create company membership for the invited user
+    membership_data = {
+        "company_id": str(ctx.company_id),
+        "user_id": str(invited_user_id),
+        "role_id": str(payload.role_id),
+        "is_active": False,  # Becomes active once they accept the invite
+        "invited_at": "now()",
+    }
+    if payload.branch_id:
+        membership_data["branch_id"] = str(payload.branch_id)
+
+    membership = user_repo.create_company_user(membership_data)
+    logger.info(
+        "User invited | email={} company={} role={}",
+        payload.email, ctx.company_id, payload.role_id,
+    )
+    return SuccessResponse(data={
+        "invited_email": str(payload.email),
+        "membership": membership,
+    })
+

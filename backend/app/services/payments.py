@@ -7,7 +7,7 @@ from uuid import UUID
 from app.exceptions import ValidationError
 from app.repositories.invoices import InvoiceRepository
 from app.repositories.payments import PaymentRepository
-from app.schemas.payments import PaymentCreate
+from app.schemas.payments import PaymentCreate, PaymentUpdate
 from app.services.audit import audit_service
 from app.services.context import RequestContext
 from app.core.constants import InvoiceStatus
@@ -66,3 +66,18 @@ class PaymentService:
         elif total_paid > 0:
             return InvoiceStatus.PARTIAL.value
         return invoice["status"]
+
+    def update(self, payment_id: UUID, data: PaymentUpdate, ctx: RequestContext) -> Dict[str, Any]:
+        """Partially update a payment record and write an audit entry."""
+        old = self._payments.get_by_id(payment_id, ctx.company_id)
+        update_payload = {k: v for k, v in data.model_dump(exclude_none=True).items()}
+        # Convert enum values if present
+        if "payment_method" in update_payload and hasattr(update_payload["payment_method"], "value"):
+            update_payload["payment_method"] = update_payload["payment_method"].value
+        updated = self._payments.update(payment_id, update_payload, ctx.company_id)
+        audit_service.log_update(
+            ctx.company_id, "payment", payment_id,
+            old, updated, ctx.user_id, ctx.ip_address, ctx.user_agent,
+        )
+        return updated
+

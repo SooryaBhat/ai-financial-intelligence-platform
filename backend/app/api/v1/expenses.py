@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.core.logging import logger
 from app.dependencies.auth import get_request_context
+from app.dependencies.rbac import require_permission
 from app.exceptions import NotFoundError, ValidationError
 from app.repositories.expenses import ExpenseRepository
 from app.schemas.common import MessageResponse, SuccessResponse
@@ -13,6 +14,7 @@ from app.services.audit import audit_service
 from app.services.context import RequestContext
 
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
+
 
 
 @router.get("/", response_model=SuccessResponse, summary="List expenses")
@@ -35,7 +37,11 @@ def list_pending(ctx: RequestContext = Depends(get_request_context)):
 
 
 @router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create expense")
-def create_expense(payload: ExpenseCreate, ctx: RequestContext = Depends(get_request_context)):
+def create_expense(
+    payload: ExpenseCreate,
+    ctx: RequestContext = Depends(get_request_context),
+    _: None = Depends(require_permission("expenses", "create")),
+):
     repo = ExpenseRepository(ctx.user_client)
     data = payload.model_dump(exclude_none=True)
     data["company_id"] = str(ctx.company_id)
@@ -63,6 +69,7 @@ def update_expense(
     expense_id: UUID,
     payload: ExpenseUpdate,
     ctx: RequestContext = Depends(get_request_context),
+    _: None = Depends(require_permission("expenses", "update")),
 ):
     repo = ExpenseRepository(ctx.user_client)
     old = repo.get_by_id(expense_id, ctx.company_id)
@@ -79,6 +86,7 @@ def approve_expense(
     expense_id: UUID,
     payload: ExpenseApproveRequest,
     ctx: RequestContext = Depends(get_request_context),
+    _: None = Depends(require_permission("expenses", "approve")),
 ):
     repo = ExpenseRepository(ctx.user_client)
     old = repo.get_by_id(expense_id, ctx.company_id)
@@ -96,7 +104,11 @@ def approve_expense(
 
 
 @router.delete("/{expense_id}", response_model=MessageResponse, summary="Delete expense")
-def delete_expense(expense_id: UUID, ctx: RequestContext = Depends(get_request_context)):
+def delete_expense(
+    expense_id: UUID,
+    ctx: RequestContext = Depends(get_request_context),
+    _: None = Depends(require_permission("expenses", "delete")),
+):
     repo = ExpenseRepository(ctx.user_client)
     old = repo.get_by_id(expense_id, ctx.company_id)
     repo.soft_delete(expense_id, ctx.company_id)

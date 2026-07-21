@@ -4,9 +4,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 
 from app.dependencies.auth import get_request_context
+from app.dependencies.rbac import require_permission
 from app.repositories.invoices import InvoiceRepository
 from app.schemas.common import MessageResponse, SuccessResponse
 from app.schemas.invoices import InvoiceCreate, InvoiceUpdate
+from app.services.audit import audit_service
 from app.services.context import RequestContext
 
 router = APIRouter(prefix="/invoices", tags=["Invoices"])
@@ -31,11 +33,20 @@ def list_overdue(ctx: RequestContext = Depends(get_request_context)):
     return SuccessResponse(data=repo.list_overdue(ctx.company_id))
 
 
-@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create invoice")
-def create_invoice(payload: InvoiceCreate, ctx: RequestContext = Depends(get_request_context)):
+@router.post(
+    "/",
+    response_model=SuccessResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create invoice",
+)
+def create_invoice(
+    payload: InvoiceCreate,
+    ctx: RequestContext = Depends(get_request_context),
+    _: None = Depends(require_permission("invoices", "create")),
+):
+    from app.exceptions import ConflictError
     repo = InvoiceRepository(ctx.user_client)
     if repo.get_by_number(ctx.company_id, payload.invoice_number):
-        from app.exceptions import ConflictError
         raise ConflictError(f"Invoice number '{payload.invoice_number}' already exists.")
     data = payload.model_dump(exclude_none=True)
     data["company_id"] = str(ctx.company_id)
@@ -43,6 +54,10 @@ def create_invoice(payload: InvoiceCreate, ctx: RequestContext = Depends(get_req
         if data.get(uuid_field):
             data[uuid_field] = str(data[uuid_field])
     result = repo.create(data)
+    audit_service.log_create(
+        ctx.company_id, "invoice", UUID(result["id"]),
+        result, ctx.user_id, ctx.ip_address, ctx.user_agent,
+    )
     return SuccessResponse(data=result)
 
 
@@ -58,14 +73,29 @@ def update_invoice(
     invoice_id: UUID,
     payload: InvoiceUpdate,
     ctx: RequestContext = Depends(get_request_context),
+    _: None = Depends(require_permission("invoices", "update")),
 ):
     repo = InvoiceRepository(ctx.user_client)
+    old = repo.get_by_id(invoice_id, ctx.company_id)
     data = repo.update(invoice_id, payload.model_dump(exclude_none=True), ctx.company_id)
+    audit_service.log_update(
+        ctx.company_id, "invoice", invoice_id,
+        old, data, ctx.user_id, ctx.ip_address, ctx.user_agent,
+    )
     return SuccessResponse(data=data)
 
 
 @router.delete("/{invoice_id}", response_model=MessageResponse, summary="Delete invoice")
-def delete_invoice(invoice_id: UUID, ctx: RequestContext = Depends(get_request_context)):
+def delete_invoice(
+    invoice_id: UUID,
+    ctx: RequestContext = Depends(get_request_context),
+    _: None = Depends(require_permission("invoices", "delete")),
+):
     repo = InvoiceRepository(ctx.user_client)
+    old = repo.get_by_id(invoice_id, ctx.company_id)
     repo.soft_delete(invoice_id, ctx.company_id)
+    audit_service.log_delete(
+        ctx.company_id, "invoice", invoice_id,
+        old, ctx.user_id, ctx.ip_address, ctx.user_agent,
+    )
     return MessageResponse(message="Invoice deleted.")
