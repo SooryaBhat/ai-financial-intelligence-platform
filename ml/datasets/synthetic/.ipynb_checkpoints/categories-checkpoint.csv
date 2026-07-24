@@ -1,0 +1,61 @@
+id,company_id,name,description,created_at
+fca02bd9-e256-41f6-8bfc-69e4bd8dfd54,00000000-0000-0000-0000-000000000001,Electronics,Electronics products and related items,2021-06-01T09:00:00
+50dcb607-9635-4b19-9595-dba5794f453a,00000000-0000-0000-0000-000000000001,Clothing,Clothing products and related items,2021-06-01T09:00:00
+bcf69716-1a92-4779-9d47-d4ef5aa06389,00000000-0000-0000-0000-000000000001,Home Appliances,Home Appliances products and related items,2021-06-01T09:00:00
+aee057b8-9b4e-44e5-97a6-6996e5d66eb2,00000000-0000-0000-0000-000000000001,Furniture,Furniture products and related items,2021-06-01T09:00:00
+d2de49c0-a1b5-44d0-b1a1-2567acd96a6f,00000000-0000-0000-0000-000000000001,Stationery,Stationery products and related items,2021-06-01T09:00:00
+4fbcbd9b-8687-4ba6-a2b2-a60017ef7fae,00000000-0000-0000-0000-000000000001,Food & Beverages,Food & Beverages products and related items,2021-06-01T09:00:00
+388277d9-01ef-48ba-8bcd-7660faa2da92,00000000-0000-0000-0000-000000000001,Pharmaceuticals,Pharmaceuticals products and related items,2021-06-01T09:00:00
+68cb66c3-09a4-4957-94a1-ef2b42961cdf,00000000-0000-0000-0000-000000000001,Automotive Parts,Automotive Parts products and related items,2021-06-01T09:00:00
+ac6dc2ad-bbf0-419b-96a9-e910c07a409b,00000000-0000-0000-0000-000000000001,Toys & Games,Toys & Games products and related items,2021-06-01T09:00:00
+1731c294-6f91-48fe-a9d0-15d64ae20ed7,00000000-0000-0000-0000-000000000001,Sports & Fitness,Sports & Fitness products and related items,2021-06-01T09:00:00
+c126f111-f910-454a-b772-8d5187690e81,00000000-0000-0000-0000-000000000001,Beauty & Health,Beauty & Health products and related items,2021-06-01T09:00:00
+63f85eb1-0afc-4933-abd5-0967b7e29b74,00000000-0000-0000-0000-000000000001,Books,Books products and related items,2021-06-01T09:00:00
+c18c21c0-f8a6-43d7-9e5d-1c012fb85fa0,00000000-0000-0000-0000-000000000001,Hardware & Tools,Hardware & Tools products and related items,2021-06-01T09:00:00
+30ed3c03-4aec-41b9-ad0b-366efab1f06d,00000000-0000-0000-0000-000000000001,Packaging Materials,Packaging Materials products and related items,2021-06-01T09:00:00
+4649b934-e5b5-462e-b356-655ab601bd37,00000000-0000-0000-0000-000000000001,Raw Materials,Raw Materials products and related items,2021-06-01T09:00:00
+214489d1-6219-49d2-be97-e940c1d2194a,00000000-0000-0000-0000-000000000001,Chemicals,Chemicals products and related items,2021-06-01T09:00:00
+b7779030-b669-455a-a6cd-48ec9d03fa2b,00000000-0000-0000-0000-000000000001,Electrical Supplies,Electrical Supplies products and related items,2021-06-01T09:00:00
+ea5d07be-288b-4170-bfbe-e844fa068458,00000000-0000-0000-0000-000000000001,Agricultural Inputs,Agricultural Inputs products and related items,2021-06-01T09:00:00
+4380f83e-8962-43ce-b9a0-a12438e5046c,00000000-0000-0000-0000-000000000001,Cleaning Supplies,Cleaning Supplies products and related items,2021-06-01T09:00:00
+1264ab7d-b229-44ae-a6a1-15502a6b635c,00000000-0000-0000-0000-000000000001,Networking Equipment,Networking Equipment products and related items,2021-06-01T09:00:00
+d0435562-81d9-4f28-84e1-fa810e591023,00000000-0000-0000-0000-000000000002,Electronics,Electronics products and related items,2021-06-01T09:00:00
+9edc75bb-064e-429c-8fc3-8371315ca480,00000000-0000-0000-0000-000000000002,Clothing,Clothing products and related items,2021-06-01T09:00:00
+cc546be1-00cd-4b96-aca3-df0bac457648,00000000-0000-0000-0000-000000000002,Home Appliances,Home Appliances products and related items,2021-06-01T09:00:00
+8d937e0a-e7cc-4303-b53f-a21d136a5061,00000000-0000-0000-0000-000000000002,Furniture,Furniture products and related items,2021-06-01T09:00:00
+bbf6c00b-c2a9-4e0a-aec6-cdc3712255aa,00000000-0000-0000-0000-000000000002,Stationery,Stationery products and related items,2021-06-01T09:00:00
+158d9d87-349c-4cf7-92d3-5d713690e894,00000000-0000-0000-0000-000000000002,Food & Beverages,Food & Beverages products and related items,2021-06-01T09:00:00
+085c24f5-5a80-449d-96cf-0f76b157d398,00000000-0000-0000-0000-000000000002,Pharmaceuticals,Pharmaceuticals products and related items,2021-06-01T09:00:00
+8e8c1389-9c99-4fe9-bad0-80378da53196,00000000-0000-0000-0000-000000000002,Automotive Parts,Automotive Parts products and related items,2021-06-01T09:00:00
+05bf59a1-af77-4e7e-b1b2-b226fd55ebda,00000000-0000-0000-0000-000000000002,Toys & Games,Toys & Games products and related items,2021-06-01T09:00:00
+7d28af3a-e11d-499c-9db3-fcd2f7ce0bf0,00000000-0000-0000-0000-000000000002,Sports & Fitness,Sports & Fitness products and related items,2021-06-01T09:00:00
+7130a9fd-619e-4a5f-840f-a1cb4b4ab937,00000000-0000-0000-0000-000000000002,Beauty & Health,Beauty & Health products and related items,2021-06-01T09:00:00
+ab59124b-8383-466e-ae53-c9d87996d993,00000000-0000-0000-0000-000000000002,Books,Books products and related items,2021-06-01T09:00:00
+9be16edd-69c9-46ce-9a7f-5b5f3af5b47a,00000000-0000-0000-0000-000000000002,Hardware & Tools,Hardware & Tools products and related items,2021-06-01T09:00:00
+675b1598-ebc6-44d8-979f-aa3c5df058d4,00000000-0000-0000-0000-000000000002,Packaging Materials,Packaging Materials products and related items,2021-06-01T09:00:00
+eb46dd62-d6f8-41b5-9ee6-3c10da4cbb52,00000000-0000-0000-0000-000000000002,Raw Materials,Raw Materials products and related items,2021-06-01T09:00:00
+8cff7f0d-2653-4cb0-b91d-d97e6b96508e,00000000-0000-0000-0000-000000000002,Chemicals,Chemicals products and related items,2021-06-01T09:00:00
+19cf53f9-e128-48ec-8242-4bb299cfe2a7,00000000-0000-0000-0000-000000000002,Electrical Supplies,Electrical Supplies products and related items,2021-06-01T09:00:00
+133ce6b9-57b8-4094-9c29-29e0989c1a1d,00000000-0000-0000-0000-000000000002,Agricultural Inputs,Agricultural Inputs products and related items,2021-06-01T09:00:00
+f41fcdaa-7d8d-40da-bb04-14e0d72c1fbc,00000000-0000-0000-0000-000000000002,Cleaning Supplies,Cleaning Supplies products and related items,2021-06-01T09:00:00
+1dcfe9fd-be96-4352-9c06-8a7d048df4b5,00000000-0000-0000-0000-000000000002,Networking Equipment,Networking Equipment products and related items,2021-06-01T09:00:00
+083d783f-be49-4a29-b631-39275b3481a2,00000000-0000-0000-0000-000000000003,Electronics,Electronics products and related items,2021-06-01T09:00:00
+5d8b452c-ce6f-405b-a562-a4138493b87b,00000000-0000-0000-0000-000000000003,Clothing,Clothing products and related items,2021-06-01T09:00:00
+84328d0a-91a8-4ffb-9477-ed2fc5866d00,00000000-0000-0000-0000-000000000003,Home Appliances,Home Appliances products and related items,2021-06-01T09:00:00
+417aeb58-04a4-4887-8da9-4af651ed4230,00000000-0000-0000-0000-000000000003,Furniture,Furniture products and related items,2021-06-01T09:00:00
+9f369701-d190-4d1a-b436-d82da70b4619,00000000-0000-0000-0000-000000000003,Stationery,Stationery products and related items,2021-06-01T09:00:00
+c9ace30d-bdff-4567-986e-b067aef52d3f,00000000-0000-0000-0000-000000000003,Food & Beverages,Food & Beverages products and related items,2021-06-01T09:00:00
+50211894-dac6-4430-80dd-6a91819b58a5,00000000-0000-0000-0000-000000000003,Pharmaceuticals,Pharmaceuticals products and related items,2021-06-01T09:00:00
+fd540a9d-5b26-4549-bf5f-e39264a6c375,00000000-0000-0000-0000-000000000003,Automotive Parts,Automotive Parts products and related items,2021-06-01T09:00:00
+a6ed6282-fbdc-41ef-b2ac-1c10874c7f5d,00000000-0000-0000-0000-000000000003,Toys & Games,Toys & Games products and related items,2021-06-01T09:00:00
+4c64c200-fa37-4ffb-83fd-e482e7fc45bb,00000000-0000-0000-0000-000000000003,Sports & Fitness,Sports & Fitness products and related items,2021-06-01T09:00:00
+f1b97fe3-fa32-4750-9618-3657471fda78,00000000-0000-0000-0000-000000000003,Beauty & Health,Beauty & Health products and related items,2021-06-01T09:00:00
+02149d7e-5e68-4f6a-ba69-bd77da7469d1,00000000-0000-0000-0000-000000000003,Books,Books products and related items,2021-06-01T09:00:00
+b12b9fd3-266e-4dae-92d7-2e2c026f3b68,00000000-0000-0000-0000-000000000003,Hardware & Tools,Hardware & Tools products and related items,2021-06-01T09:00:00
+8ffb79f8-ba2a-4331-85fe-7ca8493a9a6e,00000000-0000-0000-0000-000000000003,Packaging Materials,Packaging Materials products and related items,2021-06-01T09:00:00
+9aebc1a8-0130-49e3-aed2-4dab29b9d503,00000000-0000-0000-0000-000000000003,Raw Materials,Raw Materials products and related items,2021-06-01T09:00:00
+9d5982f7-995a-416e-83a7-3ae52fda6787,00000000-0000-0000-0000-000000000003,Chemicals,Chemicals products and related items,2021-06-01T09:00:00
+bad85107-9807-4f7d-9faa-2217d2043ac0,00000000-0000-0000-0000-000000000003,Electrical Supplies,Electrical Supplies products and related items,2021-06-01T09:00:00
+25c33dae-43e8-46db-af58-9c87b2d8fcb4,00000000-0000-0000-0000-000000000003,Agricultural Inputs,Agricultural Inputs products and related items,2021-06-01T09:00:00
+c75a91c8-335c-48bc-b0ef-34564131ddf9,00000000-0000-0000-0000-000000000003,Cleaning Supplies,Cleaning Supplies products and related items,2021-06-01T09:00:00
+ac48c593-34a7-4ac0-a9d8-03dd6b81ab01,00000000-0000-0000-0000-000000000003,Networking Equipment,Networking Equipment products and related items,2021-06-01T09:00:00

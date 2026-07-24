@@ -1,0 +1,4 @@
+id,name,industry,country,currency,created_at
+00000000-0000-0000-0000-000000000001,Horizon Retail Ltd,Retail,India,INR,2021-06-01T09:00:00
+00000000-0000-0000-0000-000000000002,Apex Manufacturing,Manufacturing,USA,USD,2021-06-01T09:00:00
+00000000-0000-0000-0000-000000000003,BlueStar Wholesale,Wholesale,UAE,AED,2021-06-01T09:00:00
