@@ -14,7 +14,7 @@ Provides common helpers for:
 import os
 import json
 import logging
-import pickle
+import joblib
 from datetime import datetime, date
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -86,7 +86,6 @@ def load_csv(filename: str, directory: Optional[Path] = None) -> pd.DataFrame:
     Raises:
         FileNotFoundError: If file does not exist.
     """
-    # TODO: Add dtype inference, date parsing, error handling
     if directory is None:
         directory = SYNTHETIC_DIR
 
@@ -97,12 +96,22 @@ def load_csv(filename: str, directory: Optional[Path] = None) -> pd.DataFrame:
     if not path.exists():
         raise FileNotFoundError(f"CSV file not found: {path}")
 
+    # Auto-detect date columns by naming convention
+    date_patterns = ['_date', '_at', 'moved_at', 'created_at']
     df = pd.read_csv(path)
-    logger.info(f"Loaded {filename}: {len(df):,} rows × {len(df.columns)} columns")
+    for col in df.columns:
+        if any(col.endswith(p) for p in date_patterns):
+            try:
+                df[col] = pd.to_datetime(df[col], errors='coerce')
+            except Exception:
+                pass
+
+    logger.info(f"Loaded {filename}: {len(df):,} rows x {len(df.columns)} columns")
     return df
 
 
-def save_csv(df: pd.DataFrame, filename: str, directory: Optional[Path] = None) -> None:
+def save_csv(df: pd.DataFrame, filename: str, directory: Optional[Path] = None,
+             compress: bool = False) -> None:
     """
     Save a DataFrame to a CSV file.
 
@@ -110,8 +119,8 @@ def save_csv(df: pd.DataFrame, filename: str, directory: Optional[Path] = None) 
         df:        DataFrame to save.
         filename:  Output filename.
         directory: Target directory. Defaults to PROCESSED_DIR.
+        compress:  If True, save as gzipped CSV.
     """
-    # TODO: Add compression, versioning support
     if directory is None:
         directory = PROCESSED_DIR
 
@@ -121,13 +130,17 @@ def save_csv(df: pd.DataFrame, filename: str, directory: Optional[Path] = None) 
         filename += ".csv"
 
     path = directory / filename
-    df.to_csv(path, index=False)
-    logger.info(f"Saved {filename}: {len(df):,} rows")
+    if compress:
+        df.to_csv(str(path) + '.gz', index=False, compression='gzip')
+        logger.info(f"Saved (compressed) {filename}.gz: {len(df):,} rows")
+    else:
+        df.to_csv(path, index=False)
+        logger.info(f"Saved {filename}: {len(df):,} rows")
 
 
 def save_model(model: Any, name: str, metadata: Optional[Dict] = None) -> Path:
     """
-    Serialize a model artifact to the models/ directory using pickle.
+    Serialize a model artifact to the models/ directory using joblib.
 
     Args:
         model:    Trained model object.
@@ -137,14 +150,12 @@ def save_model(model: Any, name: str, metadata: Optional[Dict] = None) -> Path:
     Returns:
         Path to saved model file.
     """
-    # TODO: Support joblib, ONNX, MLflow artifact logging
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     model_path = MODELS_DIR / f"{name}_{timestamp}.pkl"
 
-    with open(model_path, "wb") as f:
-        pickle.dump(model, f)
+    joblib.dump(model, model_path)
 
     if metadata:
         meta_path = MODELS_DIR / f"{name}_{timestamp}_metadata.json"
@@ -157,7 +168,7 @@ def save_model(model: Any, name: str, metadata: Optional[Dict] = None) -> Path:
 
 def load_model(path: Union[str, Path]) -> Any:
     """
-    Load a serialized model from disk.
+    Load a serialized model from disk using joblib.
 
     Args:
         path: Path to .pkl model file.
@@ -165,9 +176,7 @@ def load_model(path: Union[str, Path]) -> Any:
     Returns:
         Deserialized model object.
     """
-    # TODO: Support joblib, ONNX loading
-    with open(path, "rb") as f:
-        model = pickle.load(f)
+    model = joblib.load(path)
     logger.info(f"Model loaded from: {path}")
     return model
 
@@ -178,13 +187,16 @@ def load_model(path: Union[str, Path]) -> Any:
 
 def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Compute Root Mean Squared Error."""
-    # TODO: Handle edge cases (empty arrays, NaNs)
-    return float(np.sqrt(np.mean((y_true - y_pred) ** 2)))
+    y_true, y_pred = np.array(y_true, dtype=float), np.array(y_pred, dtype=float)
+    mask = ~(np.isnan(y_true) | np.isnan(y_pred))
+    return float(np.sqrt(np.mean((y_true[mask] - y_pred[mask]) ** 2)))
 
 
 def mae(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Compute Mean Absolute Error."""
-    return float(np.mean(np.abs(y_true - y_pred)))
+    y_true, y_pred = np.array(y_true, dtype=float), np.array(y_pred, dtype=float)
+    mask = ~(np.isnan(y_true) | np.isnan(y_pred))
+    return float(np.mean(np.abs(y_true[mask] - y_pred[mask])))
 
 
 def mape(y_true: np.ndarray, y_pred: np.ndarray, epsilon: float = 1e-8) -> float:
@@ -199,7 +211,24 @@ def mape(y_true: np.ndarray, y_pred: np.ndarray, epsilon: float = 1e-8) -> float
     Returns:
         MAPE as a percentage.
     """
-    return float(np.mean(np.abs((y_true - y_pred) / (y_true + epsilon))) * 100)
+    y_true, y_pred = np.array(y_true, dtype=float), np.array(y_pred, dtype=float)
+    mask = (np.abs(y_true) > epsilon) & ~(np.isnan(y_true) | np.isnan(y_pred))
+    return float(np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100)
+
+
+def smape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """Compute Symmetric Mean Absolute Percentage Error."""
+    y_true, y_pred = np.array(y_true, dtype=float), np.array(y_pred, dtype=float)
+    denominator = (np.abs(y_true) + np.abs(y_pred)) / 2
+    mask = denominator > 0
+    return float(np.mean(np.abs(y_true[mask] - y_pred[mask]) / denominator[mask]) * 100)
+
+
+def wape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """Compute Weighted Absolute Percentage Error."""
+    y_true, y_pred = np.array(y_true, dtype=float), np.array(y_pred, dtype=float)
+    total = np.sum(np.abs(y_true))
+    return float(np.sum(np.abs(y_true - y_pred)) / total * 100) if total > 0 else 0.0
 
 
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
@@ -211,18 +240,20 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
         y_pred: Predicted values.
 
     Returns:
-        Dict with keys: rmse, mae, mape, r2.
+        Dict with keys: rmse, mae, mape, smape, wape, r2.
     """
-    # TODO: Add more metrics (SMAPE, WAPE) as needed
+    y_true, y_pred = np.array(y_true, dtype=float), np.array(y_pred, dtype=float)
     ss_res = np.sum((y_true - y_pred) ** 2)
     ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
     r2 = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0.0
 
     return {
-        "rmse": rmse(y_true, y_pred),
-        "mae":  mae(y_true, y_pred),
-        "mape": mape(y_true, y_pred),
-        "r2":   round(r2, 4),
+        "rmse":  rmse(y_true, y_pred),
+        "mae":   mae(y_true, y_pred),
+        "mape":  mape(y_true, y_pred),
+        "smape": smape(y_true, y_pred),
+        "wape":  wape(y_true, y_pred),
+        "r2":    round(r2, 4),
     }
 
 
@@ -243,18 +274,21 @@ def add_date_features(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
         year, month, quarter, day_of_week, week_of_year, is_month_end,
         is_quarter_end, is_year_end.
     """
-    # TODO: Add holiday flags, fiscal period indicators
     df = df.copy()
     dt = pd.to_datetime(df[date_col])
 
-    df["year"]          = dt.dt.year
-    df["month"]         = dt.dt.month
-    df["quarter"]       = dt.dt.quarter
-    df["day_of_week"]   = dt.dt.dayofweek   # 0=Monday
-    df["week_of_year"]  = dt.dt.isocalendar().week.astype(int)
-    df["is_month_end"]  = dt.dt.is_month_end.astype(int)
-    df["is_quarter_end"]= dt.dt.is_quarter_end.astype(int)
-    df["is_year_end"]   = dt.dt.is_year_end.astype(int)
+    df["year"]           = dt.dt.year
+    df["month"]          = dt.dt.month
+    df["quarter"]        = dt.dt.quarter
+    df["day_of_week"]    = dt.dt.dayofweek   # 0=Monday
+    df["week_of_year"]   = dt.dt.isocalendar().week.astype(int)
+    df["is_month_end"]   = dt.dt.is_month_end.astype(int)
+    df["is_quarter_end"] = dt.dt.is_quarter_end.astype(int)
+    df["is_year_end"]    = dt.dt.is_year_end.astype(int)
+    # Seasonal flags
+    df["is_q4"]          = (df["quarter"] == 4).astype(int)  # holiday season
+    df["is_q1"]          = (df["quarter"] == 1).astype(int)  # post-holiday dip
+    df["is_weekend"]     = (df["day_of_week"] >= 5).astype(int)
 
     return df
 
@@ -273,7 +307,6 @@ def make_lag_features(df: pd.DataFrame, value_col: str,
     Returns:
         DataFrame with added lag columns.
     """
-    # TODO: Add rolling features, expanding window features
     df = df.copy()
 
     for lag in lags:
@@ -300,7 +333,6 @@ def make_rolling_features(df: pd.DataFrame, value_col: str,
     Returns:
         DataFrame with rolling mean and std columns.
     """
-    # TODO: Add exponential weighted moving average (EWMA)
     df = df.copy()
 
     for w in windows:
@@ -310,11 +342,20 @@ def make_rolling_features(df: pd.DataFrame, value_col: str,
             )
             df[f"{value_col}_roll_mean_{w}"] = rolled
             df[f"{value_col}_roll_std_{w}"]  = df.groupby(group_cols)[value_col].transform(
-                lambda x: x.rolling(w, min_periods=1).std()
+                lambda x: x.rolling(w, min_periods=2).std().fillna(0)
             )
         else:
             df[f"{value_col}_roll_mean_{w}"] = df[value_col].rolling(w, min_periods=1).mean()
-            df[f"{value_col}_roll_std_{w}"]  = df[value_col].rolling(w, min_periods=1).std()
+            df[f"{value_col}_roll_std_{w}"]  = df[value_col].rolling(w, min_periods=2).std().fillna(0)
+
+        # EWMA
+        alpha = 2 / (w + 1)
+        if group_cols:
+            df[f"{value_col}_ewma_{w}"] = df.groupby(group_cols)[value_col].transform(
+                lambda x: x.ewm(alpha=alpha, adjust=False).mean()
+            )
+        else:
+            df[f"{value_col}_ewma_{w}"] = df[value_col].ewm(alpha=alpha, adjust=False).mean()
 
     return df
 
@@ -337,13 +378,15 @@ def validate_foreign_keys(child_df: pd.DataFrame, parent_df: pd.DataFrame,
     Returns:
         True if all FK values are valid, False otherwise.
     """
-    # TODO: Log invalid FK values
     valid_ids = set(parent_df[parent_col])
     child_ids = set(child_df[child_col].dropna())
     orphans   = child_ids - valid_ids
 
     if orphans:
-        logger.warning(f"FK violation in {child_col}: {len(orphans)} orphan values found.")
+        logger.warning(
+            f"FK violation in {child_col}: {len(orphans)} orphan values found. "
+            f"Examples: {list(orphans)[:5]}"
+        )
         return False
 
     return True
@@ -360,13 +403,23 @@ def check_data_quality(df: pd.DataFrame, name: str) -> Dict[str, Any]:
     Returns:
         Dict with: row_count, column_count, null_counts, duplicate_count, dtypes.
     """
-    # TODO: Add value range checks, schema validation
+    numeric_cols = df.select_dtypes(include='number').columns.tolist()
+    ranges = {}
+    for col in numeric_cols:
+        ranges[col] = {
+            'min': float(df[col].min()) if not df[col].isna().all() else None,
+            'max': float(df[col].max()) if not df[col].isna().all() else None,
+            'mean': float(df[col].mean()) if not df[col].isna().all() else None,
+        }
+
     report = {
         "name":            name,
         "row_count":       len(df),
         "column_count":    len(df.columns),
         "null_counts":     df.isnull().sum().to_dict(),
-        "duplicate_count": df.duplicated().sum(),
+        "null_pct":        (df.isnull().sum() / len(df) * 100).round(2).to_dict(),
+        "duplicate_count": int(df.duplicated().sum()),
         "dtypes":          df.dtypes.astype(str).to_dict(),
+        "numeric_ranges":  ranges,
     }
     return report

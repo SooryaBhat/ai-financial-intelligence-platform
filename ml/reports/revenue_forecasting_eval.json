@@ -1,0 +1,34 @@
+{
+  "task": "revenue_forecasting",
+  "models": [
+    {
+      "model": "Naive Baseline",
+      "RMSE": 7712077.26,
+      "MAE": 7298558.35,
+      "MAPE_%": 28.91,
+      "R2": -0.0003
+    },
+    {
+      "model": "SARIMA(1,d,1)(1,1,0,12)",
+      "RMSE": 5060627.75,
+      "MAE": 4665915.92,
+      "MAPE_%": 18.96,
+      "R2": 0.5693
+    },
+    {
+      "model": "XGBoost",
+      "RMSE": 5027159.33,
+      "MAE": 4238383.6,
+      "MAPE_%": 14.39,
+      "R2": 0.5749
+    },
+    {
+      "model": "LightGBM",
+      "RMSE": 8440735.77,
+      "MAE": 7673211.0,
+      "MAPE_%": 26.94,
+      "R2": -0.1983
+    }
+  ],
+  "best_model": "XGBoost"
+}

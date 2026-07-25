@@ -1,0 +1,408 @@
+
+============================================================
+Cell 0 (markdown)
+============================================================
+# 04 — Sales Forecasting
+
+**AI Financial Intelligence Platform — ML Module**
+
+---
+
+## Purpose
+
+Forecast sales at the SKU, category, and branch level.
+
+### Goals
+- Predict unit sales for individual products
+- Detect high-performing SKUs and seasonal champions
+- Enable per-category demand planning
+
+### Models to Evaluate
+- XGBoost with lag features and rolling averages
+- LightGBM
+- Prophet per product
+
+### Sections
+1. Load & join sales + products
+2. Aggregate by product/category/time
+3. Feature engineering (lag, rolling, seasonal)
+4. Train / test split
+5. Model training per level
+6. Evaluation & comparison
+7. Forecast plots
+8. Save model
+
+
+============================================================
+Cell 1 (code)
+============================================================
+import os
+import json
+import pickle
+import warnings
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+import xgboost as xgb
+
+warnings.filterwarnings('ignore')
+
+DATA_DIR   = '../datasets/synthetic/'
+MODELS_DIR = '../models/'
+REPORTS_DIR = '../reports/'
+os.makedirs(MODELS_DIR, exist_ok=True)
+os.makedirs(REPORTS_DIR, exist_ok=True)
+
+============================================================
+Cell 2 (markdown)
+============================================================
+## 1. Load & Join Sales + Products
+
+
+============================================================
+Cell 3 (code)
+============================================================
+# Load datasets
+sales       = pd.read_csv(DATA_DIR + 'sales.csv')
+sale_items  = pd.read_csv(DATA_DIR + 'sale_items.csv')
+products    = pd.read_csv(DATA_DIR + 'products.csv')
+categories  = pd.read_csv(DATA_DIR + 'categories.csv')
+branches    = pd.read_csv(DATA_DIR + 'branches.csv')
+
+# Parse dates
+sales['sale_date'] = pd.to_datetime(sales['sale_date'], errors='coerce')
+sales = sales.dropna(subset=['sale_date'])
+
+# Full join: sale_items → sales → products → categories
+items_full = (
+    sale_items
+    .merge(sales[['id', 'sale_date', 'company_id', 'branch_id']],
+           left_on='sale_id', right_on='id', suffixes=('', '_sale'))
+    .merge(products[['id', 'name', 'sku', 'category_id', 'cost_price']],
+           left_on='product_id', right_on='id', suffixes=('', '_prod'))
+    .merge(categories[['id', 'name']], left_on='category_id', right_on='id',
+           suffixes=('_prod', '_cat'))
+)
+
+print('Joined items_full shape:', items_full.shape)
+print('Columns:', list(items_full.columns))
+
+============================================================
+Cell 4 (markdown)
+============================================================
+## 2. Aggregate by Product / Category / Time
+
+
+============================================================
+Cell 5 (code)
+============================================================
+# ── 2a. Monthly unit sales per product ────────────────────────────────────────
+monthly_prod = (
+    items_full
+    .groupby(['product_id', 'sku', 'name_prod',
+               pd.Grouper(key='sale_date', freq='ME')])
+    .agg(
+        units_sold = ('quantity',   'sum'),
+        revenue    = ('line_total', 'sum'),
+    )
+    .reset_index()
+    .rename(columns={'sale_date': 'month'})
+    .sort_values(['product_id', 'month'])
+    .reset_index(drop=True)
+)
+
+# ── 2b. Monthly unit sales per category ───────────────────────────────────────
+monthly_cat = (
+    items_full
+    .groupby(['name_cat', pd.Grouper(key='sale_date', freq='ME')])
+    .agg(
+        units_sold = ('quantity',   'sum'),
+        revenue    = ('line_total', 'sum'),
+    )
+    .reset_index()
+    .rename(columns={'sale_date': 'month', 'name_cat': 'category'})
+    .sort_values(['category', 'month'])
+    .reset_index(drop=True)
+)
+
+# ── 2c. Identify top-10 products by total units ───────────────────────────────
+top10_products = (
+    monthly_prod.groupby(['product_id', 'sku', 'name_prod'])['units_sold']
+    .sum()
+    .nlargest(10)
+    .reset_index()
+)
+print('Top-10 products by total units sold:')
+print(top10_products[['sku', 'name_prod', 'units_sold']].to_string(index=False))
+
+============================================================
+Cell 6 (markdown)
+============================================================
+## 3. Feature Engineering
+
+
+============================================================
+Cell 7 (code)
+============================================================
+def add_sales_features(df: pd.DataFrame,
+                        group_col: str,
+                        target: str = 'units_sold',
+                        date_col: str = 'month') -> pd.DataFrame:
+    """
+    Add lag (t-1, t-2, t-3, t-12), rolling mean/std,
+    and calendar features to a monthly grouped sales DataFrame.
+    """
+    d = df.copy().sort_values([group_col, date_col])
+
+    # Lag features
+    for lag in [1, 2, 3, 12]:
+        d[f'lag_{lag}'] = d.groupby(group_col)[target].shift(lag)
+
+    # Rolling statistics (computed on lagged values to avoid leakage)
+    d['roll3_mean'] = (
+        d.groupby(group_col)[target]
+        .transform(lambda x: x.shift(1).rolling(3, min_periods=1).mean())
+    )
+    d['roll6_mean'] = (
+        d.groupby(group_col)[target]
+        .transform(lambda x: x.shift(1).rolling(6, min_periods=1).mean())
+    )
+    d['roll3_std'] = (
+        d.groupby(group_col)[target]
+        .transform(lambda x: x.shift(1).rolling(3, min_periods=2).std())
+    )
+
+    # Calendar
+    d['month_num']  = pd.to_datetime(d[date_col]).dt.month
+    d['quarter']    = pd.to_datetime(d[date_col]).dt.quarter
+    d['year']       = pd.to_datetime(d[date_col]).dt.year
+    d['is_q4']      = (d['quarter'] == 4).astype(int)   # holiday season flag
+    d['is_jan']     = (d['month_num'] == 1).astype(int)  # January dip flag
+
+    return d
+
+# Apply to category-level frame (used for XGBoost training)
+cat_feat = add_sales_features(monthly_cat, group_col='category', target='units_sold')
+cat_feat = cat_feat.dropna(subset=['lag_1', 'lag_2', 'lag_3']).copy()
+
+# Apply to product-level frame (used for top-10 product forecasting)
+prod_feat = add_sales_features(monthly_prod, group_col='product_id', target='units_sold')
+prod_feat = prod_feat.dropna(subset=['lag_1', 'lag_2', 'lag_3']).copy()
+
+FEAT_COLS = ['lag_1', 'lag_2', 'lag_3', 'lag_12',
+             'roll3_mean', 'roll6_mean', 'roll3_std',
+             'month_num', 'quarter', 'year', 'is_q4', 'is_jan']
+
+print('Feature columns:', FEAT_COLS)
+print('Category feature matrix shape:', cat_feat.shape)
+print('Product feature matrix shape: ', prod_feat.shape)
+
+============================================================
+Cell 8 (markdown)
+============================================================
+## 4. Train / Test Split
+
+
+============================================================
+Cell 9 (code)
+============================================================
+# Chronological 80/20 split on category-level data
+cutoff = cat_feat['month'].quantile(0.80)
+# Quantile on datetime — use sorted unique months
+all_months = sorted(cat_feat['month'].unique())
+split_idx  = int(len(all_months) * 0.80)
+split_month = all_months[split_idx]
+
+cat_train = cat_feat[cat_feat['month'] <  split_month].copy()
+cat_test  = cat_feat[cat_feat['month'] >= split_month].copy()
+
+print(f'Category-level split month: {split_month}')
+print(f'Train rows: {len(cat_train)}  |  Test rows: {len(cat_test)}')
+
+# Same split for product level
+prod_train = prod_feat[prod_feat['month'] <  split_month].copy()
+prod_test  = prod_feat[prod_feat['month'] >= split_month].copy()
+
+print(f'Product-level — Train: {len(prod_train)}  |  Test: {len(prod_test)}')
+
+============================================================
+Cell 10 (markdown)
+============================================================
+## 5. Model Training
+
+
+============================================================
+Cell 11 (code)
+============================================================
+def mape(y_true, y_pred):
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    mask = y_true != 0
+    return np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100
+
+eval_results = []
+trained_models = {}
+
+# ── XGBoost — Category Level ─────────────────────────────────────────────────
+X_cat_tr = cat_train[FEAT_COLS].fillna(0).values
+y_cat_tr = cat_train['units_sold'].values
+X_cat_te = cat_test[FEAT_COLS].fillna(0).values
+y_cat_te = cat_test['units_sold'].values
+
+xgb_cat = xgb.XGBRegressor(
+    n_estimators=400,
+    learning_rate=0.05,
+    max_depth=4,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    random_state=42,
+    verbosity=0,
+)
+xgb_cat.fit(X_cat_tr, y_cat_tr)
+cat_pred = xgb_cat.predict(X_cat_te)
+trained_models['xgb_category'] = xgb_cat
+
+rmse_cat = np.sqrt(mean_squared_error(y_cat_te, cat_pred))
+mae_cat  = mean_absolute_error(y_cat_te, cat_pred)
+mape_cat = mape(y_cat_te, cat_pred)
+eval_results.append({'level': 'category', 'model': 'XGBoost',
+                     'RMSE': rmse_cat, 'MAE': mae_cat, 'MAPE': mape_cat})
+print(f'XGBoost (Category)  RMSE={rmse_cat:.2f}  MAE={mae_cat:.2f}  MAPE={mape_cat:.2f}%')
+
+# ── XGBoost — Product Level ───────────────────────────────────────────────────
+X_prod_tr = prod_train[FEAT_COLS].fillna(0).values
+y_prod_tr = prod_train['units_sold'].values
+X_prod_te = prod_test[FEAT_COLS].fillna(0).values
+y_prod_te = prod_test['units_sold'].values
+
+xgb_prod = xgb.XGBRegressor(
+    n_estimators=400,
+    learning_rate=0.05,
+    max_depth=5,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    random_state=42,
+    verbosity=0,
+)
+xgb_prod.fit(X_prod_tr, y_prod_tr)
+prod_pred_arr = xgb_prod.predict(X_prod_te)
+trained_models['xgb_product'] = xgb_prod
+
+rmse_prod = np.sqrt(mean_squared_error(y_prod_te, prod_pred_arr))
+mae_prod  = mean_absolute_error(y_prod_te, prod_pred_arr)
+mape_prod = mape(y_prod_te, prod_pred_arr)
+eval_results.append({'level': 'product', 'model': 'XGBoost',
+                     'RMSE': rmse_prod, 'MAE': mae_prod, 'MAPE': mape_prod})
+print(f'XGBoost (Product)   RMSE={rmse_prod:.2f}  MAE={mae_prod:.2f}  MAPE={mape_prod:.2f}%')
+
+# ── LightGBM — Product Level ──────────────────────────────────────────────────
+try:
+    import lightgbm as lgb
+    lgb_prod = lgb.LGBMRegressor(
+        n_estimators=400, learning_rate=0.05, max_depth=5,
+        subsample=0.8, colsample_bytree=0.8, random_state=42, verbosity=-1,
+    )
+    lgb_prod.fit(X_prod_tr, y_prod_tr)
+    lgb_pred_arr = lgb_prod.predict(X_prod_te)
+    trained_models['lgb_product'] = lgb_prod
+
+    rmse_lgb = np.sqrt(mean_squared_error(y_prod_te, lgb_pred_arr))
+    mae_lgb  = mean_absolute_error(y_prod_te, lgb_pred_arr)
+    mape_lgb = mape(y_prod_te, lgb_pred_arr)
+    eval_results.append({'level': 'product', 'model': 'LightGBM',
+                         'RMSE': rmse_lgb, 'MAE': mae_lgb, 'MAPE': mape_lgb})
+    print(f'LightGBM (Product)  RMSE={rmse_lgb:.2f}  MAE={mae_lgb:.2f}  MAPE={mape_lgb:.2f}%')
+except ImportError:
+    print('LightGBM not installed — skipping.')
+
+============================================================
+Cell 12 (markdown)
+============================================================
+## 6. Evaluation
+
+
+============================================================
+Cell 13 (code)
+============================================================
+eval_df = pd.DataFrame(eval_results).round(4)
+print('=== Sales Forecasting — Model Evaluation ===')
+print(eval_df.to_string(index=False))
+
+# Feature importance (XGBoost product model)
+feat_imp = pd.Series(xgb_prod.feature_importances_, index=FEAT_COLS).sort_values(ascending=False)
+
+fig, ax = plt.subplots(figsize=(8, 4))
+feat_imp.plot(kind='bar', ax=ax, color='steelblue', edgecolor='white')
+ax.set_title('XGBoost Feature Importance — Product Sales Forecasting', fontweight='bold')
+ax.set_ylabel('Importance Score')
+plt.tight_layout()
+plt.show()
+
+# Save report
+report = {'task': 'sales_forecasting', 'models': eval_results}
+with open(os.path.join(REPORTS_DIR, 'sales_forecasting_eval.json'), 'w') as f:
+    json.dump(report, f, indent=2)
+print('Evaluation report saved.')
+
+============================================================
+Cell 14 (markdown)
+============================================================
+## 7. Forecast Plots
+
+
+============================================================
+Cell 15 (code)
+============================================================
+# Plot actual vs forecast for top 3 categories
+top_categories = (
+    monthly_cat.groupby('category')['units_sold'].sum()
+    .nlargest(3).index.tolist()
+)
+
+fig, axes = plt.subplots(len(top_categories), 1,
+                          figsize=(14, 4 * len(top_categories)), sharex=False)
+if len(top_categories) == 1:
+    axes = [axes]
+
+for ax, cat in zip(axes, top_categories):
+    cat_all   = cat_feat[cat_feat['category'] == cat].copy()
+    cat_tr_c  = cat_all[cat_all['month'] <  split_month]
+    cat_te_c  = cat_all[cat_all['month'] >= split_month].copy()
+    cat_te_c['xgb_pred'] = xgb_cat.predict(cat_te_c[FEAT_COLS].fillna(0).values)
+
+    ax.plot(cat_tr_c['month'], cat_tr_c['units_sold'],
+            color='steelblue', lw=2, label='Train Actual')
+    ax.plot(cat_te_c['month'], cat_te_c['units_sold'],
+            color='steelblue', lw=2, ls='--', label='Test Actual')
+    ax.plot(cat_te_c['month'], cat_te_c['xgb_pred'],
+            color='darkorange', lw=2, ls='-', label='XGBoost Forecast')
+    ax.axvline(split_month, color='red', ls=':', lw=1.5)
+    ax.set_title(f'Sales Forecast — {cat}', fontweight='bold')
+    ax.set_ylabel('Units Sold')
+    ax.legend()
+
+plt.tight_layout()
+plt.show()
+
+============================================================
+Cell 16 (markdown)
+============================================================
+## 8. Save Model
+
+
+============================================================
+Cell 17 (code)
+============================================================
+# Save all trained models
+for model_name, model_obj in trained_models.items():
+    path = os.path.join(MODELS_DIR, f'sales_forecasting_{model_name}.pkl')
+    with open(path, 'wb') as f:
+        pickle.dump({'model': model_obj, 'feature_cols': FEAT_COLS}, f)
+    print(f'Saved: {path}')
+
+# Save feature metadata
+meta = {'task': 'sales_forecasting', 'features': FEAT_COLS, 'split_month': str(split_month)}
+with open(os.path.join(MODELS_DIR, 'sales_feature_meta.json'), 'w') as f:
+    json.dump(meta, f, indent=2)
+print('Feature metadata saved.')

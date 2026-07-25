@@ -1,0 +1,428 @@
+
+============================================================
+Cell 0 (markdown)
+============================================================
+# 03 — Revenue Forecasting
+
+**AI Financial Intelligence Platform — ML Module**
+
+---
+
+## Purpose
+
+Forecast monthly/quarterly revenue per company and branch.
+
+### Models to Evaluate
+- Prophet (Facebook)
+- SARIMA / SARIMAX
+- XGBoost with lag features
+- LightGBM with lag features
+- LSTM (optional, future)
+
+### Sections
+1. Load and aggregate revenue data
+2. Time-series decomposition
+3. Stationarity tests (ADF, KPSS)
+4. Train/test split
+5. Model training
+6. Model evaluation (RMSE, MAE, MAPE)
+7. Forecast visualization
+8. Save best model
+
+
+============================================================
+Cell 1 (code)
+============================================================
+import os
+import json
+import warnings
+import pickle
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+
+from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.tsa.stattools import adfuller, kpss
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+import xgboost as xgb
+
+warnings.filterwarnings('ignore')
+
+DATA_DIR     = '../datasets/synthetic/'
+PROC_DIR     = '../datasets/processed/'
+MODELS_DIR   = '../models/'
+REPORTS_DIR  = '../reports/'
+os.makedirs(MODELS_DIR,  exist_ok=True)
+os.makedirs(REPORTS_DIR, exist_ok=True)
+
+============================================================
+Cell 2 (markdown)
+============================================================
+## 1. Load & Aggregate Revenue Data
+
+
+============================================================
+Cell 3 (code)
+============================================================
+# Load sales data
+sales = pd.read_csv(DATA_DIR + 'sales.csv')
+sales['sale_date'] = pd.to_datetime(sales['sale_date'], errors='coerce')
+sales = sales.dropna(subset=['sale_date', 'net_amount'])
+
+companies = pd.read_csv(DATA_DIR + 'companies.csv')
+
+# ── Platform-wide monthly revenue ────────────────────────────────────────────
+monthly = (
+    sales
+    .groupby(pd.Grouper(key='sale_date', freq='ME'))
+    .agg(revenue=('net_amount', 'sum'), orders=('id', 'count'))
+    .reset_index()
+    .rename(columns={'sale_date': 'month'})
+)
+monthly = monthly[monthly['revenue'] > 0].copy()
+monthly = monthly.sort_values('month').reset_index(drop=True)
+
+# ── Per-company monthly revenue ───────────────────────────────────────────────
+sales_c = sales.merge(companies[['id', 'name']], left_on='company_id', right_on='id',
+                      suffixes=('', '_co'))
+monthly_co = (
+    sales_c
+    .groupby([pd.Grouper(key='sale_date', freq='ME'), 'company_id', 'name'])
+    .agg(revenue=('net_amount', 'sum'))
+    .reset_index()
+    .rename(columns={'sale_date': 'month'})
+    .sort_values(['company_id', 'month'])
+    .reset_index(drop=True)
+)
+
+print('Platform monthly revenue — shape:', monthly.shape)
+print(f'Date range: {monthly["month"].min().date()} → {monthly["month"].max().date()}')
+print(monthly.head(6).to_string(index=False))
+
+============================================================
+Cell 4 (markdown)
+============================================================
+## 2. Time-Series Decomposition
+
+
+============================================================
+Cell 5 (code)
+============================================================
+# Use platform-wide monthly revenue, set month as index for statsmodels
+ts = monthly.set_index('month')['revenue'].asfreq('ME')
+
+# Additive decomposition (period=12 for annual seasonality)
+if len(ts) >= 24:   # need at least 2 full periods
+    decomp = seasonal_decompose(ts, model='additive', period=12, extrapolate_trend='freq')
+    fig, axes = plt.subplots(4, 1, figsize=(14, 10), sharex=True)
+    decomp.observed.plot(ax=axes[0], title='Observed',  color='steelblue')
+    decomp.trend.plot(   ax=axes[1], title='Trend',     color='darkorange')
+    decomp.seasonal.plot(ax=axes[2], title='Seasonal',  color='green')
+    decomp.resid.plot(   ax=axes[3], title='Residual',  color='red', alpha=0.6)
+    for ax in axes:
+        ax.set_ylabel('Revenue')
+    axes[0].set_title('Monthly Revenue — Additive Decomposition', fontweight='bold', fontsize=13)
+    plt.tight_layout()
+    plt.show()
+    print('Seasonal strength (seasonal std / observed std):',
+          round(decomp.seasonal.std() / ts.std(), 4))
+else:
+    print('Not enough data points for seasonal decomposition (need ≥ 24 months).')
+    print(f'Available months: {len(ts)}')
+
+============================================================
+Cell 6 (markdown)
+============================================================
+## 3. Stationarity Tests
+
+
+============================================================
+Cell 7 (code)
+============================================================
+def adf_test(series: pd.Series, name: str = 'Series') -> dict:
+    """Augmented Dickey-Fuller test. H0: series has a unit root (non-stationary)."""
+    result = adfuller(series.dropna(), autolag='AIC')
+    out = {
+        'test': 'ADF',
+        'name': name,
+        'statistic': round(result[0], 4),
+        'p_value':   round(result[1], 4),
+        'stationary': result[1] < 0.05,
+    }
+    print(f'[ADF] {name}  stat={out["statistic"]}  p={out["p_value"]}  '
+          f'{"STATIONARY" if out["stationary"] else "NON-STATIONARY"}')
+    return out
+
+def kpss_test(series: pd.Series, name: str = 'Series') -> dict:
+    """KPSS test. H0: series is stationary (trend-stationary)."""
+    stat, p_value, _, crit = kpss(series.dropna(), regression='c', nlags='auto')
+    out = {
+        'test': 'KPSS',
+        'name': name,
+        'statistic': round(stat, 4),
+        'p_value':   round(p_value, 4),
+        'stationary': p_value > 0.05,
+    }
+    print(f'[KPSS] {name}  stat={out["statistic"]}  p={out["p_value"]}  '
+          f'{"STATIONARY" if out["stationary"] else "NON-STATIONARY"}')
+    return out
+
+print('=== Level series ===')
+adf_level  = adf_test(ts,       name='Revenue (level)')
+kpss_level = kpss_test(ts,      name='Revenue (level)')
+
+# First-difference if non-stationary
+ts_diff = ts.diff().dropna()
+print('\n=== First-differenced series ===')
+adf_diff  = adf_test(ts_diff,  name='Revenue (1st diff)')
+kpss_diff = kpss_test(ts_diff, name='Revenue (1st diff)')
+
+# Decide on differencing order for SARIMA
+d_order = 0 if adf_level['stationary'] else 1
+print(f'\nDifferencing order selected for SARIMA: d={d_order}')
+
+============================================================
+Cell 8 (markdown)
+============================================================
+## 4. Train / Test Split
+
+
+============================================================
+Cell 9 (code)
+============================================================
+# Chronological 80 / 20 split — preserve temporal order
+n = len(monthly)
+split_idx = int(n * 0.80)
+
+train_df = monthly.iloc[:split_idx].copy()
+test_df  = monthly.iloc[split_idx:].copy()
+
+print(f'Total months : {n}')
+print(f'Train        : {len(train_df)} months  ({train_df["month"].min().date()} – {train_df["month"].max().date()})')
+print(f'Test         : {len(test_df)}  months  ({test_df["month"].min().date()} – {test_df["month"].max().date()})')
+
+train_ts = train_df.set_index('month')['revenue'].asfreq('ME')
+test_ts  = test_df.set_index('month')['revenue'].asfreq('ME')
+
+============================================================
+Cell 10 (markdown)
+============================================================
+## 5. Model Training
+
+
+============================================================
+Cell 11 (code)
+============================================================
+# ── Helper metrics ────────────────────────────────────────────────────────────
+def mape(y_true, y_pred):
+    """Mean Absolute Percentage Error."""
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    mask = y_true != 0
+    return np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100
+
+def eval_metrics(y_true, y_pred, model_name: str) -> dict:
+    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    mae  = mean_absolute_error(y_true, y_pred)
+    mape_val = mape(y_true, y_pred)
+    print(f'{model_name:<20}  RMSE={rmse:>12,.0f}  MAE={mae:>12,.0f}  MAPE={mape_val:>6.2f}%')
+    return {'model': model_name, 'RMSE': rmse, 'MAE': mae, 'MAPE': mape_val}
+
+results = []
+forecasts = {}
+
+# ── Model A: Naïve Baseline (last observed value) ─────────────────────────────
+naive_pred = np.full(len(test_ts), train_ts.iloc[-1])
+results.append(eval_metrics(test_ts.values, naive_pred, 'Naive Baseline'))
+forecasts['Naive'] = pd.Series(naive_pred, index=test_ts.index)
+
+# ── Model B: SARIMA ───────────────────────────────────────────────────────────
+try:
+    sarima = SARIMAX(
+        train_ts,
+        order=(1, d_order, 1),
+        seasonal_order=(1, 1, 0, 12),
+        enforce_stationarity=False,
+        enforce_invertibility=False,
+    )
+    sarima_fit = sarima.fit(disp=False)
+    sarima_pred = sarima_fit.forecast(steps=len(test_ts))
+    sarima_pred.index = test_ts.index
+    results.append(eval_metrics(test_ts.values, sarima_pred.values, 'SARIMA(1,d,1)(1,1,0,12)'))
+    forecasts['SARIMA'] = sarima_pred
+except Exception as e:
+    print(f'SARIMA failed: {e}')
+
+# ── Model C: XGBoost with lag features ───────────────────────────────────────
+def build_lag_features(df: pd.DataFrame, lags: list, target: str = 'revenue') -> pd.DataFrame:
+    """Build lag and rolling mean features from a monthly revenue DataFrame."""
+    d = df.copy()
+    for lag in lags:
+        d[f'lag_{lag}'] = d[target].shift(lag)
+    d['roll3_mean'] = d[target].shift(1).rolling(3, min_periods=1).mean()
+    d['roll6_mean'] = d[target].shift(1).rolling(6, min_periods=1).mean()
+    d['month_num']  = d['month'].dt.month
+    d['quarter']    = d['month'].dt.quarter
+    return d.dropna()
+
+feat_df = build_lag_features(monthly, lags=[1, 2, 3, 6, 12])
+feat_cols = [c for c in feat_df.columns if c.startswith('lag_') or
+             c in ['roll3_mean', 'roll6_mean', 'month_num', 'quarter']]
+
+# Re-split on the lag-enriched frame
+train_xgb = feat_df[feat_df['month'] <= train_df['month'].max()]
+test_xgb  = feat_df[feat_df['month'] >  train_df['month'].max()]
+
+X_tr, y_tr = train_xgb[feat_cols].values, train_xgb['revenue'].values
+X_te, y_te = test_xgb[feat_cols].values,  test_xgb['revenue'].values
+
+xgb_model = xgb.XGBRegressor(
+    n_estimators=300,
+    learning_rate=0.05,
+    max_depth=4,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    random_state=42,
+    verbosity=0,
+)
+xgb_model.fit(X_tr, y_tr, eval_set=[(X_te, y_te)], verbose=False)
+xgb_pred = xgb_model.predict(X_te)
+
+results.append(eval_metrics(y_te, xgb_pred, 'XGBoost'))
+forecasts['XGBoost'] = pd.Series(xgb_pred, index=test_xgb['month'])
+
+# ── Model D: LightGBM ─────────────────────────────────────────────────────────
+try:
+    import lightgbm as lgb
+    lgb_model = lgb.LGBMRegressor(
+        n_estimators=300,
+        learning_rate=0.05,
+        max_depth=4,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        random_state=42,
+        verbosity=-1,
+    )
+    lgb_model.fit(X_tr, y_tr)
+    lgb_pred = lgb_model.predict(X_te)
+    results.append(eval_metrics(y_te, lgb_pred, 'LightGBM'))
+    forecasts['LightGBM'] = pd.Series(lgb_pred, index=test_xgb['month'])
+except ImportError:
+    print('LightGBM not installed — skipping. Install with: pip install lightgbm')
+
+print('\nModel training complete.')
+
+============================================================
+Cell 12 (markdown)
+============================================================
+## 6. Model Evaluation
+
+
+============================================================
+Cell 13 (code)
+============================================================
+# Summarise all model results in a comparison table
+results_df = pd.DataFrame(results).sort_values('MAPE')
+print('=== Revenue Forecasting — Model Comparison ===')
+print(results_df.to_string(index=False))
+
+best_model_name = results_df.iloc[0]['model']
+print(f'\n✓ Best model by MAPE: {best_model_name}')
+
+# Save evaluation report
+report = {
+    'task': 'revenue_forecasting',
+    'models': results,
+    'best_model': best_model_name,
+}
+with open(os.path.join(REPORTS_DIR, 'revenue_forecasting_eval.json'), 'w') as f:
+    json.dump(report, f, indent=2)
+print('Evaluation report saved.')
+
+============================================================
+Cell 14 (markdown)
+============================================================
+## 7. Forecast Visualization
+
+
+============================================================
+Cell 15 (code)
+============================================================
+# Plot actual vs all model forecasts on the test period
+palette = {'Naive': 'grey', 'SARIMA': 'green', 'XGBoost': 'darkorange', 'LightGBM': 'purple'}
+
+fig, ax = plt.subplots(figsize=(15, 5))
+
+# Full historical (train) line
+ax.plot(train_ts.index, train_ts.values, color='steelblue', lw=2, label='Actual (train)')
+# Actual test
+ax.plot(test_ts.index, test_ts.values, color='steelblue', lw=2, ls='--', label='Actual (test)')
+
+# Model forecasts
+for model_name, pred_series in forecasts.items():
+    ax.plot(pred_series.index, pred_series.values,
+            lw=2, ls='-', color=palette.get(model_name, 'black'),
+            label=model_name)
+
+ax.axvline(test_ts.index[0], color='red', ls=':', lw=1.5, label='Train/Test split')
+ax.set_title('Revenue Forecast — Actual vs Models', fontweight='bold', fontsize=13)
+ax.set_ylabel('Monthly Net Revenue')
+ax.legend()
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# ── Future forecast (next 6 months) with XGBoost ─────────────────────────────
+print('\n6-month future forecast (XGBoost):')
+last_known = monthly.copy()
+
+future_preds = []
+for _ in range(6):
+    feat_row = build_lag_features(last_known, lags=[1, 2, 3, 6, 12])
+    if feat_row.empty:
+        break
+    X_fut = feat_row.iloc[[-1]][feat_cols].values
+    pred  = xgb_model.predict(X_fut)[0]
+    next_month = last_known['month'].max() + pd.DateOffset(months=1)
+    new_row = pd.DataFrame({'month': [next_month], 'revenue': [pred], 'orders': [np.nan]})
+    last_known = pd.concat([last_known, new_row], ignore_index=True)
+    future_preds.append({'month': next_month, 'predicted_revenue': round(pred, 2)})
+
+future_df = pd.DataFrame(future_preds)
+print(future_df.to_string(index=False))
+
+============================================================
+Cell 16 (markdown)
+============================================================
+## 8. Save Best Model
+
+
+============================================================
+Cell 17 (code)
+============================================================
+# Serialize the best-performing XGBoost model
+xgb_path = os.path.join(MODELS_DIR, 'revenue_forecasting_xgboost.pkl')
+with open(xgb_path, 'wb') as f:
+    pickle.dump({'model': xgb_model, 'feature_cols': feat_cols}, f)
+print(f'XGBoost revenue model saved → {xgb_path}')
+
+# Also save the SARIMA model if it was trained
+if 'sarima_fit' in dir():
+    sarima_path = os.path.join(MODELS_DIR, 'revenue_forecasting_sarima.pkl')
+    with open(sarima_path, 'wb') as f:
+        pickle.dump(sarima_fit, f)
+    print(f'SARIMA revenue model saved  → {sarima_path}')
+
+# Save feature list for inference pipeline
+feat_meta = {'task': 'revenue_forecasting', 'features': feat_cols}
+with open(os.path.join(MODELS_DIR, 'revenue_feature_meta.json'), 'w') as f:
+    json.dump(feat_meta, f, indent=2)
+print('Feature metadata saved.')
+
+============================================================
+Cell 18 (code)
+============================================================
+

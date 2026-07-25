@@ -1,0 +1,474 @@
+
+============================================================
+Cell 0 (markdown)
+============================================================
+# 09 — Anomaly Detection
+
+**AI Financial Intelligence Platform — ML Module**
+
+---
+
+## Purpose
+
+Detect anomalous patterns in transactions that may indicate:
+- Data entry errors
+- Fraudulent transactions
+- Unusual expense spikes
+- Abnormal inventory movements
+
+### Models to Evaluate
+- Isolation Forest
+- Local Outlier Factor (LOF)
+- Autoencoder (neural network)
+- Z-score / IQR statistical baseline
+
+### Sections
+1. Load transactional data (sales, expenses, payments, stock_movements)
+2. Feature engineering for anomaly detection
+3. Statistical baseline (Z-score, IQR)
+4. Isolation Forest model
+5. LOF model
+6. Autoencoder model (optional)
+7. Comparison and tuning
+8. Anomaly visualization
+9. Save model
+
+
+============================================================
+Cell 1 (code)
+============================================================
+import os
+import json
+import pickle
+import warnings
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
+
+from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import precision_score, recall_score, f1_score
+
+warnings.filterwarnings('ignore')
+
+DATA_DIR    = '../datasets/synthetic/'
+MODELS_DIR  = '../models/'
+REPORTS_DIR = '../reports/'
+os.makedirs(MODELS_DIR,  exist_ok=True)
+os.makedirs(REPORTS_DIR, exist_ok=True)
+
+CONTAMINATION = 0.01   # Expected ~1% anomaly rate
+
+============================================================
+Cell 2 (markdown)
+============================================================
+## 1. Load Transactional Data
+
+
+============================================================
+Cell 3 (code)
+============================================================
+# Load tables
+sales           = pd.read_csv(DATA_DIR + 'sales.csv')
+expenses        = pd.read_csv(DATA_DIR + 'expenses.csv')
+payments        = pd.read_csv(DATA_DIR + 'payments.csv')
+stock_movements = pd.read_csv(DATA_DIR + 'stock_movements.csv')
+
+# Parse dates
+sales['sale_date']          = pd.to_datetime(sales['sale_date'],          errors='coerce')
+expenses['expense_date']    = pd.to_datetime(expenses['expense_date'],    errors='coerce')
+payments['payment_date']    = pd.to_datetime(payments['payment_date'],    errors='coerce')
+stock_movements['moved_at'] = pd.to_datetime(stock_movements['moved_at'], errors='coerce')
+
+# Drop rows without critical fields
+sales    = sales.dropna(subset=['sale_date', 'net_amount'])
+expenses = expenses.dropna(subset=['expense_date', 'amount'])
+payments = payments.dropna(subset=['payment_date', 'amount'])
+
+print(f'Sales:           {len(sales):,} rows')
+print(f'Expenses:        {len(expenses):,} rows')
+print(f'Payments:        {len(payments):,} rows')
+print(f'Stock movements: {len(stock_movements):,} rows')
+
+============================================================
+Cell 4 (markdown)
+============================================================
+## 2. Feature Engineering for Anomaly Detection
+
+
+============================================================
+Cell 5 (code)
+============================================================
+# ── Build a unified transaction feature matrix ─────────────────────────────────
+# Focus on sales transactions as primary anomaly target
+
+# Rolling stats per company (28-day window) to detect deviations
+sales_sorted = sales.sort_values(['company_id', 'sale_date'])
+
+sales_sorted['roll28_mean'] = (
+    sales_sorted.groupby('company_id')['net_amount']
+    .transform(lambda x: x.shift(1).rolling('28D', min_periods=5).mean())
+)
+sales_sorted['roll28_std'] = (
+    sales_sorted.groupby('company_id')['net_amount']
+    .transform(lambda x: x.shift(1).rolling('28D', min_periods=5).std())
+)
+# Deviation from rolling mean (in units of std)
+sales_sorted['amount_z_rolling'] = (
+    (sales_sorted['net_amount'] - sales_sorted['roll28_mean']) /
+    sales_sorted['roll28_std'].replace(0, np.nan)
+)
+
+# Calendar features
+sales_sorted['hour_of_day']  = sales_sorted['sale_date'].dt.hour
+sales_sorted['day_of_week']  = sales_sorted['sale_date'].dt.dayofweek
+sales_sorted['is_weekend']   = (sales_sorted['day_of_week'] >= 5).astype(int)
+sales_sorted['month']        = sales_sorted['sale_date'].dt.month
+
+# Discount flag (unusually large discount)
+if 'discount_amount' in sales_sorted.columns and 'gross_amount' in sales_sorted.columns:
+    sales_sorted['discount_pct'] = (
+        sales_sorted['discount_amount'] / sales_sorted['gross_amount'].replace(0, np.nan)
+    ).fillna(0)
+else:
+    sales_sorted['discount_pct'] = 0.0
+
+# Encode status columns numerically
+if 'status' in sales_sorted.columns:
+    status_map = {s: i for i, s in enumerate(sales_sorted['status'].unique())}
+    sales_sorted['status_enc'] = sales_sorted['status'].map(status_map).fillna(-1)
+else:
+    sales_sorted['status_enc'] = 0
+
+# Select features for anomaly detection
+ANOMALY_FEATURES = [
+    'net_amount', 'day_of_week', 'is_weekend', 'month',
+    'discount_pct', 'status_enc',
+]
+if 'roll28_mean' in sales_sorted.columns:
+    ANOMALY_FEATURES += ['roll28_mean', 'roll28_std', 'amount_z_rolling']
+
+anomaly_df = sales_sorted[ANOMALY_FEATURES + ['id', 'sale_date', 'company_id', 'net_amount']].copy()
+anomaly_df = anomaly_df.dropna(subset=['roll28_mean', 'roll28_std']).reset_index(drop=True)
+
+print('Anomaly detection feature matrix shape:', anomaly_df.shape)
+print('Features:', ANOMALY_FEATURES)
+
+============================================================
+Cell 6 (markdown)
+============================================================
+## 3. Statistical Baseline (Z-score, IQR)
+
+
+============================================================
+Cell 7 (code)
+============================================================
+# ── Z-score method: flag |z| > 3 ──────────────────────────────────────────────
+z_scores = np.abs(stats.zscore(anomaly_df['net_amount'].fillna(0)))
+anomaly_df['zscore_flag'] = (z_scores > 3).astype(int)
+
+# ── IQR method: flag values below Q1 - 1.5×IQR or above Q3 + 1.5×IQR ─────────
+Q1  = anomaly_df['net_amount'].quantile(0.25)
+Q3  = anomaly_df['net_amount'].quantile(0.75)
+IQR = Q3 - Q1
+lower_bound = Q1 - 1.5 * IQR
+upper_bound = Q3 + 1.5 * IQR
+anomaly_df['iqr_flag'] = (
+    (anomaly_df['net_amount'] < lower_bound) |
+    (anomaly_df['net_amount'] > upper_bound)
+).astype(int)
+
+# ── Rolling Z-score (contextual anomaly) ──────────────────────────────────────
+if 'amount_z_rolling' in anomaly_df.columns:
+    anomaly_df['rolling_z_flag'] = (
+        anomaly_df['amount_z_rolling'].abs() > 3
+    ).fillna(False).astype(int)
+else:
+    anomaly_df['rolling_z_flag'] = 0
+
+z_count       = anomaly_df['zscore_flag'].sum()
+iqr_count     = anomaly_df['iqr_flag'].sum()
+roll_z_count  = anomaly_df['rolling_z_flag'].sum()
+
+print(f'Z-score flags    (|z|>3)          : {z_count:,}  ({z_count/len(anomaly_df)*100:.2f}%)')
+print(f'IQR flags        (1.5×IQR rule)  : {iqr_count:,}  ({iqr_count/len(anomaly_df)*100:.2f}%)')
+print(f'Rolling Z flags  (|z_roll|>3)    : {roll_z_count:,}  ({roll_z_count/len(anomaly_df)*100:.2f}%)')
+
+print(f'\nIQR bounds: [{lower_bound:,.0f} — {upper_bound:,.0f}]')
+
+============================================================
+Cell 8 (markdown)
+============================================================
+## 4. Isolation Forest
+
+
+============================================================
+Cell 9 (code)
+============================================================
+# Scale features for ML models
+scaler   = StandardScaler()
+X_scaled = scaler.fit_transform(anomaly_df[ANOMALY_FEATURES].fillna(0))
+
+# Train IsolationForest with contamination = CONTAMINATION (1%)
+iso_forest = IsolationForest(
+    n_estimators=200,
+    contamination=CONTAMINATION,
+    max_samples='auto',
+    random_state=42,
+    n_jobs=-1,
+)
+iso_forest.fit(X_scaled)
+
+# Predictions: +1 = normal, -1 = anomaly
+anomaly_df['if_pred']   = iso_forest.predict(X_scaled)
+anomaly_df['if_score']  = iso_forest.score_samples(X_scaled)   # lower = more anomalous
+anomaly_df['if_flag']   = (anomaly_df['if_pred'] == -1).astype(int)
+
+if_count = anomaly_df['if_flag'].sum()
+print(f'Isolation Forest flagged anomalies: {if_count:,}  ({if_count/len(anomaly_df)*100:.2f}%)')
+print('Sample anomalies detected:')
+print(anomaly_df[anomaly_df['if_flag'] == 1]
+      [['id', 'sale_date', 'net_amount', 'if_score']]
+      .sort_values('if_score')
+      .head(8)
+      .to_string(index=False))
+
+============================================================
+Cell 10 (markdown)
+============================================================
+## 5. Local Outlier Factor
+
+
+============================================================
+Cell 11 (code)
+============================================================
+# LOF: novelty=False for unsupervised on training data
+lof = LocalOutlierFactor(
+    n_neighbors=20,
+    contamination=CONTAMINATION,
+    metric='euclidean',
+    n_jobs=-1,
+)
+lof_preds = lof.fit_predict(X_scaled)
+
+anomaly_df['lof_flag']  = (lof_preds == -1).astype(int)
+anomaly_df['lof_score'] = lof.negative_outlier_factor_   # more negative = more anomalous
+
+lof_count = anomaly_df['lof_flag'].sum()
+print(f'LOF flagged anomalies: {lof_count:,}  ({lof_count/len(anomaly_df)*100:.2f}%)')
+
+# Agreement between IF and LOF
+both_flag = (anomaly_df['if_flag'] == 1) & (anomaly_df['lof_flag'] == 1)
+print(f'Flagged by BOTH IF and LOF: {both_flag.sum():,}  (high-confidence anomalies)')
+
+============================================================
+Cell 12 (markdown)
+============================================================
+## 6. Autoencoder (Optional)
+
+
+============================================================
+Cell 13 (code)
+============================================================
+# Autoencoder: flag high reconstruction error as anomalous.
+# Requires TensorFlow / Keras. Falls back to a numpy implementation if not available.
+
+try:
+    import tensorflow as tf
+    from tensorflow import keras
+
+    n_features = X_scaled.shape[1]
+    encoding_dim = max(2, n_features // 2)
+
+    autoencoder = keras.Sequential([
+        keras.layers.Dense(encoding_dim, activation='relu', input_shape=(n_features,)),
+        keras.layers.Dense(encoding_dim // 2, activation='relu'),
+        keras.layers.Dense(encoding_dim, activation='relu'),
+        keras.layers.Dense(n_features, activation='linear'),
+    ])
+    autoencoder.compile(optimizer='adam', loss='mse')
+    autoencoder.fit(X_scaled, X_scaled, epochs=30, batch_size=64, verbose=0,
+                    validation_split=0.1)
+
+    X_recon = autoencoder.predict(X_scaled, verbose=0)
+    recon_error = np.mean((X_scaled - X_recon) ** 2, axis=1)
+
+    # Threshold at 99th percentile of reconstruction error
+    ae_threshold = np.percentile(recon_error, 100 * (1 - CONTAMINATION))
+    anomaly_df['ae_flag']  = (recon_error > ae_threshold).astype(int)
+    anomaly_df['ae_error'] = recon_error
+
+    ae_count = anomaly_df['ae_flag'].sum()
+    print(f'Autoencoder flagged anomalies: {ae_count:,}  (threshold={ae_threshold:.4f})')
+
+except ImportError:
+    # Fallback: simple PCA-reconstruction-error using numpy SVD
+    print('TensorFlow not available — using PCA-based reconstruction error as proxy.')
+    from sklearn.decomposition import PCA
+
+    n_components = max(2, X_scaled.shape[1] // 2)
+    pca = PCA(n_components=n_components, random_state=42)
+    X_reduced = pca.fit_transform(X_scaled)
+    X_recon   = pca.inverse_transform(X_reduced)
+    recon_error = np.mean((X_scaled - X_recon) ** 2, axis=1)
+
+    ae_threshold = np.percentile(recon_error, 100 * (1 - CONTAMINATION))
+    anomaly_df['ae_flag']  = (recon_error > ae_threshold).astype(int)
+    anomaly_df['ae_error'] = recon_error
+
+    ae_count = anomaly_df['ae_flag'].sum()
+    print(f'PCA-proxy flagged anomalies: {ae_count:,}  (threshold={ae_threshold:.4f})')
+
+============================================================
+Cell 14 (markdown)
+============================================================
+## 7. Comparison and Tuning
+
+
+============================================================
+Cell 15 (code)
+============================================================
+# ── Ensemble agreement score ───────────────────────────────────────────────────
+flag_cols = ['zscore_flag', 'iqr_flag', 'rolling_z_flag', 'if_flag', 'lof_flag', 'ae_flag']
+flag_cols = [c for c in flag_cols if c in anomaly_df.columns]
+
+anomaly_df['ensemble_votes'] = anomaly_df[flag_cols].sum(axis=1)
+
+# High-confidence anomaly: flagged by at least 3 of the methods
+anomaly_df['high_confidence_anomaly'] = (anomaly_df['ensemble_votes'] >= 3).astype(int)
+
+print('=== Anomaly Detection Comparison ===')
+comparison = pd.DataFrame({
+    'Method': flag_cols,
+    'Flagged': [anomaly_df[c].sum() for c in flag_cols],
+    'Flag_Rate_%': [anomaly_df[c].mean() * 100 for c in flag_cols],
+}).round(3)
+print(comparison.to_string(index=False))
+
+hc_count = anomaly_df['high_confidence_anomaly'].sum()
+print(f'\nHigh-confidence anomalies (≥3 methods): {hc_count:,}  ({hc_count/len(anomaly_df)*100:.2f}%)')
+
+# Vote distribution
+print('\nVote distribution:')
+print(anomaly_df['ensemble_votes'].value_counts().sort_index().to_string())
+
+# Save comparison report
+report = {
+    'task': 'anomaly_detection',
+    'contamination_rate': CONTAMINATION,
+    'n_transactions': len(anomaly_df),
+    'method_comparison': comparison.to_dict(orient='records'),
+    'high_confidence_anomalies': int(hc_count),
+}
+with open(os.path.join(REPORTS_DIR, 'anomaly_detection_eval.json'), 'w') as f:
+    json.dump(report, f, indent=2, default=float)
+print('Evaluation report saved.')
+
+============================================================
+Cell 16 (markdown)
+============================================================
+## 8. Anomaly Visualization
+
+
+============================================================
+Cell 17 (code)
+============================================================
+# ── Plot 1: Time-series with anomaly markers (IF) ─────────────────────────────
+fig, ax = plt.subplots(figsize=(15, 5))
+normal  = anomaly_df[anomaly_df['if_flag'] == 0]
+flagged = anomaly_df[anomaly_df['if_flag'] == 1]
+
+ax.scatter(normal['sale_date'],  normal['net_amount'],  alpha=0.2, s=5, color='steelblue',  label='Normal')
+ax.scatter(flagged['sale_date'], flagged['net_amount'], alpha=0.8, s=30, color='red', marker='x', label='Anomaly (IF)')
+
+ax.set_title('Sales Transactions with Isolation Forest Anomalies Highlighted', fontweight='bold')
+ax.set_ylabel('Net Amount')
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+# ── Plot 2: Amount distribution — Normal vs Anomalous ─────────────────────────
+fig, ax = plt.subplots(figsize=(10, 4))
+ax.hist(normal['net_amount'].clip(upper=normal['net_amount'].quantile(0.99)),
+        bins=60, alpha=0.6, color='steelblue', label='Normal', density=True)
+ax.hist(flagged['net_amount'],
+        bins=30, alpha=0.7, color='red', label='Anomaly (IF)', density=True)
+ax.set_title('Amount Distribution — Normal vs Anomalous Transactions', fontweight='bold')
+ax.set_xlabel('Net Amount')
+ax.set_ylabel('Density')
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+# ── Plot 3: Ensemble vote heatmap by month ────────────────────────────────────
+anomaly_df['month_period'] = anomaly_df['sale_date'].dt.to_period('M').astype(str)
+vote_heatmap = (
+    anomaly_df.groupby(['company_id', 'month_period'])['high_confidence_anomaly']
+    .sum()
+    .unstack(fill_value=0)
+)
+
+if not vote_heatmap.empty:
+    fig, ax = plt.subplots(figsize=(16, max(3, len(vote_heatmap) * 0.6)))
+    sns.heatmap(vote_heatmap, cmap='Reds', linewidths=0.3,
+                cbar_kws={'label': 'High-Confidence Anomalies'}, ax=ax)
+    ax.set_title('High-Confidence Anomaly Count by Company × Month', fontweight='bold')
+    ax.tick_params(axis='x', rotation=90)
+    plt.tight_layout()
+    plt.show()
+
+# ── Plot 4: IF score distribution ─────────────────────────────────────────────
+fig, ax = plt.subplots(figsize=(10, 3))
+ax.hist(anomaly_df['if_score'], bins=60, color='mediumpurple', edgecolor='none')
+ax.axvline(anomaly_df[anomaly_df['if_flag'] == 1]['if_score'].max(),
+           color='red', ls='--', label='Anomaly threshold')
+ax.set_title('Isolation Forest Score Distribution', fontweight='bold')
+ax.set_xlabel('Anomaly Score (lower = more anomalous)')
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+============================================================
+Cell 18 (markdown)
+============================================================
+## 9. Save Model
+
+
+============================================================
+Cell 19 (code)
+============================================================
+# Save Isolation Forest model + scaler
+if_path = os.path.join(MODELS_DIR, 'anomaly_detection_isolation_forest.pkl')
+with open(if_path, 'wb') as f:
+    pickle.dump({
+        'model': iso_forest,
+        'scaler': scaler,
+        'feature_cols': ANOMALY_FEATURES,
+        'contamination': CONTAMINATION,
+    }, f)
+print(f'Isolation Forest model saved → {if_path}')
+
+# Save LOF is not serializable in the same way, save as config
+lof_config = {
+    'model_type': 'LocalOutlierFactor',
+    'n_neighbors': 20,
+    'contamination': CONTAMINATION,
+    'feature_cols': ANOMALY_FEATURES,
+}
+with open(os.path.join(MODELS_DIR, 'anomaly_detection_lof_config.json'), 'w') as f:
+    json.dump(lof_config, f, indent=2)
+print('LOF config saved.')
+
+# Save flagged anomalies for review
+anomaly_output = anomaly_df[anomaly_df['high_confidence_anomaly'] == 1][
+    ['id', 'sale_date', 'company_id', 'net_amount',
+     'if_flag', 'lof_flag', 'zscore_flag', 'iqr_flag', 'ensemble_votes']
+].sort_values('ensemble_votes', ascending=False)
+
+anomaly_path = os.path.join(REPORTS_DIR, 'detected_anomalies.csv')
+anomaly_output.to_csv(anomaly_path, index=False)
+print(f'Anomaly report saved → {anomaly_path}  ({len(anomaly_output)} records)')

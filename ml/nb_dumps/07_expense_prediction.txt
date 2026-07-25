@@ -1,0 +1,374 @@
+
+============================================================
+Cell 0 (markdown)
+============================================================
+# 07 — Expense Prediction
+
+**AI Financial Intelligence Platform — ML Module**
+
+---
+
+## Purpose
+
+Forecast operational expenses per category, branch, and company.
+
+### Goals
+- Predict monthly fixed and variable expenses
+- Flag unusual expense spikes (pre-anomaly detection)
+- Enable budget planning and variance analysis
+
+### Models to Evaluate
+- Linear Regression baseline
+- XGBoost Regressor
+- SARIMA (for fixed expense categories)
+
+### Sections
+1. Load expenses + branches
+2. Aggregate monthly expenses by category
+3. Feature engineering
+4. Model training
+5. Evaluation
+6. Budget variance analysis
+7. Save model
+
+
+============================================================
+Cell 1 (code)
+============================================================
+import os
+import json
+import pickle
+import warnings
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+import xgboost as xgb
+
+warnings.filterwarnings('ignore')
+
+DATA_DIR    = '../datasets/synthetic/'
+MODELS_DIR  = '../models/'
+REPORTS_DIR = '../reports/'
+os.makedirs(MODELS_DIR,  exist_ok=True)
+os.makedirs(REPORTS_DIR, exist_ok=True)
+
+============================================================
+Cell 2 (markdown)
+============================================================
+## 1. Load Expenses + Branches
+
+
+============================================================
+Cell 3 (code)
+============================================================
+# Load tables
+expenses  = pd.read_csv(DATA_DIR + 'expenses.csv')
+branches  = pd.read_csv(DATA_DIR + 'branches.csv')
+companies = pd.read_csv(DATA_DIR + 'companies.csv')
+
+# Parse dates
+expenses['expense_date'] = pd.to_datetime(expenses['expense_date'], errors='coerce')
+expenses = expenses.dropna(subset=['expense_date', 'amount'])
+
+# Join with branches and companies
+exp_full = (
+    expenses
+    .merge(branches[['id', 'name', 'city']], left_on='branch_id', right_on='id',
+           suffixes=('', '_branch'))
+    .merge(companies[['id', 'name']], left_on='company_id', right_on='id',
+           suffixes=('_branch', '_co'))
+)
+
+print('Expense full shape:', exp_full.shape)
+print('Expense categories:', expenses['category'].unique().tolist())
+print('Companies:', exp_full['name_co'].unique().tolist())
+
+============================================================
+Cell 4 (markdown)
+============================================================
+## 2. Aggregate Monthly Expenses by Category
+
+
+============================================================
+Cell 5 (code)
+============================================================
+# Monthly expense totals: company × category granularity
+monthly_exp = (
+    expenses
+    .groupby(['company_id', 'category',
+               pd.Grouper(key='expense_date', freq='ME')])
+    .agg(
+        total_expense = ('amount', 'sum'),
+        txn_count     = ('amount', 'count'),
+        avg_expense   = ('amount', 'mean'),
+        max_expense   = ('amount', 'max'),
+    )
+    .reset_index()
+    .rename(columns={'expense_date': 'month'})
+    .sort_values(['company_id', 'category', 'month'])
+    .reset_index(drop=True)
+)
+
+# Platform-level monthly per category for quick view
+platform_monthly = (
+    expenses
+    .groupby(['category', pd.Grouper(key='expense_date', freq='ME')])
+    .agg(total=('amount', 'sum'))
+    .reset_index()
+    .rename(columns={'expense_date': 'month'})
+)
+
+print('Monthly expense (company×category) shape:', monthly_exp.shape)
+
+# Stacked-area chart — expense categories over time
+pivot = platform_monthly.pivot(index='month', columns='category', values='total').fillna(0)
+fig, ax = plt.subplots(figsize=(14, 5))
+pivot.plot(kind='area', stacked=True, cmap='tab20', alpha=0.85, ax=ax)
+ax.set_title('Monthly Expense by Category (Stacked)', fontweight='bold')
+ax.set_ylabel('Total Amount')
+ax.legend(title='Category', bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=8)
+plt.tight_layout()
+plt.show()
+
+============================================================
+Cell 6 (markdown)
+============================================================
+## 3. Feature Engineering
+
+
+============================================================
+Cell 7 (code)
+============================================================
+# ── Add lag, rolling, and calendar features ───────────────────────────────────
+def add_expense_features(df: pd.DataFrame) -> pd.DataFrame:
+    d = df.copy().sort_values(['company_id', 'category', 'month'])
+    grp = ['company_id', 'category']
+
+    # Lag features
+    for lag in [1, 2, 3, 6, 12]:
+        d[f'lag_{lag}'] = d.groupby(grp)['total_expense'].shift(lag)
+
+    # Rolling mean / std (shift-by-1 to avoid leakage)
+    d['roll3_mean'] = (
+        d.groupby(grp)['total_expense']
+        .transform(lambda x: x.shift(1).rolling(3, min_periods=1).mean())
+    )
+    d['roll6_mean'] = (
+        d.groupby(grp)['total_expense']
+        .transform(lambda x: x.shift(1).rolling(6, min_periods=1).mean())
+    )
+    d['roll3_std'] = (
+        d.groupby(grp)['total_expense']
+        .transform(lambda x: x.shift(1).rolling(3, min_periods=2).std().fillna(0))
+    )
+
+    # YoY growth
+    d['yoy_growth'] = (
+        (d['total_expense'] - d['lag_12']) / d['lag_12'].replace(0, np.nan)
+    )
+
+    # Calendar
+    d['month_num']  = pd.to_datetime(d['month']).dt.month
+    d['quarter']    = pd.to_datetime(d['month']).dt.quarter
+    d['year']       = pd.to_datetime(d['month']).dt.year
+    d['is_q4']      = (d['quarter'] == 4).astype(int)
+    d['is_q1']      = (d['quarter'] == 1).astype(int)
+
+    # One-hot encode category
+    cat_ohe = pd.get_dummies(d['category'], prefix='cat', drop_first=False)
+    d = pd.concat([d, cat_ohe], axis=1)
+
+    return d
+
+exp_feat = add_expense_features(monthly_exp)
+exp_feat = exp_feat.dropna(subset=['lag_1', 'lag_2', 'lag_3']).copy()
+
+base_feat_cols = [
+    'lag_1', 'lag_2', 'lag_3', 'lag_6',
+    'roll3_mean', 'roll6_mean', 'roll3_std',
+    'txn_count', 'avg_expense',
+    'month_num', 'quarter', 'year', 'is_q4', 'is_q1',
+]
+cat_ohe_cols = [c for c in exp_feat.columns if c.startswith('cat_')]
+FEAT_COLS    = base_feat_cols + cat_ohe_cols
+
+print('Feature matrix shape:', exp_feat.shape)
+print('Feature columns:', FEAT_COLS)
+
+============================================================
+Cell 8 (markdown)
+============================================================
+## 4. Model Training
+
+
+============================================================
+Cell 9 (code)
+============================================================
+# Chronological 80/20 split
+all_months  = sorted(exp_feat['month'].unique())
+split_idx   = int(len(all_months) * 0.80)
+split_month = all_months[split_idx]
+
+train_df = exp_feat[exp_feat['month'] <  split_month].copy()
+test_df  = exp_feat[exp_feat['month'] >= split_month].copy()
+
+X_tr = train_df[FEAT_COLS].fillna(0).values
+y_tr = train_df['total_expense'].values
+X_te = test_df[FEAT_COLS].fillna(0).values
+y_te = test_df['total_expense'].values
+
+# ── Model A: Linear Regression baseline ──────────────────────────────────────
+lr_model = LinearRegression()
+lr_model.fit(X_tr, y_tr)
+lr_pred = lr_model.predict(X_te)
+
+# ── Model B: XGBoost ─────────────────────────────────────────────────────────
+xgb_model = xgb.XGBRegressor(
+    n_estimators=400,
+    learning_rate=0.05,
+    max_depth=4,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    random_state=42,
+    verbosity=0,
+)
+xgb_model.fit(X_tr, y_tr, eval_set=[(X_te, y_te)], verbose=False)
+xgb_pred = np.maximum(xgb_model.predict(X_te), 0)
+
+print(f'Split: {split_month} | Train: {len(train_df)} | Test: {len(test_df)}')
+
+============================================================
+Cell 10 (markdown)
+============================================================
+## 5. Evaluation
+
+
+============================================================
+Cell 11 (code)
+============================================================
+def mape(y_true, y_pred):
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    mask = y_true != 0
+    return np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100
+
+model_results = []
+for name, preds in [('Linear Regression', lr_pred), ('XGBoost', xgb_pred)]:
+    rmse = np.sqrt(mean_squared_error(y_te, preds))
+    mae  = mean_absolute_error(y_te, preds)
+    mp   = mape(y_te, preds)
+    model_results.append({'model': name, 'RMSE': rmse, 'MAE': mae, 'MAPE_%': mp})
+    print(f'{name:<22}  RMSE={rmse:>10,.0f}  MAE={mae:>10,.0f}  MAPE={mp:>6.2f}%')
+
+# Per-category MAPE (XGBoost)
+test_df['xgb_pred'] = xgb_pred
+cat_eval = (
+    test_df.groupby('category')
+    .apply(lambda g: pd.Series({
+        'RMSE': np.sqrt(mean_squared_error(g['total_expense'], g['xgb_pred'])),
+        'MAPE_%': mape(g['total_expense'].values, g['xgb_pred'].values)
+    }))
+    .reset_index()
+    .sort_values('MAPE_%')
+)
+print('\nPer-category evaluation (XGBoost):')
+print(cat_eval.to_string(index=False))
+
+# Save report
+report = {'task': 'expense_prediction', 'models': model_results,
+          'category_eval': cat_eval.to_dict(orient='records')}
+with open(os.path.join(REPORTS_DIR, 'expense_prediction_eval.json'), 'w') as f:
+    json.dump(report, f, indent=2, default=float)
+print('Evaluation report saved.')
+
+============================================================
+Cell 12 (markdown)
+============================================================
+## 6. Budget Variance Analysis
+
+
+============================================================
+Cell 13 (code)
+============================================================
+# ── Variance = Actual - Predicted (positive = over-budget, negative = under) ───
+test_df['variance']     = test_df['total_expense'] - test_df['xgb_pred']
+test_df['variance_pct'] = test_df['variance'] / test_df['xgb_pred'].replace(0, np.nan) * 100
+
+# Flag large overspends (variance > 20% of predicted)
+test_df['overspend_flag'] = (test_df['variance_pct'] > 20).astype(int)
+overspend_count = test_df['overspend_flag'].sum()
+print(f'Overspend events (>20% over budget): {overspend_count}')
+
+# Monthly variance by category (platform level)
+var_by_cat = (
+    test_df.groupby(['category', 'month'])
+    .agg(
+        actual    = ('total_expense', 'sum'),
+        predicted = ('xgb_pred',      'sum'),
+    )
+    .assign(variance=lambda d: d['actual'] - d['predicted'])
+    .reset_index()
+)
+
+# Plot variance per category
+categories_plot = var_by_cat['category'].unique()[:6]  # show first 6 categories
+fig, axes = plt.subplots(len(categories_plot), 1,
+                          figsize=(13, 3 * len(categories_plot)), sharex=False)
+if len(categories_plot) == 1:
+    axes = [axes]
+
+for ax, cat in zip(axes, categories_plot):
+    d = var_by_cat[var_by_cat['category'] == cat]
+    ax.bar(d['month'], d['variance'],
+           color=np.where(d['variance'] > 0, 'tomato', 'steelblue'))
+    ax.axhline(0, color='black', lw=1)
+    ax.set_title(f'Budget Variance — {cat}', fontweight='bold')
+    ax.set_ylabel('Variance (Actual − Budget)')
+
+plt.tight_layout()
+plt.show()
+
+# Summary: top overspend categories
+cat_variance_summary = (
+    var_by_cat.groupby('category')
+    .agg(
+        total_actual=('actual', 'sum'),
+        total_budget=('predicted', 'sum'),
+        total_variance=('variance', 'sum'),
+    )
+    .assign(variance_pct=lambda d: d['total_variance'] / d['total_budget'] * 100)
+    .sort_values('total_variance', ascending=False)
+    .reset_index()
+)
+print('\nBudget variance summary by category:')
+print(cat_variance_summary.to_string(index=False))
+
+============================================================
+Cell 14 (markdown)
+============================================================
+## 7. Save Model
+
+
+============================================================
+Cell 15 (code)
+============================================================
+# Save both models
+for model_name, model_obj in [('linear_regression', lr_model), ('xgboost', xgb_model)]:
+    path = os.path.join(MODELS_DIR, f'expense_prediction_{model_name}.pkl')
+    with open(path, 'wb') as f:
+        pickle.dump({'model': model_obj, 'feature_cols': FEAT_COLS}, f)
+    print(f'Saved: {path}')
+
+# Feature metadata
+with open(os.path.join(MODELS_DIR, 'expense_feature_meta.json'), 'w') as f:
+    json.dump({'task': 'expense_prediction', 'features': FEAT_COLS}, f, indent=2)
+
+# Save variance report for dashboarding
+cat_variance_summary.to_csv(
+    os.path.join(REPORTS_DIR, 'expense_variance_by_category.csv'), index=False
+)
+print('All expense prediction artifacts saved.')

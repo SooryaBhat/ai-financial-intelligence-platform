@@ -1,0 +1,20 @@
+{
+  "task": "inventory_prediction",
+  "models": [
+    {
+      "Model": "Moving Average",
+      "RMSE": 20.375065851739663,
+      "MAE": 16.037709215567656,
+      "MAPE_%": 147.32322606973477
+    },
+    {
+      "Model": "XGBoost",
+      "RMSE": 17.681136533360295,
+      "MAE": 13.69239616394043,
+      "MAPE_%": 134.5461622165689
+    }
+  ],
+  "stockout_rate_pct": 45.37205081669691,
+  "overstock_rate_pct": 22.50453720508167,
+  "reorder_alerts": 0
+}

@@ -1,0 +1,7 @@
+{
+  "task": "profit_prediction",
+  "model": "XGBoost",
+  "RMSE": 1519574.4019129733,
+  "MAE": 1208257.9561607142,
+  "MAPE": 96.88022669734615
+}

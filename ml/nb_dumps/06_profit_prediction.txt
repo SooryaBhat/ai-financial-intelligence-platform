@@ -1,0 +1,384 @@
+
+============================================================
+Cell 0 (markdown)
+============================================================
+# 06 — Profit Prediction
+
+**AI Financial Intelligence Platform — ML Module**
+
+---
+
+## Purpose
+
+Predict net profit per company, branch, and product line.
+
+### Formula
+```
+Gross Profit = Revenue - COGS
+Net Profit   = Gross Profit - Operating Expenses
+```
+
+### Goals
+- Forecast monthly net profit
+- Identify drivers of profit/loss
+- Highlight low-margin products/branches
+
+### Sections
+1. Load sales + sale_items + expenses + products
+2. Compute gross profit and net profit
+3. Time-series feature engineering
+4. Model training (XGBoost, Prophet)
+5. Feature importance (SHAP)
+6. Evaluation
+7. Save model
+
+
+============================================================
+Cell 1 (code)
+============================================================
+import os
+import json
+import pickle
+import warnings
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+import xgboost as xgb
+
+warnings.filterwarnings('ignore')
+
+DATA_DIR    = '../datasets/synthetic/'
+MODELS_DIR  = '../models/'
+REPORTS_DIR = '../reports/'
+os.makedirs(MODELS_DIR,  exist_ok=True)
+os.makedirs(REPORTS_DIR, exist_ok=True)
+
+============================================================
+Cell 2 (markdown)
+============================================================
+## 1. Load & Prepare Data
+
+
+============================================================
+Cell 3 (code)
+============================================================
+# Load all required tables
+sales       = pd.read_csv(DATA_DIR + 'sales.csv')
+sale_items  = pd.read_csv(DATA_DIR + 'sale_items.csv')
+products    = pd.read_csv(DATA_DIR + 'products.csv')
+expenses    = pd.read_csv(DATA_DIR + 'expenses.csv')
+companies   = pd.read_csv(DATA_DIR + 'companies.csv')
+categories  = pd.read_csv(DATA_DIR + 'categories.csv')
+
+# Parse date columns
+sales['sale_date']        = pd.to_datetime(sales['sale_date'],        errors='coerce')
+expenses['expense_date']  = pd.to_datetime(expenses['expense_date'],  errors='coerce')
+sales    = sales.dropna(subset=['sale_date'])
+expenses = expenses.dropna(subset=['expense_date'])
+
+# ── Join sale_items → products to compute COGS ────────────────────────────────
+items_cost = (
+    sale_items
+    .merge(products[['id', 'cost_price', 'category_id']],
+           left_on='product_id', right_on='id', suffixes=('', '_prod'))
+    .merge(sales[['id', 'sale_date', 'company_id', 'branch_id']],
+           left_on='sale_id', right_on='id', suffixes=('', '_sale'))
+)
+items_cost['cogs'] = items_cost['quantity'] * items_cost['cost_price']
+
+print('Items cost shape:', items_cost.shape)
+print('Total COGS:', f"{items_cost['cogs'].sum():,.0f}")
+
+============================================================
+Cell 4 (markdown)
+============================================================
+## 2. Compute Profit Metrics
+
+
+============================================================
+Cell 5 (code)
+============================================================
+# ── Monthly Revenue per company ───────────────────────────────────────────────
+monthly_revenue = (
+    sales
+    .groupby(['company_id', pd.Grouper(key='sale_date', freq='ME')])
+    .agg(revenue=('net_amount', 'sum'), order_count=('id', 'count'))
+    .reset_index()
+    .rename(columns={'sale_date': 'month'})
+)
+
+# ── Monthly COGS per company ──────────────────────────────────────────────────
+monthly_cogs = (
+    items_cost
+    .groupby(['company_id', pd.Grouper(key='sale_date', freq='ME')])
+    .agg(total_cogs=('cogs', 'sum'))
+    .reset_index()
+    .rename(columns={'sale_date': 'month'})
+)
+
+# ── Monthly Operating Expenses per company ────────────────────────────────────
+monthly_exp = (
+    expenses
+    .groupby(['company_id', pd.Grouper(key='expense_date', freq='ME')])
+    .agg(total_expenses=('amount', 'sum'))
+    .reset_index()
+    .rename(columns={'expense_date': 'month'})
+)
+
+# ── Merge and compute profit ──────────────────────────────────────────────────
+profit_df = (
+    monthly_revenue
+    .merge(monthly_cogs,  on=['company_id', 'month'], how='left')
+    .merge(monthly_exp,   on=['company_id', 'month'], how='left')
+)
+profit_df['total_cogs']     = profit_df['total_cogs'].fillna(0)
+profit_df['total_expenses'] = profit_df['total_expenses'].fillna(0)
+profit_df['gross_profit']   = profit_df['revenue'] - profit_df['total_cogs']
+profit_df['net_profit']     = profit_df['gross_profit'] - profit_df['total_expenses']
+profit_df['profit_margin']  = (
+    profit_df['net_profit'] / profit_df['revenue'].replace(0, np.nan)
+)
+profit_df['expense_ratio']  = (
+    profit_df['total_expenses'] / profit_df['revenue'].replace(0, np.nan)
+)
+profit_df = profit_df.sort_values(['company_id', 'month']).reset_index(drop=True)
+
+print('Profit DataFrame shape:', profit_df.shape)
+print(profit_df[['company_id', 'month', 'revenue', 'total_cogs',
+                  'total_expenses', 'gross_profit', 'net_profit', 'profit_margin']]
+      .head(6).to_string(index=False))
+
+# ── Visualise profit over time ─────────────────────────────────────────────────
+fig, axes = plt.subplots(2, 1, figsize=(14, 8))
+platform_profit = (
+    profit_df.groupby('month')
+    .agg(revenue=('revenue', 'sum'), gross_profit=('gross_profit', 'sum'),
+         net_profit=('net_profit', 'sum'))
+    .reset_index()
+)
+axes[0].plot(platform_profit['month'], platform_profit['revenue'],      lw=2, label='Revenue')
+axes[0].plot(platform_profit['month'], platform_profit['gross_profit'],  lw=2, label='Gross Profit')
+axes[0].plot(platform_profit['month'], platform_profit['net_profit'],    lw=2, label='Net Profit', ls='--')
+axes[0].set_title('Platform Monthly Profit Waterfall', fontweight='bold')
+axes[0].set_ylabel('Amount')
+axes[0].legend()
+
+margin_series = platform_profit.set_index('month')['net_profit'].rolling(3).mean()
+axes[1].bar(platform_profit['month'], profit_df.groupby('month')['profit_margin'].mean() * 100,
+            color='teal', alpha=0.7)
+axes[1].set_title('Average Net Profit Margin (%) per Month', fontweight='bold')
+axes[1].set_ylabel('Profit Margin %')
+axes[1].axhline(0, color='red', ls='--', lw=1)
+plt.tight_layout()
+plt.show()
+
+============================================================
+Cell 6 (markdown)
+============================================================
+## 3. Time-Series Feature Engineering
+
+
+============================================================
+Cell 7 (code)
+============================================================
+# Add lag, rolling, and derived features to the profit_df
+profit_feat = profit_df.copy().sort_values(['company_id', 'month'])
+
+# Lag net profit
+for lag in [1, 2, 3, 6, 12]:
+    profit_feat[f'profit_lag{lag}'] = (
+        profit_feat.groupby('company_id')['net_profit'].shift(lag)
+    )
+
+# Rolling averages on net profit
+profit_feat['profit_roll3'] = (
+    profit_feat.groupby('company_id')['net_profit']
+    .transform(lambda x: x.shift(1).rolling(3, min_periods=1).mean())
+)
+profit_feat['profit_roll6'] = (
+    profit_feat.groupby('company_id')['net_profit']
+    .transform(lambda x: x.shift(1).rolling(6, min_periods=1).mean())
+)
+
+# YoY growth rate
+profit_feat['profit_yoy'] = (
+    (profit_feat['net_profit'] - profit_feat['profit_lag12']) /
+    profit_feat['profit_lag12'].replace(0, np.nan)
+)
+
+# Lag revenue and expense ratio
+for lag in [1, 2, 3]:
+    profit_feat[f'revenue_lag{lag}']        = profit_feat.groupby('company_id')['revenue'].shift(lag)
+    profit_feat[f'expense_ratio_lag{lag}']  = profit_feat.groupby('company_id')['expense_ratio'].shift(lag)
+
+# Calendar
+profit_feat['month_num'] = pd.to_datetime(profit_feat['month']).dt.month
+profit_feat['quarter']   = pd.to_datetime(profit_feat['month']).dt.quarter
+profit_feat['year']      = pd.to_datetime(profit_feat['month']).dt.year
+profit_feat['is_q4']     = (profit_feat['quarter'] == 4).astype(int)
+
+FEAT_COLS = [
+    'profit_lag1', 'profit_lag2', 'profit_lag3', 'profit_lag6',
+    'profit_roll3', 'profit_roll6',
+    'revenue_lag1', 'revenue_lag2', 'revenue_lag3',
+    'expense_ratio_lag1', 'expense_ratio_lag2',
+    'month_num', 'quarter', 'year', 'is_q4',
+]
+
+profit_feat = profit_feat.dropna(subset=['profit_lag1', 'profit_lag2', 'profit_lag3'])
+print('Profit feature matrix shape:', profit_feat.shape)
+print('Features:', FEAT_COLS)
+
+============================================================
+Cell 8 (markdown)
+============================================================
+## 4. Model Training
+
+
+============================================================
+Cell 9 (code)
+============================================================
+# Chronological 80/20 split
+all_months  = sorted(profit_feat['month'].unique())
+split_idx   = int(len(all_months) * 0.80)
+split_month = all_months[split_idx]
+
+train_df = profit_feat[profit_feat['month'] <  split_month].copy()
+test_df  = profit_feat[profit_feat['month'] >= split_month].copy()
+
+X_tr = train_df[FEAT_COLS].fillna(0).values
+y_tr = train_df['net_profit'].values
+X_te = test_df[FEAT_COLS].fillna(0).values
+y_te = test_df['net_profit'].values
+
+# XGBoost
+xgb_model = xgb.XGBRegressor(
+    n_estimators=500,
+    learning_rate=0.04,
+    max_depth=4,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    reg_alpha=0.1,
+    reg_lambda=1.0,
+    random_state=42,
+    verbosity=0,
+)
+xgb_model.fit(X_tr, y_tr, eval_set=[(X_te, y_te)], verbose=False)
+xgb_pred = xgb_model.predict(X_te)
+
+print(f'Train: {len(train_df)} rows | Test: {len(test_df)} rows | Split: {split_month}')
+
+============================================================
+Cell 10 (markdown)
+============================================================
+## 5. Feature Importance (SHAP)
+
+
+============================================================
+Cell 11 (code)
+============================================================
+# ── Built-in XGBoost feature importance (gain) ────────────────────────────────
+feat_imp = pd.Series(xgb_model.feature_importances_, index=FEAT_COLS)
+feat_imp = feat_imp.sort_values(ascending=False)
+
+fig, ax = plt.subplots(figsize=(10, 5))
+feat_imp.plot(kind='bar', ax=ax, color='mediumpurple', edgecolor='white')
+ax.set_title('XGBoost Feature Importance — Net Profit Prediction', fontweight='bold')
+ax.set_ylabel('Importance (Gain)')
+plt.tight_layout()
+plt.show()
+
+# ── SHAP values (if shap is installed) ───────────────────────────────────────
+try:
+    import shap
+    explainer  = shap.TreeExplainer(xgb_model)
+    shap_values = explainer.shap_values(X_tr)
+
+    plt.figure(figsize=(10, 5))
+    shap.summary_plot(shap_values, X_tr, feature_names=FEAT_COLS, plot_type='bar', show=False)
+    plt.title('SHAP Feature Importance — Net Profit Prediction', fontweight='bold')
+    plt.tight_layout()
+    plt.show()
+
+    # Beeswarm (shows direction of impact)
+    plt.figure(figsize=(10, 6))
+    shap.summary_plot(shap_values, X_tr, feature_names=FEAT_COLS, show=False)
+    plt.title('SHAP Beeswarm — Profit Drivers', fontweight='bold')
+    plt.tight_layout()
+    plt.show()
+except ImportError:
+    print('SHAP not installed — showing built-in XGBoost importance only.')
+    print('Install with: pip install shap')
+
+============================================================
+Cell 12 (markdown)
+============================================================
+## 6. Evaluation
+
+
+============================================================
+Cell 13 (code)
+============================================================
+def mape(y_true, y_pred):
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    mask = y_true != 0
+    return np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100
+
+rmse = np.sqrt(mean_squared_error(y_te, xgb_pred))
+mae  = mean_absolute_error(y_te, xgb_pred)
+mape_val = mape(y_te, xgb_pred)
+
+print(f'XGBoost Net Profit Forecast — RMSE={rmse:,.0f}  MAE={mae:,.0f}  MAPE={mape_val:.2f}%')
+
+# ── Actual vs Predicted plot ──────────────────────────────────────────────────
+platform_test = test_df.groupby('month').agg(
+    actual_profit  = ('net_profit', 'sum')
+).reset_index()
+test_df_copy = test_df.copy()
+test_df_copy['xgb_pred'] = xgb_pred
+platform_pred = test_df_copy.groupby('month').agg(
+    pred_profit = ('xgb_pred', 'sum')
+).reset_index()
+
+fig, ax = plt.subplots(figsize=(13, 4))
+ax.plot(platform_test['month'], platform_test['actual_profit'],  lw=2, label='Actual')
+ax.plot(platform_pred['month'], platform_pred['pred_profit'],    lw=2, ls='--', label='XGBoost Predicted')
+ax.set_title('Net Profit — Actual vs Predicted (Test Set)', fontweight='bold')
+ax.set_ylabel('Net Profit')
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+# Save report
+report = {
+    'task': 'profit_prediction',
+    'model': 'XGBoost',
+    'RMSE': rmse, 'MAE': mae, 'MAPE': mape_val,
+}
+with open(os.path.join(REPORTS_DIR, 'profit_prediction_eval.json'), 'w') as f:
+    json.dump(report, f, indent=2, default=float)
+print('Evaluation report saved.')
+
+============================================================
+Cell 14 (markdown)
+============================================================
+## 7. Save Model
+
+
+============================================================
+Cell 15 (code)
+============================================================
+model_path = os.path.join(MODELS_DIR, 'profit_prediction_xgboost.pkl')
+with open(model_path, 'wb') as f:
+    pickle.dump({'model': xgb_model, 'feature_cols': FEAT_COLS}, f)
+print(f'Profit prediction model saved → {model_path}')
+
+# Save profit summary CSV for downstream notebooks
+profit_df.to_csv(os.path.join(MODELS_DIR, 'profit_summary.csv'), index=False)
+
+with open(os.path.join(MODELS_DIR, 'profit_feature_meta.json'), 'w') as f:
+    json.dump({'task': 'profit_prediction', 'features': FEAT_COLS}, f, indent=2)
+print('Feature metadata saved.')

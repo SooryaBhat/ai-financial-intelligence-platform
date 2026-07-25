@@ -1,0 +1,26 @@
+{
+  "task": "sales_forecasting",
+  "models": [
+    {
+      "level": "category",
+      "model": "XGBoost",
+      "RMSE": 74.51448645334845,
+      "MAE": 59.514976501464844,
+      "MAPE": 23.119606100012884
+    },
+    {
+      "level": "product",
+      "model": "XGBoost",
+      "RMSE": 17.160684870500052,
+      "MAE": 13.283279418945312,
+      "MAPE": 132.45296799858767
+    },
+    {
+      "level": "product",
+      "model": "LightGBM",
+      "RMSE": 17.068749007188497,
+      "MAE": 13.197476249729306,
+      "MAPE": 131.1396167703118
+    }
+  ]
+}

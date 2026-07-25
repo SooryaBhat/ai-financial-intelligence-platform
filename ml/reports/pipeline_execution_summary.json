@@ -1,0 +1,52 @@
+[
+  {
+    "notebook": "01_data_exploration.ipynb",
+    "status": "SUCCESS",
+    "error": ""
+  },
+  {
+    "notebook": "02_data_preprocessing.ipynb",
+    "status": "SUCCESS",
+    "error": ""
+  },
+  {
+    "notebook": "03_revenue_forecasting.ipynb",
+    "status": "SUCCESS",
+    "error": ""
+  },
+  {
+    "notebook": "04_sales_forecasting.ipynb",
+    "status": "SUCCESS",
+    "error": ""
+  },
+  {
+    "notebook": "05_inventory_prediction.ipynb",
+    "status": "SUCCESS",
+    "error": ""
+  },
+  {
+    "notebook": "06_profit_prediction.ipynb",
+    "status": "SUCCESS",
+    "error": ""
+  },
+  {
+    "notebook": "07_expense_prediction.ipynb",
+    "status": "SUCCESS",
+    "error": ""
+  },
+  {
+    "notebook": "08_business_health_score.ipynb",
+    "status": "SUCCESS",
+    "error": ""
+  },
+  {
+    "notebook": "09_anomaly_detection.ipynb",
+    "status": "SUCCESS",
+    "error": ""
+  },
+  {
+    "notebook": "10_model_comparison.ipynb",
+    "status": "SUCCESS",
+    "error": ""
+  }
+]

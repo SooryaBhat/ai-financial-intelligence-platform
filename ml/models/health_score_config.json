@@ -1,0 +1,38 @@
+{
+  "weights": {
+    "revenue_growth": 0.25,
+    "profit_margin": 0.25,
+    "expense_control": 0.2,
+    "inventory_turnover": 0.15,
+    "payment_collection": 0.15
+  },
+  "score_cols": [
+    "score_revenue_growth",
+    "score_profit_margin",
+    "score_expense_control",
+    "score_inventory_turnover",
+    "score_payment_collection"
+  ],
+  "kpi_ranges": {
+    "revenue_growth": [
+      -0.7243095299414152,
+      1.396013661088132
+    ],
+    "profit_margin": [
+      -0.35708951880979334,
+      0.383903918430231
+    ],
+    "expense_ratio": [
+      0.12777812345875486,
+      0.8538926795375759
+    ],
+    "inventory_turnover": [
+      172.0454950106826,
+      239.14656888476011
+    ],
+    "collection_rate": [
+      0.4173696480069294,
+      0.9185395375391502
+    ]
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "task": "expense_prediction",
+  "models": [
+    {
+      "model": "Linear Regression",
+      "RMSE": 12222.37373992967,
+      "MAE": 7641.601788797882,
+      "MAPE_%": 26.6241368579142
+    },
+    {
+      "model": "XGBoost",
+      "RMSE": 11091.9206670645,
+      "MAE": 5128.758535974062,
+      "MAPE_%": 4.688187157306028
+    }
+  ],
+  "category_eval": [
+    {
+      "category": "Salaries",
+      "RMSE": 27976.27398851641,
+      "MAPE_%": 1.7133323678841583
+    },
+    {
+      "category": "Rent",
+      "RMSE": 14107.113348434823,
+      "MAPE_%": 1.964025673680163
+    },
+    {
+      "category": "Utilities",
+      "RMSE": 1583.4433968434664,
+      "MAPE_%": 2.667809973109422
+    },
+    {
+      "category": "Insurance",
+      "RMSE": 2827.3891617429745,
+      "MAPE_%": 3.044488239374251
+    },
+    {
+      "category": "Logistics",
+      "RMSE": 4734.895230579217,
+      "MAPE_%": 4.5139951596390375
+    },
+    {
+      "category": "Travel",
+      "RMSE": 3461.805735162609,
+      "MAPE_%": 4.757812271843299
+    },
+    {
+      "category": "Office Supplies",
+      "RMSE": 3266.3031496080944,
+      "MAPE_%": 4.907682438194541
+    },
+    {
+      "category": "Maintenance",
+      "RMSE": 11438.323015416707,
+      "MAPE_%": 5.68750825268732
+    },
+    {
+      "category": "Marketing",
+      "RMSE": 4225.3644799952845,
+      "MAPE_%": 6.557538805555023
+    },
+    {
+      "category": "IT & Software",
+      "RMSE": 2797.206671175198,
+      "MAPE_%": 11.403989881657646
+    }
+  ]
+}

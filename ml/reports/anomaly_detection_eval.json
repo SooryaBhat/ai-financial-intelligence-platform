@@ -1,0 +1,38 @@
+{
+  "task": "anomaly_detection",
+  "contamination_rate": 0.01,
+  "n_transactions": 7985,
+  "method_comparison": [
+    {
+      "Method": "zscore_flag",
+      "Flagged": 204,
+      "Flag_Rate_%": 2.555
+    },
+    {
+      "Method": "iqr_flag",
+      "Flagged": 795,
+      "Flag_Rate_%": 9.956
+    },
+    {
+      "Method": "rolling_z_flag",
+      "Flagged": 346,
+      "Flag_Rate_%": 4.333
+    },
+    {
+      "Method": "if_flag",
+      "Flagged": 80,
+      "Flag_Rate_%": 1.002
+    },
+    {
+      "Method": "lof_flag",
+      "Flagged": 80,
+      "Flag_Rate_%": 1.002
+    },
+    {
+      "Method": "ae_flag",
+      "Flagged": 80,
+      "Flag_Rate_%": 1.002
+    }
+  ],
+  "high_confidence_anomalies": 217
+}

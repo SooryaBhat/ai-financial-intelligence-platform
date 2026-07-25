@@ -1,0 +1,509 @@
+
+============================================================
+Cell 0 (markdown)
+============================================================
+# 02 — Data Preprocessing
+
+**AI Financial Intelligence Platform — ML Module**
+
+---
+
+## Purpose
+
+Transform raw ERP data into clean, model-ready datasets.
+
+### Goals
+- Handle missing values and outliers
+- Parse and standardize date columns
+- Encode categorical variables
+- Normalize/scale numerical features
+- Join tables for ML-ready feature matrices
+- Save processed datasets to `datasets/processed/`
+
+### Sections
+1. Load raw datasets
+2. Data cleaning
+3. Date parsing and time-series formatting
+4. Categorical encoding
+5. Feature scaling
+6. Table joins and feature matrix construction
+7. Save processed outputs
+
+
+============================================================
+Cell 1 (code)
+============================================================
+import os
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
+
+DATA_DIR      = '../datasets/synthetic/'
+PROCESSED_DIR = '../datasets/processed/'
+os.makedirs(PROCESSED_DIR, exist_ok=True)
+
+============================================================
+Cell 2 (markdown)
+============================================================
+## 1. Load Raw Datasets
+
+
+============================================================
+Cell 3 (code)
+============================================================
+# Load all 17 synthetic ERP datasets
+companies       = pd.read_csv(DATA_DIR + 'companies.csv')
+branches        = pd.read_csv(DATA_DIR + 'branches.csv')
+users           = pd.read_csv(DATA_DIR + 'users.csv')
+customers       = pd.read_csv(DATA_DIR + 'customers.csv')
+suppliers       = pd.read_csv(DATA_DIR + 'suppliers.csv')
+categories      = pd.read_csv(DATA_DIR + 'categories.csv')
+products        = pd.read_csv(DATA_DIR + 'products.csv')
+warehouses      = pd.read_csv(DATA_DIR + 'warehouses.csv')
+inventory       = pd.read_csv(DATA_DIR + 'inventory.csv')
+stock_movements = pd.read_csv(DATA_DIR + 'stock_movements.csv')
+sales           = pd.read_csv(DATA_DIR + 'sales.csv')
+sale_items      = pd.read_csv(DATA_DIR + 'sale_items.csv')
+purchases       = pd.read_csv(DATA_DIR + 'purchases.csv')
+purchase_items  = pd.read_csv(DATA_DIR + 'purchase_items.csv')
+payments        = pd.read_csv(DATA_DIR + 'payments.csv')
+expenses        = pd.read_csv(DATA_DIR + 'expenses.csv')
+invoices        = pd.read_csv(DATA_DIR + 'invoices.csv')
+
+print('All datasets loaded successfully.')
+for name, df in [('companies', companies), ('branches', branches), ('users', users),
+                 ('customers', customers), ('suppliers', suppliers), ('categories', categories),
+                 ('products', products), ('warehouses', warehouses), ('inventory', inventory),
+                 ('stock_movements', stock_movements), ('sales', sales), ('sale_items', sale_items),
+                 ('purchases', purchases), ('purchase_items', purchase_items),
+                 ('payments', payments), ('expenses', expenses), ('invoices', invoices)]:
+    print(f'  {name:<20}: {df.shape[0]:>6} rows × {df.shape[1]:>3} cols')
+
+============================================================
+Cell 4 (markdown)
+============================================================
+## 2. Data Cleaning
+
+
+============================================================
+Cell 5 (code)
+============================================================
+# ── 2a. Drop exact duplicate rows from transactional tables ──────────────────
+transactional_tables = {
+    'sales': sales,
+    'sale_items': sale_items,
+    'purchases': purchases,
+    'purchase_items': purchase_items,
+    'payments': payments,
+    'expenses': expenses,
+    'invoices': invoices,
+    'stock_movements': stock_movements,
+}
+
+for name, df in transactional_tables.items():
+    before = len(df)
+    df.drop_duplicates(inplace=True)
+    dropped = before - len(df)
+    print(f'{name:<20}: dropped {dropped} duplicate rows')
+
+# ── 2b. Handle missing values ─────────────────────────────────────────────────
+# Products: fill missing cost_price / selling_price with column median
+for col in ['cost_price', 'selling_price']:
+    if col in products.columns:
+        products[col].fillna(products[col].median(), inplace=True)
+
+# Customers: fill missing 'phone' / 'address' with placeholders
+for col in ['phone', 'address', 'email']:
+    if col in customers.columns:
+        customers[col].fillna('unknown', inplace=True)
+
+# Expenses: fill missing 'notes' column with empty string
+if 'notes' in expenses.columns:
+    expenses['notes'].fillna('', inplace=True)
+
+# Invoices: fill missing due_date with invoice_date + 30 days (standard net-30 terms)
+if 'due_date' in invoices.columns and 'invoice_date' in invoices.columns:
+    invoices['invoice_date'] = pd.to_datetime(invoices['invoice_date'], errors='coerce')
+    invoices['due_date']     = pd.to_datetime(invoices['due_date'],     errors='coerce')
+    mask = invoices['due_date'].isna()
+    invoices.loc[mask, 'due_date'] = invoices.loc[mask, 'invoice_date'] + pd.Timedelta(days=30)
+
+# ── 2c. Remove records with null primary keys or critical financial amounts ───
+sales    = sales[sales['net_amount'].notna()].copy()
+expenses = expenses[expenses['amount'].notna()].copy()
+payments = payments[payments['amount'].notna()].copy()
+
+# ── 2d. Remove negative or zero amounts from non-refund sales records ─────────
+if 'status' in sales.columns:
+    # Keep negatives only for cancelled/refunded; remove nonsense zeros on completed
+    completed_mask  = sales['status'].isin(['completed', 'delivered'])
+    invalid_amounts = sales[completed_mask & (sales['net_amount'] <= 0)]
+    sales = sales.drop(invalid_amounts.index)
+    print(f'\nRemoved {len(invalid_amounts)} completed sales with non-positive net_amount')
+
+# ── 2e. Clip extreme outliers in financial columns (cap at 99.9th percentile) ─
+def clip_outliers(df: pd.DataFrame, col: str, upper_pct: float = 0.999) -> pd.DataFrame:
+    """Clip values above upper_pct percentile to that percentile value."""
+    cap = df[col].quantile(upper_pct)
+    clipped = (df[col] > cap).sum()
+    df[col] = df[col].clip(upper=cap)
+    if clipped > 0:
+        print(f'  Clipped {clipped} rows in {col} at {cap:,.2f}')
+    return df
+
+print('\nOutlier clipping:')
+sales    = clip_outliers(sales,    'net_amount')
+expenses = clip_outliers(expenses, 'amount')
+payments = clip_outliers(payments, 'amount')
+
+print('\nData cleaning complete.')
+
+============================================================
+Cell 6 (markdown)
+============================================================
+## 3. Date Parsing
+
+
+============================================================
+Cell 7 (code)
+============================================================
+# ── 3a. Parse all datetime columns ────────────────────────────────────────────
+date_cols_map = {
+    'sales':           ['sale_date',     'created_at'],
+    'purchases':       ['purchase_date', 'created_at'],
+    'expenses':        ['expense_date',  'created_at'],
+    'payments':        ['payment_date',  'created_at'],
+    'invoices':        ['invoice_date',  'due_date',   'created_at'],
+    'stock_movements': ['moved_at'],
+    'customers':       ['created_at'],
+}
+
+table_refs = {
+    'sales': sales, 'purchases': purchases, 'expenses': expenses,
+    'payments': payments, 'invoices': invoices,
+    'stock_movements': stock_movements, 'customers': customers,
+}
+
+for tbl, cols in date_cols_map.items():
+    df = table_refs[tbl]
+    for col in cols:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors='coerce')
+
+# ── 3b. Extract calendar features from sales.sale_date ────────────────────────
+def add_time_features(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
+    """Add year, month, quarter, week, day_of_week, is_month_end features."""
+    dt = df[date_col]
+    df[f'{date_col}_year']       = dt.dt.year
+    df[f'{date_col}_month']      = dt.dt.month
+    df[f'{date_col}_quarter']    = dt.dt.quarter
+    df[f'{date_col}_week']       = dt.dt.isocalendar().week.astype(int)
+    df[f'{date_col}_dayofweek']  = dt.dt.dayofweek           # 0=Mon … 6=Sun
+    df[f'{date_col}_is_weekend'] = dt.dt.dayofweek.isin([5, 6]).astype(int)
+    df[f'{date_col}_is_month_end'] = dt.dt.is_month_end.astype(int)
+    return df
+
+sales    = add_time_features(sales,    'sale_date')
+expenses = add_time_features(expenses, 'expense_date')
+purchases= add_time_features(purchases,'purchase_date')
+payments = add_time_features(payments, 'payment_date')
+
+# ── 3c. Invoice overdue flag & days-to-due ────────────────────────────────────
+if 'due_date' in invoices.columns and 'invoice_date' in invoices.columns:
+    invoices['days_to_due']  = (invoices['due_date'] - invoices['invoice_date']).dt.days
+    # Overdue as of latest date in the dataset
+    last_date = invoices['invoice_date'].max()
+    invoices['is_overdue']   = ((invoices['due_date'] < last_date) &
+                                 (invoices['status'] != 'paid')).astype(int)
+
+print('Date features added:')
+print([c for c in sales.columns if 'sale_date_' in c])
+print('Invoice overdue records:', invoices['is_overdue'].sum() if 'is_overdue' in invoices.columns else 'N/A')
+
+============================================================
+Cell 8 (markdown)
+============================================================
+## 4. Categorical Encoding
+
+
+============================================================
+Cell 9 (code)
+============================================================
+# ── 4a. Label-encode low-cardinality ordinal columns ─────────────────────────
+le = LabelEncoder()
+
+# Sales: status, payment_status
+for col in ['status', 'payment_status']:
+    if col in sales.columns:
+        sales[f'{col}_enc'] = le.fit_transform(sales[col].astype(str))
+        print(f'sales.{col} classes: {list(le.classes_)}')
+
+# Expenses: category
+if 'category' in expenses.columns:
+    expenses['category_enc'] = le.fit_transform(expenses['category'].astype(str))
+    print(f'expenses.category classes: {list(le.classes_)}')
+
+# Invoices: status
+if 'status' in invoices.columns:
+    invoices['status_enc'] = le.fit_transform(invoices['status'].astype(str))
+
+# Stock movements: movement_type
+if 'movement_type' in stock_movements.columns:
+    stock_movements['movement_type_enc'] = le.fit_transform(
+        stock_movements['movement_type'].astype(str)
+    )
+
+# ── 4b. One-hot encode expense categories (for ML feature matrix) ─────────────
+if 'category' in expenses.columns:
+    exp_ohe = pd.get_dummies(expenses['category'], prefix='exp_cat', drop_first=False)
+    expenses = pd.concat([expenses, exp_ohe], axis=1)
+    print(f'\nOne-hot encoded expense categories: {list(exp_ohe.columns)}')
+
+# ── 4c. One-hot encode sales payment_method (if column exists) ────────────────
+if 'payment_method' in sales.columns:
+    pay_ohe = pd.get_dummies(sales['payment_method'], prefix='pay_method', drop_first=False)
+    sales = pd.concat([sales, pay_ohe], axis=1)
+    print(f'One-hot encoded payment_method: {list(pay_ohe.columns)}')
+
+print('\nCategorical encoding complete.')
+
+============================================================
+Cell 10 (markdown)
+============================================================
+## 5. Feature Scaling
+
+
+============================================================
+Cell 11 (code)
+============================================================
+# ── 5a. StandardScaler on core financial amounts (for regression models) ──────
+ss = StandardScaler()
+
+# Scale sales net_amount, gross_amount, discount_amount
+sales_numeric_cols = [c for c in ['gross_amount', 'discount_amount', 'net_amount']
+                      if c in sales.columns]
+sales_scaled = sales.copy()
+if sales_numeric_cols:
+    sales_scaled[sales_numeric_cols] = ss.fit_transform(sales[sales_numeric_cols])
+    print('StandardScaler applied to sales columns:', sales_numeric_cols)
+
+# ── 5b. MinMaxScaler on inventory quantities (bounded 0–1 for neural networks) ─
+mm = MinMaxScaler()
+
+inv_qty_cols = [c for c in ['quantity_on_hand', 'quantity_reserved', 'reorder_level']
+                if c in inventory.columns]
+inventory_scaled = inventory.copy()
+if inv_qty_cols:
+    inventory_scaled[inv_qty_cols] = mm.fit_transform(inventory[inv_qty_cols])
+    print('MinMaxScaler applied to inventory columns:', inv_qty_cols)
+
+# ── 5c. Log-transform highly-skewed amount columns ────────────────────────────
+# Log1p handles zero values gracefully
+for col in ['amount']:
+    if col in expenses.columns:
+        expenses[f'{col}_log'] = np.log1p(expenses[col])
+    if col in payments.columns:
+        payments[f'{col}_log'] = np.log1p(payments[col])
+
+if 'net_amount' in sales.columns:
+    sales['net_amount_log'] = np.log1p(sales['net_amount'])
+
+print('Log1p transforms applied to skewed financial columns.')
+print('\nFeature scaling complete.')
+
+============================================================
+Cell 12 (markdown)
+============================================================
+## 6. Feature Matrix Construction
+
+
+============================================================
+Cell 13 (code)
+============================================================
+# ── 6a. Monthly Sales Feature Matrix ─────────────────────────────────────────
+# Group sales by company + year + month for time-series modelling
+monthly_sales = (
+    sales
+    .groupby(['company_id', 'sale_date_year', 'sale_date_month'])
+    .agg(
+        revenue        = ('net_amount',  'sum'),
+        order_count    = ('id',          'count'),
+        avg_order_val  = ('net_amount',  'mean'),
+        total_discount = ('discount_amount', 'sum') if 'discount_amount' in sales.columns
+                         else ('net_amount', 'count'),
+    )
+    .reset_index()
+)
+
+# Create a proper datetime index for time-series work
+monthly_sales['period'] = pd.to_datetime(
+    monthly_sales['sale_date_year'].astype(str) + '-' +
+    monthly_sales['sale_date_month'].astype(str).str.zfill(2)
+)
+
+# ── Lag features: revenue at t-1, t-2, t-3, t-12 ────────────────────────────
+monthly_sales = monthly_sales.sort_values(['company_id', 'period'])
+for lag in [1, 2, 3, 12]:
+    monthly_sales[f'revenue_lag{lag}'] = (
+        monthly_sales.groupby('company_id')['revenue'].shift(lag)
+    )
+
+# ── Rolling statistics ────────────────────────────────────────────────────────
+monthly_sales['revenue_roll3_mean'] = (
+    monthly_sales.groupby('company_id')['revenue']
+    .transform(lambda x: x.shift(1).rolling(3, min_periods=1).mean())
+)
+monthly_sales['revenue_roll3_std'] = (
+    monthly_sales.groupby('company_id')['revenue']
+    .transform(lambda x: x.shift(1).rolling(3, min_periods=1).std())
+)
+
+# ── YoY growth rate ───────────────────────────────────────────────────────────
+monthly_sales['revenue_yoy_growth'] = (
+    (monthly_sales['revenue'] - monthly_sales['revenue_lag12']) /
+    monthly_sales['revenue_lag12'].replace(0, np.nan)
+)
+
+print('Monthly sales feature matrix shape:', monthly_sales.shape)
+print('Columns:', list(monthly_sales.columns))
+
+# ── 6b. Product-level Sales Feature Matrix ────────────────────────────────────
+# Join sale_items → sales → products → categories
+prod_sales = (
+    sale_items
+    .merge(sales[['id', 'sale_date', 'sale_date_year', 'sale_date_month', 'company_id',
+                  'branch_id']],
+           left_on='sale_id', right_on='id', suffixes=('', '_sale'))
+    .merge(products[['id', 'name', 'sku', 'category_id', 'cost_price']],
+           left_on='product_id', right_on='id', suffixes=('', '_prod'))
+    .merge(categories[['id', 'name']], left_on='category_id', right_on='id',
+           suffixes=('_prod', '_cat'))
+)
+
+monthly_prod = (
+    prod_sales
+    .groupby(['product_id', 'sku', 'sale_date_year', 'sale_date_month', 'category_id'])
+    .agg(
+        units_sold = ('quantity',   'sum'),
+        revenue    = ('line_total', 'sum'),
+    )
+    .reset_index()
+    .sort_values(['product_id', 'sale_date_year', 'sale_date_month'])
+)
+
+# Lag & rolling for product-level units
+monthly_prod['units_lag1'] = (
+    monthly_prod.groupby('product_id')['units_sold'].shift(1)
+)
+monthly_prod['units_lag3'] = (
+    monthly_prod.groupby('product_id')['units_sold'].shift(3)
+)
+monthly_prod['units_roll3_mean'] = (
+    monthly_prod.groupby('product_id')['units_sold']
+    .transform(lambda x: x.shift(1).rolling(3, min_periods=1).mean())
+)
+
+print('\nProduct monthly sales feature matrix shape:', monthly_prod.shape)
+
+# ── 6c. Expense Feature Matrix ────────────────────────────────────────────────
+monthly_exp = (
+    expenses
+    .groupby(['company_id', 'branch_id', 'expense_date_year',
+              'expense_date_month', 'category'])
+    .agg(
+        total_expense = ('amount', 'sum'),
+        txn_count     = ('amount', 'count'),
+        avg_expense   = ('amount', 'mean'),
+    )
+    .reset_index()
+    .sort_values(['company_id', 'category', 'expense_date_year', 'expense_date_month'])
+)
+
+monthly_exp['expense_lag1'] = (
+    monthly_exp.groupby(['company_id', 'category'])['total_expense'].shift(1)
+)
+monthly_exp['expense_roll3_mean'] = (
+    monthly_exp.groupby(['company_id', 'category'])['total_expense']
+    .transform(lambda x: x.shift(1).rolling(3, min_periods=1).mean())
+)
+
+print('Monthly expense feature matrix shape:', monthly_exp.shape)
+
+# ── 6d. Profit Feature Matrix ─────────────────────────────────────────────────
+# revenue from sales, cogs from sale_items × cost_price, expenses from expenses table
+cogs_monthly = (
+    prod_sales
+    .assign(cogs=lambda d: d['quantity'] * d['cost_price'])
+    .groupby(['company_id', 'sale_date_year', 'sale_date_month'])
+    .agg(total_cogs=('cogs', 'sum'))
+    .reset_index()
+)
+
+exp_company_monthly = (
+    expenses
+    .groupby(['company_id', 'expense_date_year', 'expense_date_month'])
+    .agg(total_expenses=('amount', 'sum'))
+    .reset_index()
+    .rename(columns={'expense_date_year': 'sale_date_year',
+                     'expense_date_month': 'sale_date_month'})
+)
+
+profit_matrix = (
+    monthly_sales[['company_id', 'sale_date_year', 'sale_date_month', 'revenue', 'period']]
+    .merge(cogs_monthly, on=['company_id', 'sale_date_year', 'sale_date_month'], how='left')
+    .merge(exp_company_monthly, on=['company_id', 'sale_date_year', 'sale_date_month'], how='left')
+)
+
+profit_matrix['total_cogs']      = profit_matrix['total_cogs'].fillna(0)
+profit_matrix['total_expenses']  = profit_matrix['total_expenses'].fillna(0)
+profit_matrix['gross_profit']    = profit_matrix['revenue'] - profit_matrix['total_cogs']
+profit_matrix['net_profit']      = profit_matrix['gross_profit'] - profit_matrix['total_expenses']
+profit_matrix['profit_margin']   = (
+    profit_matrix['net_profit'] / profit_matrix['revenue'].replace(0, np.nan)
+)
+profit_matrix['expense_ratio']   = (
+    profit_matrix['total_expenses'] / profit_matrix['revenue'].replace(0, np.nan)
+)
+
+print('\nProfit feature matrix shape:', profit_matrix.shape)
+print(profit_matrix.head(3).to_string(index=False))
+
+# Drop rows with NaN in key target column (introduced by lags at series start)
+monthly_sales_clean = monthly_sales.dropna(subset=['revenue_lag1']).copy()
+print(f'\nmonthly_sales_clean (after dropping lag NaN rows): {monthly_sales_clean.shape}')
+
+============================================================
+Cell 14 (markdown)
+============================================================
+## 7. Save Processed Outputs
+
+
+============================================================
+Cell 15 (code)
+============================================================
+# Save all processed feature matrices to PROCESSED_DIR
+outputs = {
+    'monthly_sales_features.csv':  monthly_sales,
+    'monthly_prod_features.csv':   monthly_prod,
+    'monthly_expense_features.csv':monthly_exp,
+    'profit_features.csv':         profit_matrix,
+    'sales_clean.csv':             sales,
+    'expenses_clean.csv':          expenses,
+    'payments_clean.csv':          payments,
+    'invoices_clean.csv':          invoices,
+    'products_clean.csv':          products,
+    'inventory_clean.csv':         inventory,
+    'stock_movements_clean.csv':   stock_movements,
+}
+
+for filename, df in outputs.items():
+    path = os.path.join(PROCESSED_DIR, filename)
+    df.to_csv(path, index=False)
+    print(f'Saved: {path}  ({df.shape[0]} rows × {df.shape[1]} cols)')
+
+print('\nAll processed datasets saved to:', os.path.abspath(PROCESSED_DIR))
+
+============================================================
+Cell 16 (code)
+============================================================
+

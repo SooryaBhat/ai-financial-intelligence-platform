@@ -1,0 +1,29 @@
+{
+  "task": "expense_prediction",
+  "features": [
+    "lag_1",
+    "lag_2",
+    "lag_3",
+    "lag_6",
+    "roll3_mean",
+    "roll6_mean",
+    "roll3_std",
+    "txn_count",
+    "avg_expense",
+    "month_num",
+    "quarter",
+    "year",
+    "is_q4",
+    "is_q1",
+    "cat_IT & Software",
+    "cat_Insurance",
+    "cat_Logistics",
+    "cat_Maintenance",
+    "cat_Marketing",
+    "cat_Office Supplies",
+    "cat_Rent",
+    "cat_Salaries",
+    "cat_Travel",
+    "cat_Utilities"
+  ]
+}
