@@ -15,6 +15,7 @@ from app.api.v1 import (
     integrations,
     inventory,
     invoices,
+    ml,
     ml_models,
     notifications,
     payments,
@@ -56,6 +57,7 @@ api_router.include_router(payments.router)
 api_router.include_router(expenses.router)
 
 # AI
+api_router.include_router(ml.router)
 api_router.include_router(ml_models.router)
 api_router.include_router(predictions.router)
 api_router.include_router(chat.router)

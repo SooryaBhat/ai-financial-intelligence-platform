@@ -19,12 +19,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.ml import router as ml_router
 from app.api.v1.router import api_router
 from app.auth.router import router as auth_router
 from app.core.config import settings
 from app.core.logging import configure_logging, logger
 from app.exceptions.handlers import register_exception_handlers
 from app.middleware.logging import LoggingMiddleware
+from app.ml.model_loader import model_loader
 
 
 @asynccontextmanager
@@ -37,6 +39,8 @@ async def lifespan(app: FastAPI):
         settings.app_version,
         settings.app_env,
     )
+    # Load ML models into memory once at startup
+    model_loader.load_all_models()
     yield
     logger.info("Application shutting down.")
 
@@ -86,7 +90,10 @@ def create_app() -> FastAPI:
     # Auth routes (public)
     app.include_router(auth_router, prefix="/api/v1")
 
-    # All protected module routes
+    # Direct ML prediction routes under /api/ml
+    app.include_router(ml_router, prefix="/api")
+
+    # All protected module routes (/api/v1/...)
     app.include_router(api_router)
 
     # ── Health check ──────────────────────────────────────────
