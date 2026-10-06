@@ -36,7 +36,7 @@ def _error_response(
 async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
     """Handle all AppException subclasses."""
     logger.warning(
-        "AppException | {} {} → {} {}",
+        "AppException | {} {} -> {} {}",
         request.method,
         request.url.path,
         exc.status_code,
@@ -64,7 +64,7 @@ async def validation_exception_handler(
     # Simplify pydantic v2 error list to something API-friendly
     details = [
         {
-            "field": " → ".join(str(loc) for loc in err["loc"]),
+            "field": " -> ".join(str(loc) for loc in err["loc"]),
             "message": err["msg"],
             "type": err["type"],
         }

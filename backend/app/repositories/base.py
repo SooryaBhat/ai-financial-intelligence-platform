@@ -105,6 +105,8 @@ class BaseRepository:
         self,
         company_id: UUID,
         filters: Optional[Dict[str, Any]] = None,
+        search_column: Optional[str] = None,
+        search_value: Optional[str] = None,
         include_deleted: bool = False,
     ) -> int:
         """Return the total count of matching records (for pagination)."""
@@ -119,6 +121,8 @@ class BaseRepository:
             for col, val in filters.items():
                 if val is not None:
                     query = query.eq(col, str(val) if isinstance(val, UUID) else val)
+        if search_column and search_value:
+            query = query.ilike(search_column, f"%{search_value}%")
 
         response = query.execute()
         return response.count or 0

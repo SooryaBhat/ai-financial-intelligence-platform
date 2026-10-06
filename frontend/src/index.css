@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS Variables ───────────────────────────────────── */
+:root {
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 68px;
+  --navbar-height: 60px;
+  --radius: 0.75rem;
+
+  /* Light mode */
+  --bg-page:       theme('colors.surface.50');
+  --bg-surface:    #ffffff;
+  --bg-subtle:     theme('colors.surface.100');
+  --border:        theme('colors.surface.200');
+  --text-primary:  theme('colors.surface.900');
+  --text-secondary:theme('colors.surface.500');
+  --text-muted:    theme('colors.surface.400');
+}
+
+.dark {
+  --bg-page:       theme('colors.surface.950');
+  --bg-surface:    theme('colors.surface.900');
+  --bg-subtle:     theme('colors.surface.800');
+  --border:        theme('colors.surface.700');
+  --text-primary:  theme('colors.surface.50');
+  --text-secondary:theme('colors.surface.400');
+  --text-muted:    theme('colors.surface.500');
+}
+
+/* ── Base ──────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply font-sans text-sm;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-surface-300 dark:bg-surface-600;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-surface-400 dark:bg-surface-500;
+}
+
+/* ── Focus ring ────────────────────────────────────────── */
+*:focus-visible {
+  @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-surface-900;
+}
+
+/* ── Utility classes ───────────────────────────────────── */
+@layer utilities {
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .card {
+    @apply bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-xl shadow-card;
+  }
+
+  .card-hover {
+    @apply card transition-shadow duration-200 hover:shadow-card-md;
+  }
+
+  .text-default {
+    color: var(--text-primary);
+  }
+  .text-muted {
+    color: var(--text-secondary);
+  }
+  .text-faint {
+    color: var(--text-muted);
+  }
+
+  .surface {
+    background-color: var(--bg-surface);
+    border-color: var(--border);
+  }
+
+  .gradient-brand {
+    @apply bg-gradient-to-r from-primary-600 to-indigo-500;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-600 to-violet-500 bg-clip-text text-transparent;
+  }
+
+  /* Skeleton shimmer */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      theme('colors.surface.200') 25%,
+      theme('colors.surface.100') 50%,
+      theme('colors.surface.200') 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  .dark .shimmer {
+    background: linear-gradient(
+      90deg,
+      theme('colors.surface.700') 25%,
+      theme('colors.surface.800') 50%,
+      theme('colors.surface.700') 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+}

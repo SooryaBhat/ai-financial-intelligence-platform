@@ -22,10 +22,28 @@ def _get_service(ctx: RequestContext = Depends(get_request_context)) -> Inventor
 
 @router.get("/", response_model=SuccessResponse, summary="List all inventory")
 def list_inventory(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: str = Query(None),
     ctx: RequestContext = Depends(get_request_context),
-    svc: InventoryService = Depends(_get_service),
 ):
-    return SuccessResponse(data=svc.list_company_inventory(ctx.company_id))
+    repo = InventoryRepository(ctx.user_client)
+    offset = (page - 1) * page_size
+    data = repo.list(
+        ctx.company_id,
+        order_by="updated_at",
+        limit=page_size,
+        offset=offset,
+    )
+    total = repo.count(ctx.company_id)
+    import math
+    return SuccessResponse(data={
+        "items": data,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": math.ceil(total / page_size) if page_size else 1,
+    })
 
 
 @router.get("/low-stock", response_model=SuccessResponse, summary="List low stock items")

@@ -1,0 +1,26 @@
+# Environment variables & secrets
+.env
+*.env
+backend/.env
+frontend/.env
+frontend/.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+backend/venv/
+backend/.pytest_cache/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/node_modules/
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Large Archives
+*.zip
+

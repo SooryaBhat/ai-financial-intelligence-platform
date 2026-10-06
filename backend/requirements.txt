@@ -33,6 +33,9 @@ python-multipart==0.0.12
 # Date/time utilities
 python-dateutil==2.9.0.post0
 
+# Gemini AI SDK
+google-genai>=2.0.0
+
 # ──────────────────────────────────────────────────────────────
 # Dev / Testing
 # ──────────────────────────────────────────────────────────────

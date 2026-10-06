@@ -1,0 +1,663 @@
+
+============================================================
+Cell 0 (markdown)
+============================================================
+# 01 — Data Exploration
+
+**AI Financial Intelligence Platform — ML Module**
+
+---
+
+## Purpose
+
+This notebook performs **Exploratory Data Analysis (EDA)** on all synthetic ERP datasets.
+
+### Goals
+- Understand data distributions, shapes, and types
+- Identify missing values and outliers
+- Explore relationships between tables (customers, sales, products, etc.)
+- Visualize sales seasonality and trends
+- Produce statistical summaries for all major tables
+
+### Sections
+1. Load & inspect all CSVs
+2. Missing value analysis
+3. Sales trend analysis
+4. Customer behavior analysis
+5. Product & category analysis
+6. Inventory & stock movement analysis
+7. Expense analysis
+8. Correlation analysis
+
+
+============================================================
+Cell 1 (code)
+============================================================
+# Standard imports
+import os
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+
+# Configure display
+pd.set_option('display.max_columns', 50)
+pd.set_option('display.max_rows', 100)
+sns.set_theme(style='darkgrid')
+%matplotlib inline
+
+DATA_DIR = '../datasets/synthetic/'
+print('Data directory:', os.path.abspath(DATA_DIR))
+
+============================================================
+Cell 2 (markdown)
+============================================================
+## 1. Load All Datasets
+
+
+============================================================
+Cell 3 (code)
+============================================================
+# Load all 17 CSV files into DataFrames
+companies       = pd.read_csv(os.path.join(DATA_DIR, 'companies.csv'))
+branches        = pd.read_csv(os.path.join(DATA_DIR, 'branches.csv'))
+users           = pd.read_csv(os.path.join(DATA_DIR, 'users.csv'))
+customers       = pd.read_csv(os.path.join(DATA_DIR, 'customers.csv'))
+suppliers       = pd.read_csv(os.path.join(DATA_DIR, 'suppliers.csv'))
+categories      = pd.read_csv(os.path.join(DATA_DIR, 'categories.csv'))
+products        = pd.read_csv(os.path.join(DATA_DIR, 'products.csv'))
+warehouses      = pd.read_csv(os.path.join(DATA_DIR, 'warehouses.csv'))
+inventory       = pd.read_csv(os.path.join(DATA_DIR, 'inventory.csv'))
+stock_movements = pd.read_csv(os.path.join(DATA_DIR, 'stock_movements.csv'))
+sales           = pd.read_csv(os.path.join(DATA_DIR, 'sales.csv'))
+sale_items      = pd.read_csv(os.path.join(DATA_DIR, 'sale_items.csv'))
+purchases       = pd.read_csv(os.path.join(DATA_DIR, 'purchases.csv'))
+purchase_items  = pd.read_csv(os.path.join(DATA_DIR, 'purchase_items.csv'))
+payments        = pd.read_csv(os.path.join(DATA_DIR, 'payments.csv'))
+expenses        = pd.read_csv(os.path.join(DATA_DIR, 'expenses.csv'))
+invoices        = pd.read_csv(os.path.join(DATA_DIR, 'invoices.csv'))
+
+# Collect all tables for batch operations
+datasets = {
+    'companies':       companies,
+    'branches':        branches,
+    'users':           users,
+    'customers':       customers,
+    'suppliers':       suppliers,
+    'categories':      categories,
+    'products':        products,
+    'warehouses':      warehouses,
+    'inventory':       inventory,
+    'stock_movements': stock_movements,
+    'sales':           sales,
+    'sale_items':      sale_items,
+    'purchases':       purchases,
+    'purchase_items':  purchase_items,
+    'payments':        payments,
+    'expenses':        expenses,
+    'invoices':        invoices,
+}
+
+# Parse datetime columns in-place for tables that carry date fields
+date_cols_map = {
+    'sales':           ['sale_date',     'created_at'],
+    'purchases':       ['purchase_date', 'created_at'],
+    'expenses':        ['expense_date',  'created_at'],
+    'payments':        ['payment_date',  'created_at'],
+    'invoices':        ['invoice_date',  'due_date', 'created_at'],
+    'stock_movements': ['moved_at'],
+    'customers':       ['created_at'],
+}
+for tbl, cols in date_cols_map.items():
+    for col in cols:
+        if col in datasets[tbl].columns:
+            datasets[tbl][col] = pd.to_datetime(datasets[tbl][col], errors='coerce')
+
+# Convenience aliases (datetime columns already parsed)
+sales           = datasets['sales']
+purchases       = datasets['purchases']
+expenses        = datasets['expenses']
+payments        = datasets['payments']
+invoices        = datasets['invoices']
+stock_movements = datasets['stock_movements']
+customers       = datasets['customers']
+
+# Quick shape summary
+summary = pd.DataFrame(
+    [(name, df.shape[0], df.shape[1],
+      round(df.memory_usage(deep=True).sum() / 1024, 1))
+     for name, df in datasets.items()],
+    columns=['Table', 'Rows', 'Columns', 'Memory_KB']
+)
+print(summary.to_string(index=False))
+
+============================================================
+Cell 4 (markdown)
+============================================================
+## 2. Missing Value Analysis
+
+
+============================================================
+Cell 5 (code)
+============================================================
+# ── 2a. Per-table null summary ───────────────────────────────────────────────
+null_summary = []
+for name, df in datasets.items():
+    n_null = df.isnull().sum().sum()
+    pct    = round(n_null / df.size * 100, 2)
+    null_summary.append({'Table': name, 'Null_Cells': n_null, 'Null_%': pct})
+
+null_df = pd.DataFrame(null_summary).sort_values('Null_Cells', ascending=False)
+print(null_df.to_string(index=False))
+
+# ── 2b. Visualise null counts per table ──────────────────────────────────────
+fig, ax = plt.subplots(figsize=(12, 4))
+ax.bar(null_df['Table'], null_df['Null_Cells'], color='steelblue')
+ax.set_title('Total Null Cells per Table', fontweight='bold')
+ax.set_ylabel('Null count')
+ax.set_xticklabels(null_df['Table'], rotation=40, ha='right')
+plt.tight_layout()
+plt.show()
+
+# ── 2c. Column-level null detail for the largest tables ──────────────────────
+for tbl in ['sales', 'purchases', 'expenses', 'payments', 'invoices']:
+    df = datasets[tbl]
+    col_nulls = df.isnull().sum()
+    col_nulls = col_nulls[col_nulls > 0]
+    if not col_nulls.empty:
+        print(f'\n{tbl}: columns with nulls')
+        print(col_nulls.to_string())
+    else:
+        print(f'\n{tbl}: no nulls')
+
+# ── 2d. Basic descriptive stats for key numeric tables ───────────────────────
+print('\n=== sales — numeric describe ===')
+display(sales.describe())
+
+print('\n=== expenses — numeric describe ===')
+display(expenses.describe())
+
+============================================================
+Cell 6 (markdown)
+============================================================
+## 3. Sales Trend Analysis
+
+
+============================================================
+Cell 7 (code)
+============================================================
+# Merge sales with company names
+sales_c = sales.merge(companies[['id', 'name']], left_on='company_id', right_on='id',
+                       suffixes=('', '_co'))
+
+# Monthly platform-wide aggregation
+monthly = (
+    sales_c
+    .groupby(pd.Grouper(key='sale_date', freq='ME'))
+    .agg(revenue=('net_amount', 'sum'), orders=('id', 'count'))
+    .reset_index()
+)
+monthly['rolling_3m'] = monthly['revenue'].rolling(3, min_periods=1).mean()
+
+# Monthly by company
+monthly_co = (
+    sales_c
+    .groupby([pd.Grouper(key='sale_date', freq='ME'), 'name'])
+    .agg(revenue=('net_amount', 'sum'))
+    .reset_index()
+)
+
+# Quarterly aggregation
+quarterly = (
+    sales_c
+    .groupby(pd.Grouper(key='sale_date', freq='QE'))
+    .agg(revenue=('net_amount', 'sum'), orders=('id', 'count'))
+    .reset_index()
+)
+
+# ── Plot 1: Platform-wide monthly revenue + rolling average ──────────────────
+fig, ax = plt.subplots(figsize=(14, 4))
+ax.plot(monthly['sale_date'], monthly['revenue'],    marker='o', lw=2, label='Monthly Revenue')
+ax.plot(monthly['sale_date'], monthly['rolling_3m'], ls='--', lw=2,
+        color='orange', label='3-Month Rolling Avg')
+ax.set_title('Platform Monthly Net Revenue', fontweight='bold')
+ax.set_ylabel('Net Revenue')
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+# ── Plot 2: Monthly revenue by company ───────────────────────────────────────
+fig, ax = plt.subplots(figsize=(14, 4))
+for cname, grp in monthly_co.groupby('name'):
+    ax.plot(grp['sale_date'], grp['revenue'], marker='s', lw=2, label=cname)
+ax.set_title('Monthly Net Revenue by Company', fontweight='bold')
+ax.set_ylabel('Net Revenue')
+ax.legend(title='Company')
+plt.tight_layout()
+plt.show()
+
+# ── Plot 3: Quarterly revenue bar chart ──────────────────────────────────────
+fig, ax = plt.subplots(figsize=(14, 4))
+ax.bar(quarterly['sale_date'].dt.to_period('Q').astype(str),
+       quarterly['revenue'], color='teal')
+ax.set_title('Quarterly Net Revenue', fontweight='bold')
+ax.set_ylabel('Net Revenue')
+ax.set_xticklabels(quarterly['sale_date'].dt.to_period('Q').astype(str),
+                    rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+# ── Plot 4: Sales status distribution ────────────────────────────────────────
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+sales['status'].value_counts().plot.pie(
+    ax=ax1, autopct='%1.1f%%', colors=sns.color_palette('pastel')
+)
+ax1.set_title('Order Status', fontweight='bold')
+ax1.set_ylabel('')
+sales['payment_status'].value_counts().plot.bar(
+    ax=ax2, color=sns.color_palette('Blues_r', 4)
+)
+ax2.set_title('Payment Status', fontweight='bold')
+ax2.set_ylabel('Count')
+ax2.tick_params(axis='x', rotation=0)
+plt.tight_layout()
+plt.show()
+
+============================================================
+Cell 8 (markdown)
+============================================================
+## 4. Customer Behavior Analysis
+
+
+============================================================
+Cell 9 (code)
+============================================================
+# ── 4a. Customer order summary ──────────────────────────────────────────────
+cust_stats = (
+    sales.groupby('customer_id')
+    .agg(
+        total_spend  = ('net_amount', 'sum'),
+        order_count  = ('id',         'count'),
+        first_order  = ('sale_date',  'min'),
+        last_order   = ('sale_date',  'max'),
+    )
+    .reset_index()
+)
+
+repeat_buyers = (cust_stats['order_count'] > 1).sum()
+repeat_rate   = repeat_buyers / len(cust_stats) * 100
+print(f'Total purchasing customers : {len(cust_stats):,}')
+print(f'Repeat buyers (>1 order)   : {repeat_buyers:,}')
+print(f'Repeat purchase rate       : {repeat_rate:.1f}%')
+
+# ── 4b. Top-10 customers by revenue ──────────────────────────────────────────
+top10 = (
+    cust_stats
+    .merge(customers[['id', 'name']], left_on='customer_id', right_on='id')
+    .nlargest(10, 'total_spend')
+)
+
+fig, ax = plt.subplots(figsize=(10, 4))
+ax.barh(top10['name'], top10['total_spend'], color='steelblue')
+ax.invert_yaxis()
+ax.set_title('Top 10 Customers by Total Spend', fontweight='bold')
+ax.set_xlabel('Total Net Revenue')
+plt.tight_layout()
+plt.show()
+
+# ── 4c. Order-count distribution ─────────────────────────────────────────────
+fig, ax = plt.subplots(figsize=(8, 3))
+ax.hist(cust_stats['order_count'].clip(upper=20), bins=20,
+        color='teal', edgecolor='white')
+ax.set_title('Distribution of Orders per Customer (capped at 20)', fontweight='bold')
+ax.set_xlabel('Order count')
+ax.set_ylabel('Customers')
+plt.tight_layout()
+plt.show()
+
+# ── 4d. Monthly cohort retention matrix ──────────────────────────────────────
+# Assign each customer their acquisition cohort (month of first order)
+cohort_base = cust_stats[['customer_id', 'first_order']].copy()
+cohort_base['cohort'] = cohort_base['first_order'].dt.to_period('M')
+
+sales_cohort = sales.merge(cohort_base[['customer_id', 'cohort']], on='customer_id')
+sales_cohort['order_period'] = sales_cohort['sale_date'].dt.to_period('M')
+sales_cohort['cohort_index'] = (
+    sales_cohort['order_period'].astype(int) - sales_cohort['cohort'].astype(int)
+)
+
+cohort_pivot = (
+    sales_cohort
+    .groupby(['cohort', 'cohort_index'])['customer_id']
+    .nunique()
+    .unstack()
+)
+retention = cohort_pivot.divide(cohort_pivot.iloc[:, 0], axis=0).iloc[:, :13]
+
+fig, ax = plt.subplots(figsize=(16, 8))
+sns.heatmap(retention, annot=True, fmt='.0%', cmap='YlGnBu',
+            linewidths=0.3, cbar_kws={'label': 'Retention'}, ax=ax)
+ax.set_title('Customer Monthly Cohort Retention Matrix', fontweight='bold')
+ax.set_xlabel('Months Since First Order')
+ax.set_ylabel('Cohort (Acquisition Month)')
+plt.tight_layout()
+plt.show()
+
+============================================================
+Cell 10 (markdown)
+============================================================
+## 5. Product & Category Analysis
+
+
+============================================================
+Cell 11 (code)
+============================================================
+# Merge sale_items -> products
+items_full = sale_items.merge(
+    products[['id', 'name', 'sku', 'category_id', 'cost_price']],
+    left_on='product_id',
+    right_on='id',
+    how='left'
+)
+
+# Remove duplicate product id column
+items_full = items_full.drop(columns=['id'])
+
+# Rename product columns
+items_full = items_full.rename(columns={
+    'name': 'product_name'
+})
+
+# Merge with categories
+items_full = items_full.merge(
+    categories[['id', 'name']],
+    left_on='category_id',
+    right_on='id',
+    how='left'
+)
+
+# Remove duplicate category id column
+items_full = items_full.drop(columns=['id'])
+
+# Rename category column
+items_full = items_full.rename(columns={
+    'name': 'category_name'
+})
+
+# ── Product-level performance ────────────────────────────────────────────────
+prod_perf = (
+    items_full
+    .groupby(['product_id', 'product_name', 'sku', 'cost_price'])
+    .agg(revenue=('line_total', 'sum'), units=('quantity', 'sum'))
+    .reset_index()
+)
+prod_perf['cogs']         = prod_perf['units'] * prod_perf['cost_price']
+prod_perf['gross_profit'] = prod_perf['revenue'] - prod_perf['cogs']
+prod_perf['margin_pct']   = prod_perf['gross_profit'] / prod_perf['revenue'] * 100
+
+# ── Category-level performance ───────────────────────────────────────────────
+cat_perf = (
+    items_full
+    .groupby('category_name')
+    .agg(revenue=('line_total', 'sum'), units=('quantity', 'sum'))
+    .reset_index()
+    .sort_values('revenue', ascending=False)
+)
+
+# ── Plot 1: Top-10 products by revenue ───────────────────────────────────────
+top10_prod = prod_perf.nlargest(10, 'revenue')
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 5))
+ax1.barh(top10_prod['product_name'], top10_prod['revenue'], color='steelblue')
+ax1.invert_yaxis()
+ax1.set_title('Top 10 Products by Revenue', fontweight='bold')
+ax1.set_xlabel('Total Revenue')
+
+# ── Plot 2: Top-10 categories by revenue ─────────────────────────────────────
+ax2.barh(cat_perf.head(10)['category_name'], cat_perf.head(10)['revenue'], color='teal')
+ax2.invert_yaxis()
+ax2.set_title('Top 10 Categories by Revenue', fontweight='bold')
+ax2.set_xlabel('Total Revenue')
+plt.tight_layout()
+plt.show()
+
+# ── Plot 3: Gross-profit margin distribution by category ─────────────────────
+items_margin = items_full.copy()
+items_margin['line_cogs']   = items_margin['quantity'] * items_margin['cost_price']
+items_margin['line_profit'] = items_margin['line_total'] - items_margin['line_cogs']
+items_margin['margin_pct']  = items_margin['line_profit'] / items_margin['line_total'] * 100
+
+fig, ax = plt.subplots(figsize=(14, 5))
+sns.boxplot(
+    data=items_margin,
+    x='category_name',
+    y='margin_pct',
+    palette='Set3',
+    order=cat_perf['category_name'],
+    ax=ax
+)
+ax.set_title('Gross Margin (%) by Product Category', fontweight='bold')
+ax.set_xlabel('Category')
+ax.set_ylabel('Gross Margin %')
+ax.tick_params(axis='x', rotation=45)
+plt.tight_layout()
+plt.show()
+
+# ── Plot 4: Category revenue share (pie) ─────────────────────────────────────
+fig, ax = plt.subplots(figsize=(8, 8))
+ax.pie(cat_perf['revenue'], labels=cat_perf['category_name'],
+       autopct='%1.1f%%', startangle=140,
+       colors=sns.color_palette('tab20', len(cat_perf)))
+ax.set_title('Revenue Share by Category', fontweight='bold')
+plt.tight_layout()
+plt.show()
+
+============================================================
+Cell 12 (markdown)
+============================================================
+## 6. Inventory & Stock Movement Analysis
+
+
+============================================================
+Cell 13 (code)
+============================================================
+# ── 6a. Inventory health ────────────────────────────────────────────────────
+inv_full = inventory.merge(
+    products[['id', 'name', 'category_id', 'cost_price']],
+    left_on='product_id', right_on='id'
+).merge(
+    categories[['id', 'name']], left_on='category_id', right_on='id',
+    suffixes=('_prod', '_cat')
+)
+
+inv_full['stock_value']  = inv_full['quantity_on_hand'] * inv_full['cost_price']
+inv_full['is_low_stock'] = inv_full['quantity_on_hand'] <= inv_full['reorder_level']
+
+low_stock_n = inv_full['is_low_stock'].sum()
+total_val   = inv_full['stock_value'].sum()
+print(f'Low-stock SKU records : {low_stock_n} / {len(inv_full)} '
+      f'({low_stock_n/len(inv_full)*100:.1f}%)')
+print(f'Total inventory value : {total_val:,.0f}')
+
+# ── 6b. Low-stock by category ────────────────────────────────────────────────
+low_by_cat = (
+    inv_full[inv_full['is_low_stock']]
+    .groupby('name_cat')
+    .size()
+    .sort_values(ascending=False)
+    .reset_index(name='low_stock_count')
+)
+
+fig, ax = plt.subplots(figsize=(10, 4))
+ax.barh(low_by_cat['name_cat'], low_by_cat['low_stock_count'], color='tomato')
+ax.invert_yaxis()
+ax.set_title('Low-Stock SKU Count by Category', fontweight='bold')
+ax.set_xlabel('Number of Low-Stock Records')
+plt.tight_layout()
+plt.show()
+
+# ── 6c. Stock movement summary ───────────────────────────────────────────────
+mv_summary = (
+    stock_movements
+    .groupby(['movement_type', 'reason'])['quantity']
+    .sum()
+    .reset_index()
+    .sort_values('quantity', ascending=False)
+)
+print('\nStock-movement quantities by type and reason:')
+print(mv_summary.to_string(index=False))
+
+fig, ax = plt.subplots(figsize=(10, 4))
+sns.barplot(data=mv_summary, x='reason', y='quantity',
+            hue='movement_type', palette='Set2', ax=ax)
+ax.set_title('Stock Movement Volume by Reason and Type', fontweight='bold')
+ax.set_xlabel('Movement Reason')
+ax.set_ylabel('Total Units')
+plt.tight_layout()
+plt.show()
+
+# ── 6d. Monthly stock-movement heatmap (in vs out) ───────────────────────────
+mv_monthly = (
+    stock_movements
+    .groupby([pd.Grouper(key='moved_at', freq='ME'), 'movement_type'])['quantity']
+    .sum()
+    .unstack(fill_value=0)
+    .reset_index()
+)
+mv_monthly['month'] = mv_monthly['moved_at'].dt.to_period('M').astype(str)
+mv_heat = mv_monthly.set_index('month').drop(columns='moved_at')
+
+fig, ax = plt.subplots(figsize=(14, 3))
+sns.heatmap(mv_heat.T, cmap='Blues', linewidths=0.3, annot=False,
+            ax=ax, cbar_kws={'label': 'Units'})
+ax.set_title('Monthly Stock Movement Heatmap (rows = direction)', fontweight='bold')
+ax.set_xlabel('Month')
+ax.tick_params(axis='x', rotation=90)
+plt.tight_layout()
+plt.show()
+
+============================================================
+Cell 14 (markdown)
+============================================================
+## 7. Expense Analysis
+
+
+============================================================
+Cell 15 (code)
+============================================================
+# Merge expenses with branch and company names
+exp_full = (
+    expenses
+    .merge(branches[['id', 'name', 'city']], left_on='branch_id', right_on='id',
+           suffixes=('', '_branch'))
+    .merge(companies[['id', 'name']], left_on='company_id', right_on='id',
+           suffixes=('_branch', '_co'))
+)
+
+# ── 7a. Expense total by category ────────────────────────────────────────────
+exp_cat = (
+    expenses.groupby('category')['amount']
+    .agg(total='sum', txn_count='count', avg='mean')
+    .sort_values('total', ascending=False)
+    .reset_index()
+)
+print('=== Expense totals by category ===')
+print(exp_cat.to_string(index=False))
+
+fig, ax = plt.subplots(figsize=(10, 5))
+ax.barh(exp_cat['category'], exp_cat['total'], color='mediumpurple')
+ax.invert_yaxis()
+ax.set_title('Total Expense by Category', fontweight='bold')
+ax.set_xlabel('Total Amount')
+plt.tight_layout()
+plt.show()
+
+# ── 7b. Expense by company ───────────────────────────────────────────────────
+exp_co = (
+    exp_full.groupby('name_co')['amount']
+    .sum().sort_values(ascending=False).reset_index()
+)
+fig, ax = plt.subplots(figsize=(7, 3))
+ax.bar(exp_co['name_co'], exp_co['amount'], color='coral')
+ax.set_title('Total Expense by Company', fontweight='bold')
+ax.set_ylabel('Amount')
+plt.tight_layout()
+plt.show()
+
+# ── 7c. Monthly expense trend (stacked by category) ──────────────────────────
+exp_monthly = (
+    expenses
+    .groupby([pd.Grouper(key='expense_date', freq='ME'), 'category'])['amount']
+    .sum()
+    .unstack(fill_value=0)
+)
+
+fig, ax = plt.subplots(figsize=(14, 5))
+exp_monthly.plot(kind='area', stacked=True, cmap='tab20', alpha=0.85, ax=ax)
+ax.set_title('Monthly Expense Breakdown by Category (Stacked Area)', fontweight='bold')
+ax.set_ylabel('Total Expense Amount')
+ax.legend(title='Category', bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=8)
+plt.tight_layout()
+plt.show()
+
+============================================================
+Cell 16 (markdown)
+============================================================
+## 8. Correlation Analysis
+
+
+============================================================
+Cell 17 (code)
+============================================================
+# Build monthly aggregates for every financial signal
+m_sales  = sales.groupby(pd.Grouper(key='sale_date',      freq='ME'))['net_amount'].sum().rename('Sales_Revenue')
+m_orders = sales.groupby(pd.Grouper(key='sale_date',      freq='ME'))['id'].count().rename('Order_Count')
+m_exp    = expenses.groupby(pd.Grouper(key='expense_date', freq='ME'))['amount'].sum().rename('Total_Expenses')
+m_purch  = purchases.groupby(pd.Grouper(key='purchase_date', freq='ME'))['net_amount'].sum().rename('Purchase_Cost')
+m_pay    = payments.groupby(pd.Grouper(key='payment_date',  freq='ME'))['amount'].sum().rename('Payments_Collected')
+m_in     = (
+    stock_movements[stock_movements['movement_type'] == 'in']
+    .groupby(pd.Grouper(key='moved_at', freq='ME'))['quantity']
+    .sum().rename('Stock_Inflow')
+)
+m_out    = (
+    stock_movements[stock_movements['movement_type'] == 'out']
+    .groupby(pd.Grouper(key='moved_at', freq='ME'))['quantity']
+    .sum().rename('Stock_Outflow')
+)
+
+financial = pd.concat([m_sales, m_orders, m_exp, m_purch, m_pay, m_in, m_out],
+                       axis=1).fillna(0)
+
+corr = financial.corr(method='pearson')
+print('=== Pearson Correlation Matrix ===')
+print(corr.round(2))
+
+# ── Heatmap ───────────────────────────────────────────────────────────────────
+fig, ax = plt.subplots(figsize=(9, 7))
+mask = np.zeros_like(corr, dtype=bool)
+mask[np.triu_indices_from(mask)] = True     # show lower triangle only
+sns.heatmap(corr, mask=mask, annot=True, fmt='.2f',
+            cmap='coolwarm', vmin=-1, vmax=1,
+            linewidths=0.5, ax=ax,
+            cbar_kws={'label': 'Pearson r'})
+ax.set_title('Financial & Operational Metrics — Monthly Correlation Matrix',
+              fontweight='bold')
+plt.tight_layout()
+plt.show()
+
+# ── Pair-plot of the most correlated signals ──────────────────────────────────
+key_signals = ['Sales_Revenue', 'Total_Expenses', 'Purchase_Cost',
+               'Payments_Collected', 'Stock_Outflow']
+pair_fig = sns.pairplot(financial[key_signals], diag_kind='kde',
+                         plot_kws={'alpha': 0.5, 's': 20})
+pair_fig.fig.suptitle('Pair-plot: Key Financial Signals (monthly)', y=1.02,
+                       fontweight='bold')
+plt.tight_layout()
+plt.show()
+
+============================================================
+Cell 18 (code)
+============================================================
+

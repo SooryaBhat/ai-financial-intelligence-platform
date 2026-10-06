@@ -45,7 +45,11 @@ def make_crud_router(
             limit=page_size,
             offset=offset,
         )
-        total = repo.count(ctx.company_id)
+        total = repo.count(
+            ctx.company_id,
+            search_column=search_column if search else None,
+            search_value=search if search else None,
+        )
         import math
         return SuccessResponse(data={
             "items": data,

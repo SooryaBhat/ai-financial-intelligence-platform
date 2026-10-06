@@ -78,7 +78,8 @@ def onboard(data: OnboardRequest, token_data: dict = Depends(get_current_user_ra
 @router.get(
     "/me",
     response_model=SuccessResponse,
-    summary="Get current authenticated user",
+    summary="Get current authenticated user profile & company memberships",
 )
 def me(token_data: dict = Depends(get_current_user_raw)):
-    return SuccessResponse(data=token_data)
+    user_me = auth_service.get_user_me(token_data["id"], token_data.get("email", ""))
+    return SuccessResponse(data=user_me)

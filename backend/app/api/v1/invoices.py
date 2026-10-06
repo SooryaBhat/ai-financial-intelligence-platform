@@ -19,12 +19,34 @@ def list_invoices(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     invoice_type: str = Query(None),
+    search: str = Query(None),
     ctx: RequestContext = Depends(get_request_context),
 ):
     repo = InvoiceRepository(ctx.user_client)
     filters = {"invoice_type": invoice_type} if invoice_type else None
-    data = repo.list(ctx.company_id, filters=filters, limit=page_size, offset=(page - 1) * page_size)
-    return SuccessResponse(data=data)
+    offset = (page - 1) * page_size
+    data = repo.list(
+        ctx.company_id,
+        filters=filters,
+        search_column="invoice_number" if search else None,
+        search_value=search,
+        limit=page_size,
+        offset=offset,
+    )
+    total = repo.count(
+        ctx.company_id,
+        filters=filters,
+        search_column="invoice_number" if search else None,
+        search_value=search,
+    )
+    import math
+    return SuccessResponse(data={
+        "items": data,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": math.ceil(total / page_size) if page_size else 1,
+    })
 
 
 @router.get("/overdue", response_model=SuccessResponse, summary="List overdue invoices")

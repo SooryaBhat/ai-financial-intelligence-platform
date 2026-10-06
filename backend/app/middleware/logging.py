@@ -22,7 +22,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         request.state.request_id = request_id
 
         logger.info(
-            "→ {} {} | id={}",
+            "-> {} {} | id={}",
             request.method,
             request.url.path,
             request_id,
@@ -32,7 +32,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
         except Exception as exc:
             logger.exception(
-                "✗ {} {} | id={} | Unhandled: {}",
+                "[FAIL] {} {} | id={} | Unhandled: {}",
                 request.method,
                 request.url.path,
                 request_id,
@@ -43,7 +43,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
         logger.info(
-            "← {} {} | id={} | status={} | {}ms",
+            "<- {} {} | id={} | status={} | {}ms",
             request.method,
             request.url.path,
             request_id,

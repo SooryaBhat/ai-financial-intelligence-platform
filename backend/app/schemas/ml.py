@@ -160,11 +160,11 @@ class ExpensePredictionResponse(AppBaseModel):
 # ── 6. Business Health Score ──────────────────────────────────
 
 class BusinessHealthRequest(AppBaseModel):
-    revenue_growth: float = Field(..., description="Revenue growth rate (e.g. 0.15 for +15%)")
-    profit_margin: float = Field(..., description="Net profit margin ratio (e.g. 0.20 for 20%)")
-    expense_control: float = Field(..., description="Expense efficiency index (0.0 to 1.0, e.g. 0.82)")
-    inventory_turnover: float = Field(..., description="Inventory turnover ratio (e.g. 4.5)")
-    payment_collection: float = Field(..., description="Payment collection efficiency (0.0 to 1.0, e.g. 0.90)")
+    revenue_growth: float = Field(default=0.15, description="Revenue growth rate (e.g. 0.15 for +15%)")
+    profit_margin: float = Field(default=0.20, description="Net profit margin ratio (e.g. 0.20 for 20%)")
+    expense_control: float = Field(default=0.82, description="Expense efficiency index (0.0 to 1.0, e.g. 0.82)")
+    inventory_turnover: float = Field(default=4.5, description="Inventory turnover ratio (e.g. 4.5)")
+    payment_collection: float = Field(default=0.90, description="Payment collection efficiency (0.0 to 1.0, e.g. 0.90)")
 
 
 class BusinessHealthResponse(AppBaseModel):
