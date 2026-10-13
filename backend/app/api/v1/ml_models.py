@@ -12,7 +12,8 @@ from app.services.context import RequestContext
 router = APIRouter(prefix="/ml-models", tags=["ML Models"])
 
 
-@router.get("/", response_model=SuccessResponse, summary="List available ML models")
+@router.get("", response_model=SuccessResponse, summary="List available ML models")
+@router.get("/", response_model=SuccessResponse, summary="List available ML models", include_in_schema=False)
 def list_models(ctx: RequestContext = Depends(get_request_context)):
     repo = MLModelRepository(ctx.user_client)
     return SuccessResponse(data=repo.list_available(ctx.company_id))

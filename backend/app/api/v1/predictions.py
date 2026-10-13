@@ -12,7 +12,8 @@ from app.services.context import RequestContext
 router = APIRouter(prefix="/predictions", tags=["Predictions"])
 
 
-@router.get("/", response_model=SuccessResponse, summary="List predictions")
+@router.get("", response_model=SuccessResponse, summary="List predictions")
+@router.get("/", response_model=SuccessResponse, summary="List predictions", include_in_schema=False)
 def list_predictions(
     prediction_type: str = Query(None),
     ctx: RequestContext = Depends(get_request_context),
@@ -25,7 +26,8 @@ def list_predictions(
     return SuccessResponse(data=data)
 
 
-@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create prediction request")
+@router.post("", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create prediction request")
+@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create prediction request", include_in_schema=False)
 def create_prediction(payload: PredictionCreate, ctx: RequestContext = Depends(get_request_context)):
     repo = PredictionRepository(ctx.user_client)
     data = {

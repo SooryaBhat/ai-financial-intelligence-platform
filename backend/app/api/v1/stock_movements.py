@@ -15,7 +15,8 @@ from app.services.context import RequestContext
 router = APIRouter(prefix="/stock-movements", tags=["Stock Movements"])
 
 
-@router.get("/", response_model=SuccessResponse, summary="List all stock movements")
+@router.get("", response_model=SuccessResponse, summary="List all stock movements")
+@router.get("/", response_model=SuccessResponse, summary="List all stock movements", include_in_schema=False)
 def list_movements(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),

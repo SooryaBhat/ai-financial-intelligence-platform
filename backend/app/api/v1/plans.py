@@ -9,7 +9,8 @@ from app.services.context import RequestContext
 router = APIRouter(prefix="/plans", tags=["Plans & Subscriptions"])
 
 
-@router.get("/", response_model=SuccessResponse, summary="List available plans")
+@router.get("", response_model=SuccessResponse, summary="List available plans")
+@router.get("/", response_model=SuccessResponse, summary="List available plans", include_in_schema=False)
 def list_plans(ctx: RequestContext = Depends(get_request_context)):
     repo = PlanRepository(ctx.user_client)
     return SuccessResponse(data=repo.list_active())

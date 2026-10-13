@@ -12,7 +12,8 @@ from app.services.context import RequestContext
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
 
-@router.get("/", response_model=SuccessResponse, summary="List reports")
+@router.get("", response_model=SuccessResponse, summary="List reports")
+@router.get("/", response_model=SuccessResponse, summary="List reports", include_in_schema=False)
 def list_reports(ctx: RequestContext = Depends(get_request_context)):
     repo = ReportRepository(ctx.user_client)
     return SuccessResponse(data=repo.list(ctx.company_id))
@@ -53,7 +54,8 @@ def get_dashboard_summary(ctx: RequestContext = Depends(get_request_context)):
     })
 
 
-@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create report")
+@router.post("", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create report")
+@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create report", include_in_schema=False)
 def create_report(payload: ReportCreate, ctx: RequestContext = Depends(get_request_context)):
     repo = ReportRepository(ctx.user_client)
     data = {

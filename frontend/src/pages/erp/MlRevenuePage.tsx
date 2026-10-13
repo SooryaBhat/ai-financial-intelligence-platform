@@ -32,8 +32,8 @@ export const MlRevenuePage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-primary-600" />
+          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-teal-700" />
             <span>AI Revenue Forecasting Engine</span>
           </h1>
           <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
@@ -134,22 +134,23 @@ export const MlRevenuePage: React.FC = () => {
                   <AreaChart data={predictions} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorRevML" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.5} />
-                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#0d9488" stopOpacity={0.35} />
+                        <stop offset="95%" stopColor="#0d9488" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
-                    <XAxis dataKey="month" stroke="var(--text-secondary)" fontSize={11} />
-                    <YAxis stroke="var(--text-secondary)" fontSize={11} tickFormatter={(val) => `$${val / 1000}k`} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.7} />
+                    <XAxis dataKey="month" stroke="#64748b" fontSize={11} tickLine={false} />
+                    <YAxis stroke="#64748b" fontSize={11} tickLine={false} tickFormatter={(val) => `$${val / 1000}k`} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'var(--bg-surface)',
-                        borderColor: 'var(--border)',
+                        backgroundColor: '#ffffff',
+                        borderColor: '#e2e8f0',
                         borderRadius: '8px',
                         fontSize: '12px',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.08)',
                       }}
                     />
-                    <Area type="monotone" dataKey="predicted_revenue" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorRevML)" name="Predicted Revenue ($)" />
+                    <Area type="monotone" dataKey="predicted_revenue" stroke="#0d9488" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevML)" name="Predicted Revenue ($)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

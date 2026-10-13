@@ -12,7 +12,8 @@ from app.services.context import RequestContext
 router = APIRouter(prefix="/roles", tags=["Roles & Permissions"])
 
 
-@router.get("/", response_model=SuccessResponse, summary="List roles for company")
+@router.get("", response_model=SuccessResponse, summary="List roles for company")
+@router.get("/", response_model=SuccessResponse, summary="List roles for company", include_in_schema=False)
 def list_roles(ctx: RequestContext = Depends(get_request_context)):
     repo = RoleRepository(ctx.user_client)
     data = repo.list_for_company(ctx.company_id)
@@ -26,7 +27,8 @@ def list_permissions(ctx: RequestContext = Depends(get_request_context)):
     return SuccessResponse(data=data)
 
 
-@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create a role")
+@router.post("", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create a role")
+@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create a role", include_in_schema=False)
 def create_role(payload: RoleCreate, ctx: RequestContext = Depends(get_request_context)):
     repo = RoleRepository(ctx.user_client)
     role_data = {

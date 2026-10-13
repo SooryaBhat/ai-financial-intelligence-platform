@@ -22,7 +22,8 @@ def _get_service(ctx: RequestContext = Depends(get_request_context)) -> SaleServ
     )
 
 
-@router.get("/", response_model=SuccessResponse, summary="List sales")
+@router.get("", response_model=SuccessResponse, summary="List sales")
+@router.get("/", response_model=SuccessResponse, summary="List sales", include_in_schema=False)
 def list_sales(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -53,7 +54,8 @@ def list_sales(
     })
 
 
-@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create a sale")
+@router.post("", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create a sale")
+@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create a sale", include_in_schema=False)
 def create_sale(
     payload: SaleCreate,
     ctx: RequestContext = Depends(get_request_context),

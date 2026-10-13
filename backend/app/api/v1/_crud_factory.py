@@ -29,7 +29,8 @@ def make_crud_router(
     def _repo(ctx: RequestContext = Depends(get_request_context)) -> BaseRepository:
         return repo_class(ctx.user_client)
 
-    @router.get("/", response_model=SuccessResponse, summary=f"List {tag}")
+    @router.get("", response_model=SuccessResponse, summary=f"List {tag}")
+    @router.get("/", response_model=SuccessResponse, summary=f"List {tag}", include_in_schema=False)
     def list_items(
         page: int = Query(1, ge=1),
         page_size: int = Query(20, ge=1, le=100),
@@ -59,7 +60,8 @@ def make_crud_router(
             "total_pages": math.ceil(total / page_size) if page_size else 1,
         })
 
-    @router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary=f"Create {tag}")
+    @router.post("", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary=f"Create {tag}")
+    @router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary=f"Create {tag}", include_in_schema=False)
     def create_item(
         payload: create_schema,
         ctx: RequestContext = Depends(get_request_context),

@@ -4,31 +4,23 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── CSS Variables ───────────────────────────────────── */
+/* ── CSS Variables (Light SaaS UI) ────────────────────── */
 :root {
   --sidebar-width: 260px;
   --sidebar-collapsed-width: 68px;
   --navbar-height: 60px;
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 
-  /* Light mode */
-  --bg-page:       theme('colors.surface.50');
-  --bg-surface:    #ffffff;
-  --bg-subtle:     theme('colors.surface.100');
-  --border:        theme('colors.surface.200');
-  --text-primary:  theme('colors.surface.900');
-  --text-secondary:theme('colors.surface.500');
-  --text-muted:    theme('colors.surface.400');
-}
-
-.dark {
-  --bg-page:       theme('colors.surface.950');
-  --bg-surface:    theme('colors.surface.900');
-  --bg-subtle:     theme('colors.surface.800');
-  --border:        theme('colors.surface.700');
-  --text-primary:  theme('colors.surface.50');
-  --text-secondary:theme('colors.surface.400');
-  --text-muted:    theme('colors.surface.500');
+  /* Pure White Professional SaaS UI */
+  --bg-page:        #f8fafc;
+  --bg-surface:     #ffffff;
+  --bg-subtle:      #f1f5f9;
+  --border:         #e2e8f0;
+  --border-subtle:  #f1f5f9;
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
+  --brand-teal:     #0d9488;
 }
 
 /* ── Base ──────────────────────────────────────────────── */

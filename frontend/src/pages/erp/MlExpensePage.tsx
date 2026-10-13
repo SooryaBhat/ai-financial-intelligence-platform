@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/useToast'
 import { formatCurrency } from '@/lib/utils'
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts'
 
-const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+const COLORS = ['#0d9488', '#0284c7', '#d97706', '#e11d48', '#6366f1']
 
 export const MlExpensePage: React.FC = () => {
   const toast = useToast()

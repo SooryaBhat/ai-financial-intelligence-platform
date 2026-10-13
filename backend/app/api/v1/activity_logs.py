@@ -9,7 +9,8 @@ from app.services.context import RequestContext
 router = APIRouter(prefix="/activity-logs", tags=["Activity Logs"])
 
 
-@router.get("/", response_model=SuccessResponse, summary="List activity logs")
+@router.get("", response_model=SuccessResponse, summary="List activity logs")
+@router.get("/", response_model=SuccessResponse, summary="List activity logs", include_in_schema=False)
 def list_activity_logs(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),

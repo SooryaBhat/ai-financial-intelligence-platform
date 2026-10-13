@@ -18,7 +18,8 @@ def _get_service(ctx: RequestContext = Depends(get_request_context)) -> Purchase
     return PurchaseService(PurchaseRepository(ctx.user_client))
 
 
-@router.get("/", response_model=SuccessResponse, summary="List purchases")
+@router.get("", response_model=SuccessResponse, summary="List purchases")
+@router.get("/", response_model=SuccessResponse, summary="List purchases", include_in_schema=False)
 def list_purchases(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -49,7 +50,8 @@ def list_purchases(
     })
 
 
-@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create purchase order")
+@router.post("", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create purchase order")
+@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create purchase order", include_in_schema=False)
 def create_purchase(
     payload: PurchaseCreate,
     ctx: RequestContext = Depends(get_request_context),

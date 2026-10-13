@@ -379,6 +379,19 @@ class AIContextService:
 
     # ── Gemini Assistant Execution ─────────────────────────────────────
 
+    def answer_with_tools(self, question: str) -> Dict[str, Any]:
+        """
+        Invoke AI Assistant with LLM tool/function calling grounded in live ERP database records.
+        Returns response message, tools_used metadata, and execution details.
+        """
+        from app.services.ai_assistant import AIAssistantService
+        try:
+            cid = UUID(str(self.company_id))
+        except (ValueError, TypeError):
+            cid = self.company_id
+        assistant = AIAssistantService(self.client, cid)
+        return assistant.answer_question(question)
+
     def answer_question(self, question: str) -> str:
         """
         Build database-grounded context and generate answer via Gemini.

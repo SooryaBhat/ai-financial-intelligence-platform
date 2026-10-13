@@ -22,7 +22,8 @@ def _get_service(ctx: RequestContext = Depends(get_request_context)) -> PaymentS
     )
 
 
-@router.get("/", response_model=SuccessResponse, summary="List payments")
+@router.get("", response_model=SuccessResponse, summary="List payments")
+@router.get("/", response_model=SuccessResponse, summary="List payments", include_in_schema=False)
 def list_payments(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -53,7 +54,8 @@ def list_payments(
     })
 
 
-@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Record a payment")
+@router.post("", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Record a payment")
+@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Record a payment", include_in_schema=False)
 def create_payment(
     payload: PaymentCreate,
     ctx: RequestContext = Depends(get_request_context),

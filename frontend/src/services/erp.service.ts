@@ -71,6 +71,20 @@ export const settingService = {
   },
 }
 
+export interface ToolCallExecution {
+  tool: string
+  args: Record<string, unknown>
+  summary?: string
+  result?: unknown
+}
+
+export interface ChatAssistantResponse {
+  message: string
+  role?: string
+  session_id?: string
+  tools_used?: ToolCallExecution[]
+}
+
 export const mlService = {
   async predictRevenue(monthsAhead = 6, modelType = 'xgboost', historicalRevenue?: number[]) {
     const response = await api.post<ApiSuccessResponse<unknown>>('/api/ml/revenue/predict', {
@@ -131,11 +145,12 @@ export const mlService = {
     return response.data.data
   },
 
-  async chatAssistant(message: string, context?: Record<string, unknown>) {
-    const response = await api.post<ApiSuccessResponse<{ message: string; data?: unknown }>>('/api/v1/chat', {
+  async chatAssistant(message: string, context?: Record<string, unknown>): Promise<ChatAssistantResponse> {
+    const response = await api.post<ApiSuccessResponse<ChatAssistantResponse>>('/api/v1/chat', {
       message,
       context,
     })
     return response.data.data
   },
 }
+

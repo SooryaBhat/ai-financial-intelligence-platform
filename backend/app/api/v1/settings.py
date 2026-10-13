@@ -10,7 +10,8 @@ from app.services.context import RequestContext
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
 
-@router.get("/", response_model=SuccessResponse, summary="List all company settings")
+@router.get("", response_model=SuccessResponse, summary="List all company settings")
+@router.get("/", response_model=SuccessResponse, summary="List all company settings", include_in_schema=False)
 def list_settings(ctx: RequestContext = Depends(get_request_context)):
     repo = SettingsRepository(ctx.user_client)
     return SuccessResponse(data=repo.list_all(ctx.company_id))

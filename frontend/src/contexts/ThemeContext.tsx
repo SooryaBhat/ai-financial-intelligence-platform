@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect } from 'react'
 
 type Theme = 'light' | 'dark' | 'system'
 
@@ -11,53 +11,18 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    const saved = localStorage.getItem('theme') as Theme
-    return saved || 'system'
-  })
-
-  const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>('light')
-
   useEffect(() => {
     const root = window.document.documentElement
-    
-    const applyTheme = (t: Theme) => {
-      let resolved: 'light' | 'dark' = 'light'
-      if (t === 'system') {
-        resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-      } else {
-        resolved = t
-      }
+    root.classList.remove('dark')
+    localStorage.setItem('theme', 'light')
+  }, [])
 
-      setEffectiveTheme(resolved)
-
-      if (resolved === 'dark') {
-        root.classList.add('dark')
-      } else {
-        root.classList.remove('dark')
-      }
-    }
-
-    applyTheme(theme)
-    localStorage.setItem('theme', theme)
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handleChange = () => {
-      if (theme === 'system') {
-        applyTheme('system')
-      }
-    }
-
-    mediaQuery.addEventListener('change', handleChange)
-    return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [theme])
-
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme)
+  const setTheme = () => {
+    // Light theme only per specification
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, effectiveTheme }}>
+    <ThemeContext.Provider value={{ theme: 'light', setTheme, effectiveTheme: 'light' }}>
       {children}
     </ThemeContext.Provider>
   )

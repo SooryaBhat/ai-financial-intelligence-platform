@@ -40,5 +40,14 @@ class ChatMessageRepository(BaseRepository):
         return response.data or []
 
     def create_message(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        response = self._query().insert(data).execute()
-        return response.data[0] if response.data else {}
+        try:
+            response = self._query().insert(data).execute()
+            return response.data[0] if response.data else {}
+        except Exception:
+            # Fallback if metadata column is omitted in remote DB table
+            if "metadata" in data:
+                fallback_data = {k: v for k, v in data.items() if k != "metadata"}
+                response = self._query().insert(fallback_data).execute()
+                return response.data[0] if response.data else {}
+            raise
+

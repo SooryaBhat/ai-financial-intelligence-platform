@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
 
 // Layouts
@@ -12,6 +12,8 @@ import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
 import { OnboardingPage } from '@/pages/onboarding/OnboardingPage'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
+import { LandingPage } from '@/pages/LandingPage'
+import { HelpPage } from '@/pages/HelpPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
 // ERP Module Pages
@@ -47,6 +49,10 @@ import { MlChatPage } from '@/pages/erp/MlChatPage'
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
+      {/* Public Landing & Documentation Routes */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/help" element={<HelpPage />} />
+
       {/* Auth Public Routes */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
@@ -70,7 +76,6 @@ export const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
 
         {/* Platform & Organization */}

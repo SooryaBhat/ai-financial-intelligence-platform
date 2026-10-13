@@ -20,7 +20,8 @@ def _get_service(ctx: RequestContext = Depends(get_request_context)) -> Inventor
     )
 
 
-@router.get("/", response_model=SuccessResponse, summary="List all inventory")
+@router.get("", response_model=SuccessResponse, summary="List all inventory")
+@router.get("/", response_model=SuccessResponse, summary="List all inventory", include_in_schema=False)
 def list_inventory(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),

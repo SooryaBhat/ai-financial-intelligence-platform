@@ -14,7 +14,8 @@ from app.services.context import RequestContext
 router = APIRouter(prefix="/invoices", tags=["Invoices"])
 
 
-@router.get("/", response_model=SuccessResponse, summary="List invoices")
+@router.get("", response_model=SuccessResponse, summary="List invoices")
+@router.get("/", response_model=SuccessResponse, summary="List invoices", include_in_schema=False)
 def list_invoices(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -56,10 +57,17 @@ def list_overdue(ctx: RequestContext = Depends(get_request_context)):
 
 
 @router.post(
+    "",
+    response_model=SuccessResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create invoice",
+)
+@router.post(
     "/",
     response_model=SuccessResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create invoice",
+    include_in_schema=False,
 )
 def create_invoice(
     payload: InvoiceCreate,

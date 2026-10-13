@@ -17,7 +17,8 @@ router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
 
 
-@router.get("/", response_model=SuccessResponse, summary="List expenses")
+@router.get("", response_model=SuccessResponse, summary="List expenses")
+@router.get("/", response_model=SuccessResponse, summary="List expenses", include_in_schema=False)
 def list_expenses(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -58,7 +59,8 @@ def list_pending(ctx: RequestContext = Depends(get_request_context)):
     return SuccessResponse(data=repo.list_pending_approval(ctx.company_id))
 
 
-@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create expense")
+@router.post("", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create expense")
+@router.post("/", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create expense", include_in_schema=False)
 def create_expense(
     payload: ExpenseCreate,
     ctx: RequestContext = Depends(get_request_context),

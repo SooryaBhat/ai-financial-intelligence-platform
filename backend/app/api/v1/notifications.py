@@ -15,7 +15,8 @@ def _get_service(ctx: RequestContext = Depends(get_request_context)) -> Notifica
     return NotificationService(NotificationRepository(ctx.user_client))
 
 
-@router.get("/", response_model=SuccessResponse, summary="List notifications")
+@router.get("", response_model=SuccessResponse, summary="List notifications")
+@router.get("/", response_model=SuccessResponse, summary="List notifications", include_in_schema=False)
 def list_notifications(
     unread_only: bool = Query(False),
     ctx: RequestContext = Depends(get_request_context),

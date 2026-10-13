@@ -50,7 +50,8 @@ def _get_or_create_active_session(
         return ""
 
 
-@router.post("/", response_model=SuccessResponse, summary="Send message to AI assistant")
+@router.post("", response_model=SuccessResponse, summary="Send message to AI assistant")
+@router.post("/", response_model=SuccessResponse, summary="Send message to AI assistant", include_in_schema=False)
 def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_context)):
     """
     Database-grounded AI assistant endpoint.
@@ -77,12 +78,15 @@ def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_cont
         except Exception as err:
             logger.warning("Failed to persist user chat message: {}", err)
 
-    # Build database context & query Gemini
+    # Query AI assistant with grounded tool calling
+    tools_used = []
     try:
         ai_service = AIContextService(ctx.user_client, ctx.company_id)
-        reply = ai_service.answer_question(msg)
+        result = ai_service.answer_with_tools(msg)
+        reply = result.get("message") or "Analysis complete."
+        tools_used = result.get("tools_used") or []
     except Exception as e:
-        logger.error("Unhandled error in AIContextService: {}", e)
+        logger.error("Unhandled error in AI Assistant tool calling: {}", e)
         reply = "AI Assistant is temporarily unavailable. Unable to process request."
 
     if session_id_str:
@@ -91,11 +95,17 @@ def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_cont
                 "session_id": session_id_str,
                 "role": "assistant",
                 "content": reply,
+                "metadata": {"tools_used": tools_used},
             })
         except Exception as err:
             logger.warning("Failed to persist assistant chat message: {}", err)
 
-    return SuccessResponse(data={"message": reply, "role": "assistant", "session_id": session_id_str})
+    return SuccessResponse(data={
+        "message": reply,
+        "role": "assistant",
+        "session_id": session_id_str,
+        "tools_used": tools_used,
+    })
 
 
 # ── Sessions ──────────────────────────────────────────────────
@@ -161,12 +171,15 @@ def send_message(
     except Exception as e:
         logger.warning("Could not persist user message: {}", e)
 
-    # Generate Gemini grounded response
+    # Generate grounded response with tool calling
+    tools_used = []
     try:
         ai_service = AIContextService(ctx.user_client, ctx.company_id)
-        reply = ai_service.answer_question(payload.content)
+        result = ai_service.answer_with_tools(payload.content)
+        reply = result.get("message") or "Analysis complete."
+        tools_used = result.get("tools_used") or []
     except Exception as e:
-        logger.error("Error in AIContextService for session message: {}", e)
+        logger.error("Error in AI Assistant for session message: {}", e)
         reply = "AI Assistant is temporarily unavailable."
 
     # Save assistant message
@@ -176,8 +189,14 @@ def send_message(
             "session_id": str(session_id),
             "role": "assistant",
             "content": reply,
+            "metadata": {"tools_used": tools_used},
         })
     except Exception as e:
         logger.warning("Could not persist assistant message: {}", e)
 
-    return SuccessResponse(data=assistant_msg or {"role": "assistant", "content": reply, "message": reply})
+    return SuccessResponse(data=assistant_msg or {
+        "role": "assistant",
+        "content": reply,
+        "message": reply,
+        "tools_used": tools_used,
+    })

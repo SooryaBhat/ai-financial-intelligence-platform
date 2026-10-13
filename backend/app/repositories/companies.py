@@ -32,6 +32,34 @@ class CompanyRepository(BaseRepository):
                 return None
             raise
 
+    def list_companies(
+        self,
+        search_column: Optional[str] = None,
+        search_value: Optional[str] = None,
+        order_by: str = "created_at",
+        ascending: bool = False,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        query = self._query().select("*").is_("deleted_at", "null")
+        if search_column and search_value:
+            query = query.ilike(search_column, f"%{search_value}%")
+        query = query.order(order_by, desc=not ascending)
+        query = query.range(offset, offset + limit - 1)
+        response = query.execute()
+        return response.data or []
+
+    def count_companies(
+        self,
+        search_column: Optional[str] = None,
+        search_value: Optional[str] = None,
+    ) -> int:
+        query = self._query().select("id", count="exact").is_("deleted_at", "null")
+        if search_column and search_value:
+            query = query.ilike(search_column, f"%{search_value}%")
+        response = query.execute()
+        return response.count or 0
+
     def list_all(self, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
         """Admin: list all companies (bypasses company scoping)."""
         response = (
@@ -43,3 +71,4 @@ class CompanyRepository(BaseRepository):
             .execute()
         )
         return response.data or []
+

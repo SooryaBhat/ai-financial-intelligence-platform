@@ -19,7 +19,7 @@ const onboardSchema = z.object({
     .regex(/^[a-z0-9-]+$/, 'Slug can only contain lowercase letters, numbers, and hyphens'),
   industry: z.string().optional(),
   country: z.string().optional(),
-  currency: z.string().length(3, 'Currency must be a 3-letter code (e.g. USD)'),
+  currency: z.string().length(3, 'Currency must be a 3-letter code (e.g. USD, INR)'),
   timezone: z.string().min(1, 'Timezone is required'),
 })
 
@@ -64,7 +64,7 @@ export const OnboardingPage: React.FC = () => {
       const compName = company.company_name || company.name || 'Company'
       const compId = company.company_id || company.id
 
-      toast.success(`Company "${compName}" created successfully!`)
+      toast.success(`Organization workspace "${compName}" initialized!`)
       if (compId) {
         setActiveCompanyId(compId)
       }
@@ -82,56 +82,58 @@ export const OnboardingPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-xl font-bold text-surface-900 dark:text-surface-100">Company Onboarding</h2>
-        <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
-          Configure your primary company workspace to get started
+      <div className="text-center space-y-1">
+        <h2 className="text-xl font-bold text-slate-900 tracking-tight">Setup Organization Workspace</h2>
+        <p className="text-xs text-slate-500">
+          Configure your primary business entity to activate ERP ledger & forecasting
         </p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <Input
-          label="Company Name"
+          label="Legal Business / Company Name"
           type="text"
-          placeholder="Acme Financial Corp"
-          leftIcon={<Building2 className="w-4 h-4" />}
+          placeholder="e.g. Apex Industrial Solutions Ltd"
+          leftIcon={<Building2 className="w-4 h-4 text-slate-400" />}
           error={errors.company_name?.message}
           {...register('company_name', { onChange: handleNameChange })}
         />
 
         <Input
-          label="Company Slug (Unique Identifier)"
+          label="Unique Workspace Identifier (Slug)"
           type="text"
-          placeholder="acme-financial"
-          leftIcon={<Globe className="w-4 h-4" />}
+          placeholder="apex-industrial"
+          leftIcon={<Globe className="w-4 h-4 text-slate-400" />}
           error={errors.company_slug?.message}
           {...register('company_slug')}
         />
 
         <div className="grid grid-cols-2 gap-3">
           <Select
-            label="Industry"
+            label="Industry Sector"
             options={[
-              { label: 'Technology', value: 'Technology' },
+              { label: 'Technology & SaaS', value: 'Technology' },
               { label: 'Retail & E-commerce', value: 'Retail' },
               { label: 'Manufacturing', value: 'Manufacturing' },
-              { label: 'Healthcare', value: 'Healthcare' },
+              { label: 'Healthcare & Pharma', value: 'Healthcare' },
               { label: 'Financial Services', value: 'Financial' },
+              { label: 'Wholesale & Distribution', value: 'Distribution' },
             ]}
             error={errors.industry?.message}
             {...register('industry')}
           />
 
           <Select
-            label="Default Currency"
+            label="Reporting Currency"
             options={[
               { label: 'USD ($)', value: 'USD' },
               { label: 'EUR (€)', value: 'EUR' },
               { label: 'GBP (£)', value: 'GBP' },
-              { label: 'CAD ($)', value: 'CAD' },
               { label: 'INR (₹)', value: 'INR' },
+              { label: 'CAD ($)', value: 'CAD' },
+              { label: 'AUD ($)', value: 'AUD' },
             ]}
-            leftIcon={<DollarSign className="w-4 h-4" />}
+            leftIcon={<DollarSign className="w-4 h-4 text-slate-400" />}
             error={errors.currency?.message}
             {...register('currency')}
           />
@@ -139,7 +141,7 @@ export const OnboardingPage: React.FC = () => {
 
         <div className="grid grid-cols-2 gap-3">
           <Input
-            label="Country"
+            label="Country of Operation"
             type="text"
             placeholder="United States"
             error={errors.country?.message}
@@ -147,9 +149,9 @@ export const OnboardingPage: React.FC = () => {
           />
 
           <Input
-            label="Timezone"
+            label="Fiscal Timezone"
             type="text"
-            placeholder="UTC"
+            placeholder="UTC / America/New_York"
             error={errors.timezone?.message}
             {...register('timezone')}
           />
@@ -162,7 +164,7 @@ export const OnboardingPage: React.FC = () => {
           isLoading={isLoading}
           rightIcon={<ArrowRight className="w-4 h-4" />}
         >
-          Launch Financial Workspace
+          Activate Workspace & Launch ALLADIN
         </Button>
       </form>
     </div>
