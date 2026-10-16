@@ -46,8 +46,19 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expiry_minutes: int = 60
 
-    # ── AI / Gemini ─────────────────────────────────────────────
+    # ── AI Providers (Ollama & Gemini) ──────────────────────────
+    ai_provider: str = "ollama"
     gemini_api_key: str = ""
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen3:4b"
+    ollama_timeout_seconds: float = 120.0
+
+    # ── RAG / Knowledge Base ──────────────────────────────────
+    rag_embedding_provider: str = "google"
+    rag_embedding_model: str = "gemini-embedding-001"
+    rag_embedding_dimensions: int = 768
+    rag_similarity_threshold: float = 0.65
+    rag_top_k: int = 5
 
     # ── Application ───────────────────────────────────────────
     app_name: str = "AI Financial Intelligence Platform"

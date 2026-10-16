@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ALLADIN Business Rule",
+  "type": "object",
+  "required": ["rule_id","rule_name","business_domain","purpose","preconditions","required_fields","logic","thresholds_config","outcome","severity","suggested_follow_up","exceptions_edge_cases","data_quality_checks","user_explanation","evidence_attribution","test_cases","status"],
+  "properties": {
+    "rule_id": {"type": "string", "pattern": "^(FIN|SAL|EXP|INV|FCT|ANO|HLT|REC|AST|DQ)-[0-9]{3}$"},
+    "rule_name": {"type": "string"},
+    "business_domain": {"enum": ["financial","sales","expense","inventory","forecasting","anomaly","health_scorecard","recommendation","assistant_behavior","data_quality"]},
+    "purpose": {"type": "string"},
+    "preconditions": {"type": "array", "items": {"type": "string"}},
+    "required_fields": {"type": "array", "items": {"type": "object", "required": ["field","source","verified_in_schema"], "properties": {"field": {"type": "string"}, "source": {"type": "string"}, "verified_in_schema": {"type": "boolean", "description": "false until reconciled with the real database"}}}},
+    "logic": {"type": "string", "description": "Formula or pseudocode"},
+    "thresholds_config": {"type": "array", "items": {"type": "object", "required": ["name","kind"], "properties": {"name": {"type": "string"}, "kind": {"enum": ["MANDATORY","CONFIG"]}, "illustrative_default": {}, "notes": {"type": "string"}}}},
+    "outcome": {"type": "string"},
+    "severity": {"enum": ["info","low","medium","high","critical","n/a"]},
+    "suggested_follow_up": {"type": "string"},
+    "exceptions_edge_cases": {"type": "array", "items": {"type": "string"}},
+    "data_quality_checks": {"type": "array", "items": {"type": "string"}},
+    "user_explanation": {"type": "string", "description": "Plain-language template shown to the user"},
+    "evidence_attribution": {"type": "string"},
+    "test_cases": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "status": {"enum": ["proposed","configuration_dependent","validated"]}
+  }
+}

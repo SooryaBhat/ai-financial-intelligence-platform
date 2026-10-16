@@ -1,15 +1,16 @@
 """
 AI Assistant Tool Definitions and Secure Execution Engine.
 
-Provides 6 enterprise-grade tools scoped strictly to the authenticated company:
+Provides 7 enterprise-grade tools scoped strictly to the authenticated company and knowledge base:
 1. get_sales_analysis — Sales performance, top products, MoM growth, recent transactions
 2. get_expense_summary — Expense totals, category breakdowns, recent expenses
 3. get_inventory_status — Total inventory units, catalog count, reorder alerts
 4. forecast_revenue — ML-driven revenue forecasting (XGBoost / SARIMA)
 5. detect_transaction_anomalies — Isolation Forest transaction anomaly scanner
 6. get_business_health_analysis — 5-KPI composite business health scoring & grade
+7. search_business_knowledge_base — Verified business guidelines, official MSME schemes & policies, and RAG retrieval
 
-All operations are read-only and strictly scoped to company_id.
+All operations are read-only and strictly scoped to company_id or platform knowledge.
 """
 from datetime import date, datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional
@@ -381,8 +382,8 @@ class AIToolExecutor:
             if low_stock_count == 0:
                 stock_status = "HEALTHY"
                 summary = (
-                    f"Inventory is healthy across {total_products} catalog SKUs and {total_units:,.0f} total units. "
-                    "No critical low-stock items detected."
+                    f"Inventory check across {total_products} catalog SKUs and {total_units:,.0f} total units: "
+                    "no critical low-stock items detected at or below reorder threshold."
                 )
             elif low_stock_count <= 3:
                 stock_status = "WARNING"
@@ -752,6 +753,97 @@ class AIToolExecutor:
                 "summary": "Unable to calculate business health score at this time.",
             }
 
+    # ── Tool 7: Business Knowledge Base Search (RAG) ──────────────────
+
+    def search_business_knowledge_base(
+        self,
+        query: str,
+        doc_type: Optional[str] = None,
+        top_k: int = 4,
+    ) -> Dict[str, Any]:
+        """
+        Search verified business knowledge base, official regulatory documents,
+        MSME schemes, accounting standards, financial concepts, and working capital guides.
+        Returns grounded passages with source citations.
+        """
+        query_clean = (query or "").strip()
+        if not query_clean:
+            return {
+                "query": "",
+                "results_count": 0,
+                "passages": [],
+                "citations": [],
+                "formatted_context": "No search query provided.",
+                "summary": "Please provide a valid query to search the business knowledge base.",
+            }
+
+        try:
+            from app.services.rag.retriever import RAGRetriever
+
+            cid = None
+            if self.company_id:
+                try:
+                    cid = UUID(str(self.company_id))
+                except (ValueError, TypeError):
+                    pass
+
+            retriever = RAGRetriever(client=self.client, company_id=cid)
+            results = retriever.retrieve(
+                query=query_clean,
+                top_k=int(top_k or 4),
+                doc_type=doc_type,
+            )
+
+            if not results:
+                return {
+                    "query": query_clean,
+                    "results_count": 0,
+                    "passages": [],
+                    "citations": [],
+                    "formatted_context": "No relevant business knowledge passages found in the knowledge base.",
+                    "summary": f"No knowledge base entries matched '{query_clean}'.",
+                }
+
+            passages = []
+            citations = []
+            for r in results:
+                passages.append({
+                    "doc_id": r.get("doc_id"),
+                    "title": r.get("title"),
+                    "author": r.get("author"),
+                    "section_title": r.get("section_title"),
+                    "page_number": r.get("page_number"),
+                    "content": r.get("content"),
+                    "similarity": r.get("similarity"),
+                    "citation": r.get("citation"),
+                    "is_draft": r.get("is_draft", False),
+                    "status_label": r.get("status_label", ""),
+                })
+                if r.get("citation") and r["citation"] not in citations:
+                    citations.append(r["citation"])
+
+            formatted_xml = retriever.format_for_assistant(results)
+
+            return {
+                "query": query_clean,
+                "results_count": len(results),
+                "passages": passages,
+                "citations": citations,
+                "formatted_context": formatted_xml,
+                "summary": f"Retrieved {len(results)} relevant knowledge passages from official guides and policies.",
+            }
+
+        except Exception as e:
+            logger.error("Error executing search_business_knowledge_base tool: {}", e)
+            return {
+                "error": str(e),
+                "query": query_clean,
+                "results_count": 0,
+                "passages": [],
+                "citations": [],
+                "summary": f"Failed to retrieve business knowledge: {str(e)}",
+            }
+
     # ── Universal Tool Invocation Gateway ─────────────────────────────
 
     def execute(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -765,6 +857,7 @@ class AIToolExecutor:
             "forecast_revenue": self.forecast_revenue,
             "detect_transaction_anomalies": self.detect_transaction_anomalies,
             "get_business_health_analysis": self.get_business_health_analysis,
+            "search_business_knowledge_base": self.search_business_knowledge_base,
         }
 
         func = tool_map.get(tool_name)
@@ -930,6 +1023,32 @@ TOOL_DECLARATIONS = [
                 "payment_collection": {
                     "type": "NUMBER",
                     "description": "Optional custom receivable collection ratio (0.0 to 1.0).",
+                },
+            },
+        },
+    },
+    {
+        "name": "search_business_knowledge_base",
+        "description": (
+            "Search verified business knowledge base, official regulatory documents, MSME schemes, "
+            "accounting standards, financial concepts, and working capital guides. "
+            "Use this tool for conceptual explanations, government guidelines (e.g. RBI collateral-free rules), "
+            "financial formulas, and best practices. Do NOT use this tool for live company sales or inventory numbers."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "query": {
+                    "type": "STRING",
+                    "description": "The search query or concept to look up (e.g., 'collateral-free loan limit RBI', 'working capital cycle calculation', 'cash flow vs profit').",
+                },
+                "doc_type": {
+                    "type": "STRING",
+                    "description": "Optional filter for document type: 'official_source', 'internal_guide', or 'company_private'.",
+                },
+                "top_k": {
+                    "type": "INTEGER",
+                    "description": "Number of relevant passages to retrieve (default: 4).",
                 },
             },
         },

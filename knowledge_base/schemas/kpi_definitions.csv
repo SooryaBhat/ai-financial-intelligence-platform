@@ -1,0 +1,20 @@
+kpi_id,name,domain,formula,numerator,denominator,unit,period_basis,required_fields_assumed,rule_id,status
+KPI-001,Total Revenue,financial,SUM(completed sale revenue),completed sale amounts,n/a,currency,reporting period,sales.total_amount|sales.status|sales.sale_date,FIN-001,proposed
+KPI-002,Net Revenue,financial,Total revenue - refunds - discounts (if not already netted),n/a,n/a,currency,reporting period,refunds.amount|sales.discount_amount,FIN-002,proposed
+KPI-003,Total Expenses,financial,SUM(approved/paid expense amounts),expense amounts,n/a,currency,reporting period,expenses.amount|expenses.status|expenses.expense_date|JOIN categories ON expenses.category_id=categories.id,FIN-003,proposed
+KPI-004,Gross Profit,financial,Net revenue - COGS,n/a,n/a,currency,reporting period,cogs source (product cost or COGS-category expense),FIN-004,configuration_dependent
+KPI-005,Operating Profit,financial,Gross profit - operating expenses,n/a,n/a,currency,reporting period,JOIN categories ON expenses.category_id=categories.id,FIN-005,configuration_dependent
+KPI-006,Net Profit,financial,Operating profit - interest - tax (+/- other income),n/a,n/a,currency,reporting period,interest/tax categories,FIN-006,configuration_dependent
+KPI-007,Gross Profit Margin,financial,Gross profit / Net revenue,gross profit,net revenue,percent,reporting period,see FIN-004,FIN-007,configuration_dependent
+KPI-008,Operating Profit Margin,financial,Operating profit / Net revenue,operating profit,net revenue,percent,reporting period,see FIN-005,FIN-008,configuration_dependent
+KPI-009,Net Profit Margin,financial,Net profit / Net revenue,net profit,net revenue,percent,reporting period,see FIN-006,FIN-009,configuration_dependent
+KPI-010,Period-over-Period Change,financial,(Current - Prior) / ABS(Prior),current minus prior,ABS(prior),percent,two comparable periods,any metric,FIN-010,proposed
+KPI-011,Working Capital,financial,Current assets - Current liabilities,n/a,n/a,currency,balance-sheet date,balance-sheet data (not assumed present),FIN-014,configuration_dependent
+KPI-012,Budget Variance,financial,Actual - Budget (and % of ABS(budget)),n/a,ABS(budget),currency/percent,budget period,budgets table absent in schema (live comparison unsupported),FIN-015,configuration_dependent
+KPI-013,Average Daily Demand,inventory,Units sold in window / days in window,units sold,days in window,units/day,CONFIG window,sales line items: sale_items.product_id|sale_items.quantity|sales.sale_date,INV-003,proposed
+KPI-014,Safety Stock,inventory,z * sigma_d * sqrt(L),n/a,n/a,units,CONFIG,demand std dev|lead time|service level,INV-005,configuration_dependent
+KPI-015,Reorder Point,inventory,d*L + SS,n/a,n/a,units,n/a,avg demand|lead time|safety stock,INV-006,configuration_dependent
+KPI-016,Inventory Turnover,inventory,COGS / Average inventory value,COGS,average inventory value,times per period,reporting period,COGS|inventory valuation snapshots,INV-011,configuration_dependent
+KPI-017,Days Inventory Outstanding,inventory,Average inventory / COGS * days in period,avg inventory,COGS,days,reporting period,see INV-011,INV-011,configuration_dependent
+KPI-018,Stock Cover (days),inventory,Available stock / Average daily demand,available stock,avg daily demand,days,n/a,inventory.quantity|sale_items.quantity|sale_items.product_id,INV-008,proposed
+

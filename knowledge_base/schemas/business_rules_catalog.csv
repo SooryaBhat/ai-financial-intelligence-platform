@@ -1,0 +1,105 @@
+rule_id,rule_name,domain,status,severity,mandatory_or_configurable,file
+ANO-000,Anomaly Wording (mandatory definition),anomaly,proposed,high,MANDATORY,business_rules/06_anomaly_detection_rules.md
+ANO-001,Unusual Amount,anomaly,configuration_dependent,medium,CONFIG thresholds,business_rules/06_anomaly_detection_rules.md
+ANO-002,Unusual Expense Category,anomaly,configuration_dependent,low,CONFIG lookback/share jump,business_rules/06_anomaly_detection_rules.md
+ANO-003,Duplicate-Looking Records,anomaly,configuration_dependent,medium,CONFIG tolerance/window,business_rules/06_anomaly_detection_rules.md
+ANO-004,Unexpected Timing or Frequency,anomaly,configuration_dependent,low,CONFIG thresholds,business_rules/06_anomaly_detection_rules.md
+ANO-005,Departure from Historical Pattern,anomaly,configuration_dependent,medium,CONFIG baseline window,business_rules/06_anomaly_detection_rules.md
+ANO-006,Missing or Inconsistent Attributes,anomaly,proposed,low,MANDATORY data-quality (not fraud) framing,business_rules/06_anomaly_detection_rules.md
+ANO-007,Round-Number / Threshold Clustering,anomaly,configuration_dependent,low,"CONFIG, off by default",business_rules/06_anomaly_detection_rules.md
+ANO-008,Alert Prioritisation and Explanation,anomaly,proposed,medium,MANDATORY explanation and wording (ANO-000),business_rules/06_anomaly_detection_rules.md
+AST-001,Tenant Isolation,assistant_behavior,proposed,critical,MANDATORY,business_rules/09_ai_assistant_behavior_rules.md
+AST-002,Tool Selection,assistant_behavior,proposed,high,MANDATORY,business_rules/09_ai_assistant_behavior_rules.md
+AST-003,No Fabricated Results,assistant_behavior,proposed,high,MANDATORY,business_rules/09_ai_assistant_behavior_rules.md
+AST-004,Read-Only by Default,assistant_behavior,proposed,high,MANDATORY,business_rules/09_ai_assistant_behavior_rules.md
+AST-005,Time-Period Handling,assistant_behavior,proposed,high,MANDATORY,business_rules/09_ai_assistant_behavior_rules.md
+AST-006,No Data for Period,assistant_behavior,proposed,high,MANDATORY,business_rules/09_ai_assistant_behavior_rules.md
+AST-007,Citations,assistant_behavior,proposed,medium,MANDATORY intent; CONFIG metadata handling,business_rules/09_ai_assistant_behavior_rules.md
+AST-008,Named Book or Author Queries,assistant_behavior,proposed,medium,MANDATORY intent; CONFIG metadata handling,business_rules/09_ai_assistant_behavior_rules.md
+AST-009,Separate Fact Types,assistant_behavior,proposed,high,MANDATORY,business_rules/09_ai_assistant_behavior_rules.md
+AST-010,Uncertainty and Forecasts,assistant_behavior,proposed,high,MANDATORY,business_rules/09_ai_assistant_behavior_rules.md
+AST-011,Safe Recommendations,assistant_behavior,proposed,high,MANDATORY,business_rules/09_ai_assistant_behavior_rules.md
+AST-012,Prompt Injection Handling,assistant_behavior,proposed,critical,MANDATORY,business_rules/09_ai_assistant_behavior_rules.md
+AST-013,Secrets Protection,assistant_behavior,proposed,critical,MANDATORY,business_rules/09_ai_assistant_behavior_rules.md
+DQ-001,Required-Field Presence,data_quality,proposed,medium,MANDATORY gate; CONFIG tolerances,business_rules/10_data_quality_and_exception_rules.md
+DQ-002,Valid Date Range,data_quality,proposed,medium,MANDATORY gate; CONFIG tolerances,business_rules/10_data_quality_and_exception_rules.md
+DQ-003,Duplicate-Looking Records,data_quality,proposed,medium,MANDATORY gate; CONFIG tolerances,business_rules/10_data_quality_and_exception_rules.md
+DQ-004,Negative or Zero Values,data_quality,proposed,medium,MANDATORY gate; CONFIG tolerances,business_rules/10_data_quality_and_exception_rules.md
+DQ-005,Unit Consistency,data_quality,proposed,medium,MANDATORY gate; CONFIG tolerances,business_rules/10_data_quality_and_exception_rules.md
+DQ-006,Currency Consistency,data_quality,proposed,medium,MANDATORY gate; CONFIG tolerances,business_rules/10_data_quality_and_exception_rules.md
+DQ-007,Status Validity,data_quality,proposed,medium,MANDATORY gate; CONFIG tolerances,business_rules/10_data_quality_and_exception_rules.md
+DQ-008,Timeliness,data_quality,proposed,medium,MANDATORY gate; CONFIG tolerances,business_rules/10_data_quality_and_exception_rules.md
+DQ-009,Referential Integrity,data_quality,proposed,medium,MANDATORY gate; CONFIG tolerances,business_rules/10_data_quality_and_exception_rules.md
+DQ-010,Tenant Integrity,data_quality,proposed,critical,MANDATORY gate; CONFIG tolerances,business_rules/10_data_quality_and_exception_rules.md
+EXP-001,Expense Totals by Period/Category,expense,proposed,info,MANDATORY no-accusation wording; CONFIG thresholds,business_rules/03_expense_management_rules.md
+EXP-002,Expense Growth,expense,configuration_dependent,medium,MANDATORY no-accusation wording; CONFIG thresholds,business_rules/03_expense_management_rules.md
+EXP-003,Budget Variance,expense,configuration_dependent,medium,MANDATORY no-accusation wording; CONFIG thresholds,business_rules/03_expense_management_rules.md
+EXP-004,Unusually Large Expenses,expense,configuration_dependent,medium,MANDATORY no-accusation wording; CONFIG thresholds,business_rules/03_expense_management_rules.md
+EXP-005,Repeated Expense Patterns,expense,configuration_dependent,low,MANDATORY no-accusation wording; CONFIG thresholds,business_rules/03_expense_management_rules.md
+EXP-006,Expense-to-Revenue Ratio,expense,configuration_dependent,info,MANDATORY no-accusation wording; CONFIG thresholds,business_rules/03_expense_management_rules.md
+EXP-007,Cost-Control Investigation Suggestions,expense,proposed,low,MANDATORY no-accusation wording; CONFIG thresholds,business_rules/03_expense_management_rules.md
+FCT-001,Minimum History,forecasting,configuration_dependent,medium,CONFIG history thresholds,business_rules/05_forecasting_rules.md
+FCT-002,Baseline Comparison,forecasting,configuration_dependent,medium,MANDATORY baseline requirement; CONFIG margin,business_rules/05_forecasting_rules.md
+FCT-003,Model Selection (Walk-Forward),forecasting,proposed,high,MANDATORY chronological validation,business_rules/05_forecasting_rules.md
+FCT-004,Final Holdout Test,forecasting,proposed,high,MANDATORY single-use test period,business_rules/05_forecasting_rules.md
+FCT-005,Forecast Horizon,forecasting,configuration_dependent,medium,CONFIG horizon cap,business_rules/05_forecasting_rules.md
+FCT-006,Forecast Freshness,forecasting,configuration_dependent,low,CONFIG staleness,business_rules/05_forecasting_rules.md
+FCT-007,Forecast vs Actual Monitoring,forecasting,configuration_dependent,medium,CONFIG alert thresholds,business_rules/05_forecasting_rules.md
+FCT-008,Error Metrics,forecasting,proposed,info,MANDATORY metric definitions; MAPE not primary,business_rules/05_forecasting_rules.md
+FCT-009,Uncertainty Warnings,forecasting,configuration_dependent,medium,CONFIG thresholds,business_rules/05_forecasting_rules.md
+FCT-010,Sparse or Irregular Data,forecasting,configuration_dependent,medium,CONFIG gap/zero thresholds,business_rules/05_forecasting_rules.md
+FCT-011,One-Off Events,forecasting,configuration_dependent,low,CONFIG outlier threshold,business_rules/05_forecasting_rules.md
+FCT-012,Model Failure or Missing Artifacts,forecasting,proposed,high,MANDATORY no-fabrication,business_rules/05_forecasting_rules.md
+FIN-001,Total Revenue,financial,proposed,info,MANDATORY formula; CONFIG statuses,business_rules/01_financial_calculation_rules.md
+FIN-002,Net Revenue,financial,configuration_dependent,info,MANDATORY formula; CONFIG discount/refund basis,business_rules/01_financial_calculation_rules.md
+FIN-003,Total Expenses,financial,proposed,info,MANDATORY formula; CONFIG statuses,business_rules/01_financial_calculation_rules.md
+FIN-004,Gross Profit,financial,configuration_dependent,info,MANDATORY formula; CONFIG COGS method,business_rules/01_financial_calculation_rules.md
+FIN-005,Operating Profit,financial,configuration_dependent,info,MANDATORY formula; CONFIG category mapping,business_rules/01_financial_calculation_rules.md
+FIN-006,Net Profit,financial,configuration_dependent,info,MANDATORY formula; CONFIG categories,business_rules/01_financial_calculation_rules.md
+FIN-007,Gross Profit Margin,financial,configuration_dependent,info,MANDATORY formula; CONFIG alert thresholds,business_rules/01_financial_calculation_rules.md
+FIN-008,Operating Profit Margin,financial,configuration_dependent,info,MANDATORY formula; CONFIG alert thresholds,business_rules/01_financial_calculation_rules.md
+FIN-009,Net Profit Margin,financial,configuration_dependent,info,MANDATORY formula; CONFIG alert thresholds,business_rules/01_financial_calculation_rules.md
+FIN-010,Period-over-Period Change,financial,proposed,info,MANDATORY formula; CONFIG alert thresholds,business_rules/01_financial_calculation_rules.md
+FIN-011,Growth Rate,financial,proposed,info,MANDATORY formula; CONFIG min periods,business_rules/01_financial_calculation_rules.md
+FIN-012,Cash-Flow Calculation,financial,configuration_dependent,high,MANDATORY no-inference gate; CONFIG minimum cash,business_rules/01_financial_calculation_rules.md
+FIN-013,Accounts Receivable and Payable,financial,configuration_dependent,medium,CONFIG ageing buckets and thresholds,business_rules/01_financial_calculation_rules.md
+FIN-014,Working Capital,financial,configuration_dependent,high,MANDATORY balance-sheet requirement,business_rules/01_financial_calculation_rules.md
+FIN-015,Budget-versus-Actual Variance,financial,configuration_dependent,medium,CONFIG thresholds,business_rules/01_financial_calculation_rules.md
+HLT-001,Revenue Performance Dimension,health_scorecard,configuration_dependent,info,MANDATORY insufficient-data gating; CONFIG thresholds and weights,business_rules/07_business_health_scorecard.md
+HLT-002,Profitability Dimension,health_scorecard,configuration_dependent,info,MANDATORY insufficient-data gating; CONFIG thresholds and weights,business_rules/07_business_health_scorecard.md
+HLT-003,Liquidity Dimension,health_scorecard,configuration_dependent,info,MANDATORY insufficient-data gating; CONFIG thresholds and weights,business_rules/07_business_health_scorecard.md
+HLT-004,Expense Control Dimension,health_scorecard,configuration_dependent,info,MANDATORY insufficient-data gating; CONFIG thresholds and weights,business_rules/07_business_health_scorecard.md
+HLT-005,Inventory Health Dimension,health_scorecard,configuration_dependent,info,MANDATORY insufficient-data gating; CONFIG thresholds and weights,business_rules/07_business_health_scorecard.md
+HLT-006,Data Completeness Dimension,health_scorecard,configuration_dependent,medium,MANDATORY insufficient-data gating; CONFIG thresholds and weights,business_rules/07_business_health_scorecard.md
+HLT-007,Forecast Reliability Dimension,health_scorecard,configuration_dependent,info,MANDATORY insufficient-data gating; CONFIG thresholds and weights,business_rules/07_business_health_scorecard.md
+HLT-008,Overall Score Aggregation,health_scorecard,configuration_dependent,high,MANDATORY insufficient-data gating; CONFIG thresholds and weights,business_rules/07_business_health_scorecard.md
+HLT-009,Scorecard Explanation,health_scorecard,configuration_dependent,info,MANDATORY insufficient-data gating; CONFIG thresholds and weights,business_rules/07_business_health_scorecard.md
+INV-001,Current and Available Stock,inventory,proposed,info,MANDATORY formula,business_rules/04_inventory_decision_rules.md
+INV-002,Inventory Position,inventory,configuration_dependent,info,MANDATORY formula,business_rules/04_inventory_decision_rules.md
+INV-003,Average Demand,inventory,configuration_dependent,info,CONFIG window and minimum history,business_rules/04_inventory_decision_rules.md
+INV-004,Lead Time,inventory,configuration_dependent,info,CONFIG sample size; owner-supplied fallback must be labelled,business_rules/04_inventory_decision_rules.md
+INV-005,Safety Stock,inventory,configuration_dependent,n/a,CONFIG service level and method,business_rules/04_inventory_decision_rules.md
+INV-006,Reorder Point,inventory,configuration_dependent,medium,MANDATORY formula; gated by INV-012,business_rules/04_inventory_decision_rules.md
+INV-007,Suggested Reorder Quantity,inventory,configuration_dependent,n/a,CONFIG policy and constraints,business_rules/04_inventory_decision_rules.md
+INV-008,Stockout Risk,inventory,configuration_dependent,high,CONFIG class boundaries,business_rules/04_inventory_decision_rules.md
+INV-009,Excess Inventory,inventory,configuration_dependent,medium,CONFIG cover days,business_rules/04_inventory_decision_rules.md
+INV-010,Slow-Moving and Dead Stock,inventory,configuration_dependent,medium,CONFIG day thresholds,business_rules/04_inventory_decision_rules.md
+INV-011,Inventory Turnover and DIO,inventory,configuration_dependent,info,MANDATORY formula,business_rules/04_inventory_decision_rules.md
+INV-012,Stock Data Quality Gate,inventory,proposed,high,MANDATORY gate; CONFIG tolerances,business_rules/04_inventory_decision_rules.md
+INV-013,Supplier Delay Considerations,inventory,configuration_dependent,medium,CONFIG OTIF threshold,business_rules/04_inventory_decision_rules.md
+REC-001,Recommendation Structure,recommendation,proposed,high,MANDATORY; CONFIG N items,business_rules/08_recommendation_engine_rules.md
+REC-002,Statement Type Labels,recommendation,proposed,high,MANDATORY; CONFIG N items,business_rules/08_recommendation_engine_rules.md
+REC-003,Prohibitions,recommendation,proposed,critical,MANDATORY; CONFIG N items,business_rules/08_recommendation_engine_rules.md
+REC-004,Generation Logic,recommendation,proposed,high,MANDATORY; CONFIG N items,business_rules/08_recommendation_engine_rules.md
+REC-005,Prioritisation,recommendation,proposed,medium,MANDATORY; CONFIG N items,business_rules/08_recommendation_engine_rules.md
+REC-006,Professional-Advice Triggers,recommendation,proposed,medium,MANDATORY; CONFIG N items,business_rules/08_recommendation_engine_rules.md
+SAL-000,Sales Measure Declaration (mandatory definition),sales,proposed,high,MANDATORY,business_rules/02_sales_analysis_rules.md
+SAL-001,Sales by Date Range,sales,proposed,info,MANDATORY measure declaration (SAL-000); CONFIG thresholds,business_rules/02_sales_analysis_rules.md
+SAL-002,Sales by Product/Category,sales,configuration_dependent,info,MANDATORY measure declaration (SAL-000); CONFIG thresholds,business_rules/02_sales_analysis_rules.md
+SAL-003,Sales Growth and Decline,sales,configuration_dependent,medium,MANDATORY measure declaration (SAL-000); CONFIG thresholds,business_rules/02_sales_analysis_rules.md
+SAL-004,Top and Low Performing Products,sales,configuration_dependent,low,MANDATORY measure declaration (SAL-000); CONFIG thresholds,business_rules/02_sales_analysis_rules.md
+SAL-005,Unusual Changes in Sales,sales,configuration_dependent,medium,MANDATORY measure declaration (SAL-000); CONFIG thresholds,business_rules/02_sales_analysis_rules.md
+SAL-006,Sales Concentration,sales,configuration_dependent,medium,MANDATORY measure declaration (SAL-000); CONFIG thresholds,business_rules/02_sales_analysis_rules.md
+SAL-007,Period Comparisons,sales,proposed,info,MANDATORY measure declaration (SAL-000); CONFIG thresholds,business_rules/02_sales_analysis_rules.md
+SAL-008,Seasonality Check,sales,configuration_dependent,info,MANDATORY measure declaration (SAL-000); CONFIG thresholds,business_rules/02_sales_analysis_rules.md
+SAL-009,"Revenue, Orders, and Cash Distinction",sales,proposed,high,MANDATORY measure declaration (SAL-000); CONFIG thresholds,business_rules/02_sales_analysis_rules.md

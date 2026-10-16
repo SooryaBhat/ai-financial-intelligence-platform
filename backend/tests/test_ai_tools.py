@@ -129,7 +129,7 @@ def mock_supabase_client():
 
 
 def test_tool_declarations_registry():
-    """Verify all 6 required tools are declared with schema properties."""
+    """Verify all 7 tools are declared with schema properties."""
     names = [d["name"] for d in TOOL_DECLARATIONS]
     assert "get_sales_analysis" in names
     assert "get_expense_summary" in names
@@ -137,7 +137,8 @@ def test_tool_declarations_registry():
     assert "forecast_revenue" in names
     assert "detect_transaction_anomalies" in names
     assert "get_business_health_analysis" in names
-    assert len(TOOL_DECLARATIONS) == 6
+    assert "search_business_knowledge_base" in names
+    assert len(TOOL_DECLARATIONS) == 7
 
 
 def test_tool_sales_analysis(mock_supabase_client, sample_company_id):
