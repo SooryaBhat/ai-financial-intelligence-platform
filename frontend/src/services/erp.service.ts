@@ -83,6 +83,10 @@ export interface ChatAssistantResponse {
   role?: string
   session_id?: string
   tools_used?: ToolCallExecution[]
+  provider?: string
+  model?: string
+  fallback_used?: boolean
+  fallback_reason?: string
 }
 
 export const mlService = {
@@ -146,10 +150,16 @@ export const mlService = {
   },
 
   async chatAssistant(message: string, context?: Record<string, unknown>): Promise<ChatAssistantResponse> {
-    const response = await api.post<ApiSuccessResponse<ChatAssistantResponse>>('/api/v1/chat', {
-      message,
-      context,
-    })
+    const response = await api.post<ApiSuccessResponse<ChatAssistantResponse>>(
+      '/api/v1/chat',
+      {
+        message,
+        context,
+      },
+      {
+        timeout: 240000, // 4-minute timeout for local LLM inference
+      }
+    )
     return response.data.data
   },
 }

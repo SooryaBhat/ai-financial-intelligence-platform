@@ -71,6 +71,14 @@ CRITICAL OPERATIONAL RULES:
 6. Keep answers concise, factual, and business-focused. Never expose internal reasoning, chain-of-thought tokens, or lengthy self-analysis.
 """
 
+OLLAMA_SYSTEM_PROMPT = """You are ALLADIN, the AI Financial Intelligence and ERP Copilot.
+You are connected to the company's real ERP database records.
+When answering:
+1. Always use tools to retrieve real ERP data (sales, expenses, inventory, revenue forecasts, anomaly detection, business health).
+2. Ground your response strictly in the retrieved tool data. Never invent figures, transactions, or estimates.
+3. If no data exists or metrics are unavailable, clearly state that.
+4. Be concise, direct, and business-focused. Answer directly without lengthy internal deliberation."""
+
 
 def _resolve_gemini_api_key() -> str:
     """Retrieve Gemini API key from settings or environment files."""
@@ -283,8 +291,8 @@ class OllamaLLMProvider(BaseLLMProvider):
         )
         self.timeout_seconds = float(
             timeout_seconds
-            or getattr(settings, "ollama_timeout_seconds", 120.0)
-            or os.getenv("OLLAMA_TIMEOUT_SECONDS", "120.0")
+            or getattr(settings, "ollama_timeout_seconds", 180.0)
+            or os.getenv("OLLAMA_TIMEOUT_SECONDS", "180.0")
         )
 
     @staticmethod
@@ -328,6 +336,8 @@ class OllamaLLMProvider(BaseLLMProvider):
         """
         if not text:
             return ""
+        if "</think>" in text:
+            text = text.split("</think>", 1)[-1]
         cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
         cleaned = re.sub(r"</?think>", "", cleaned)
         return cleaned.strip()
@@ -345,9 +355,10 @@ class OllamaLLMProvider(BaseLLMProvider):
         4. Synthesize final natural language answer, stripping internal thinking.
         """
         ollama_tools = self.get_ollama_tools(TOOL_DECLARATIONS)
+        threads = min(8, os.cpu_count() or 4)
 
         messages: List[Dict[str, Any]] = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": OLLAMA_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
 
@@ -357,15 +368,18 @@ class OllamaLLMProvider(BaseLLMProvider):
         try:
             with httpx.Client(timeout=self.timeout_seconds) as client:
                 for turn in range(max_turns):
-                    payload = {
+                    payload: Dict[str, Any] = {
                         "model": self.model,
                         "messages": messages,
-                        "tools": ollama_tools,
                         "stream": False,
                         "options": {
-                            "temperature": 0.1,
+                            "temperature": 0.0,
+                            "num_thread": threads,
                         },
                     }
+                    # Pass tool declarations on initial turns before tools are executed
+                    if not tools_executed:
+                        payload["tools"] = ollama_tools
 
                     logger.info(
                         "[OllamaLLMProvider] Turn {}: Calling Ollama model '{}' at {}...",
@@ -452,7 +466,10 @@ class OllamaLLMProvider(BaseLLMProvider):
                                 }
                             ],
                             "stream": False,
-                            "options": {"temperature": 0.1},
+                            "options": {
+                                "temperature": 0.0,
+                                "num_thread": threads,
+                            },
                         }
                         try:
                             synth_resp = client.post(f"{self.base_url}/api/chat", json=synth_payload)
@@ -492,7 +509,10 @@ class OllamaLLMProvider(BaseLLMProvider):
                             }
                         ],
                         "stream": False,
-                        "options": {"temperature": 0.1},
+                        "options": {
+                            "temperature": 0.0,
+                            "num_thread": threads,
+                        },
                     }
                     try:
                         synth_resp = client.post(f"{self.base_url}/api/chat", json=synth_payload)
@@ -908,8 +928,8 @@ class AIAssistantService:
             or os.getenv("OLLAMA_MODEL", "qwen3:4b")
         )
         self.ollama_timeout = float(
-            getattr(settings, "ollama_timeout_seconds", 120.0)
-            or os.getenv("OLLAMA_TIMEOUT_SECONDS", "120.0")
+            getattr(settings, "ollama_timeout_seconds", 180.0)
+            or os.getenv("OLLAMA_TIMEOUT_SECONDS", "180.0")
         )
 
     def answer_question(self, question: str) -> Dict[str, Any]:
@@ -925,10 +945,12 @@ class AIAssistantService:
                 "model": "none",
                 "provider": "none",
                 "status": "empty_input",
+                "fallback_used": False,
             }
 
         # ── Route 1: Preferred Provider is Ollama ──────────────────────────
         if self.provider == "ollama":
+            ollama_error: Optional[str] = None
             try:
                 ollama_provider = OllamaLLMProvider(
                     base_url=self.ollama_base_url,
@@ -937,10 +959,14 @@ class AIAssistantService:
                 )
                 res = ollama_provider.generate_with_tools(question, self.executor)
                 if res and res.get("message"):
+                    res["provider"] = "ollama"
+                    res["model"] = self.ollama_model
+                    res["fallback_used"] = False
                     return res
             except Exception as e:
+                ollama_error = str(e)
                 logger.warning(
-                    "[AIAssistantService] Ollama provider failed: {}. Falling back to Gemini if available.",
+                    "[AIAssistantService] Ollama provider failed: {}. Checking fallback options.",
                     e,
                 )
 
@@ -951,6 +977,9 @@ class AIAssistantService:
                     gemini_provider = GeminiLLMProvider(self.api_key)
                     res = gemini_provider.generate_with_tools(question, self.executor)
                     if res and res.get("message"):
+                        res["provider"] = "gemini"
+                        res["fallback_used"] = True
+                        res["fallback_reason"] = f"Local Ollama model '{self.ollama_model}' failed ({ollama_error}). Response generated via Gemini fallback."
                         return res
                 except Exception as g_err:
                     logger.warning("[AIAssistantService] Gemini fallback also failed: {}.", g_err)
@@ -958,17 +987,26 @@ class AIAssistantService:
             # Final fallback to grounded rule-based ERP tool engine
             logger.info("[AIAssistantService] Serving response via grounded ERP tool engine.")
             fallback_provider = FallbackERPProvider()
-            return fallback_provider.generate_with_tools(question, self.executor)
+            res = fallback_provider.generate_with_tools(question, self.executor)
+            res["provider"] = "fallback"
+            res["model"] = "grounded-erp-engine"
+            res["fallback_used"] = True
+            res["fallback_reason"] = f"Local Ollama model '{self.ollama_model}' failed ({ollama_error}). Grounded ERP tool summary returned."
+            return res
 
         # ── Route 2: Preferred Provider is Gemini ──────────────────────────
         elif self.provider == "gemini":
+            gemini_error: Optional[str] = None
             if self.api_key and GENAI_AVAILABLE:
                 try:
                     gemini_provider = GeminiLLMProvider(self.api_key)
                     res = gemini_provider.generate_with_tools(question, self.executor)
                     if res and res.get("message"):
+                        res["provider"] = "gemini"
+                        res["fallback_used"] = False
                         return res
                 except Exception as e:
+                    gemini_error = str(e)
                     logger.warning(
                         "[AIAssistantService] Gemini provider failed: {}. Attempting Ollama fallback.",
                         e,
@@ -984,6 +1022,9 @@ class AIAssistantService:
                 )
                 res = ollama_provider.generate_with_tools(question, self.executor)
                 if res and res.get("message"):
+                    res["provider"] = "ollama"
+                    res["fallback_used"] = True
+                    res["fallback_reason"] = f"Gemini failed ({gemini_error}). Response generated via Ollama fallback."
                     return res
             except Exception as o_err:
                 logger.warning("[AIAssistantService] Ollama fallback failed: {}.", o_err)
@@ -991,10 +1032,19 @@ class AIAssistantService:
             # Final fallback to grounded ERP engine
             logger.info("[AIAssistantService] Serving response via grounded ERP tool engine.")
             fallback_provider = FallbackERPProvider()
-            return fallback_provider.generate_with_tools(question, self.executor)
+            res = fallback_provider.generate_with_tools(question, self.executor)
+            res["provider"] = "fallback"
+            res["model"] = "grounded-erp-engine"
+            res["fallback_used"] = True
+            res["fallback_reason"] = f"Gemini failed ({gemini_error}). Grounded ERP tool summary returned."
+            return res
 
         # ── Route 3: Preferred Provider is Fallback / Rule Engine ──────────
         else:
             logger.info("[AIAssistantService] Serving response via grounded ERP tool engine.")
             fallback_provider = FallbackERPProvider()
-            return fallback_provider.generate_with_tools(question, self.executor)
+            res = fallback_provider.generate_with_tools(question, self.executor)
+            res["provider"] = "fallback"
+            res["model"] = "grounded-erp-engine"
+            res["fallback_used"] = False
+            return res

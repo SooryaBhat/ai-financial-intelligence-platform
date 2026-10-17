@@ -80,14 +80,27 @@ def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_cont
 
     # Query AI assistant with grounded tool calling
     tools_used = []
+    result = {}
     try:
         ai_service = AIContextService(ctx.user_client, ctx.company_id)
         result = ai_service.answer_with_tools(msg)
         reply = result.get("message") or "Analysis complete."
         tools_used = result.get("tools_used") or []
     except Exception as e:
-        logger.error("Unhandled error in AI Assistant tool calling: {}", e)
-        reply = "AI Assistant is temporarily unavailable. Unable to process request."
+        logger.exception("AI Assistant execution failed: {}", e)
+        reply = f"AI Assistant encountered an error processing your request: {str(e)}"
+        result = {
+            "message": reply,
+            "provider": "error",
+            "model": "none",
+            "status": "error",
+            "error_details": str(e),
+        }
+
+    provider_used = result.get("provider", "unknown")
+    model_used = result.get("model", "unknown")
+    fallback_used = result.get("fallback_used", False)
+    fallback_reason = result.get("fallback_reason")
 
     if session_id_str:
         try:
@@ -95,7 +108,13 @@ def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_cont
                 "session_id": session_id_str,
                 "role": "assistant",
                 "content": reply,
-                "metadata": {"tools_used": tools_used},
+                "metadata": {
+                    "tools_used": tools_used,
+                    "provider": provider_used,
+                    "model": model_used,
+                    "fallback_used": fallback_used,
+                    "fallback_reason": fallback_reason,
+                },
             })
         except Exception as err:
             logger.warning("Failed to persist assistant chat message: {}", err)
@@ -105,6 +124,10 @@ def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_cont
         "role": "assistant",
         "session_id": session_id_str,
         "tools_used": tools_used,
+        "provider": provider_used,
+        "model": model_used,
+        "fallback_used": fallback_used,
+        "fallback_reason": fallback_reason,
     })
 
 
@@ -173,14 +196,27 @@ def send_message(
 
     # Generate grounded response with tool calling
     tools_used = []
+    result = {}
     try:
         ai_service = AIContextService(ctx.user_client, ctx.company_id)
         result = ai_service.answer_with_tools(payload.content)
         reply = result.get("message") or "Analysis complete."
         tools_used = result.get("tools_used") or []
     except Exception as e:
-        logger.error("Error in AI Assistant for session message: {}", e)
-        reply = "AI Assistant is temporarily unavailable."
+        logger.exception("Error in AI Assistant for session message: {}", e)
+        reply = f"AI Assistant encountered an error: {str(e)}"
+        result = {
+            "message": reply,
+            "provider": "error",
+            "model": "none",
+            "status": "error",
+            "error_details": str(e),
+        }
+
+    provider_used = result.get("provider", "unknown")
+    model_used = result.get("model", "unknown")
+    fallback_used = result.get("fallback_used", False)
+    fallback_reason = result.get("fallback_reason")
 
     # Save assistant message
     assistant_msg = None
@@ -189,7 +225,13 @@ def send_message(
             "session_id": str(session_id),
             "role": "assistant",
             "content": reply,
-            "metadata": {"tools_used": tools_used},
+            "metadata": {
+                "tools_used": tools_used,
+                "provider": provider_used,
+                "model": model_used,
+                "fallback_used": fallback_used,
+                "fallback_reason": fallback_reason,
+            },
         })
     except Exception as e:
         logger.warning("Could not persist assistant message: {}", e)
@@ -199,4 +241,8 @@ def send_message(
         "content": reply,
         "message": reply,
         "tools_used": tools_used,
+        "provider": provider_used,
+        "model": model_used,
+        "fallback_used": fallback_used,
+        "fallback_reason": fallback_reason,
     })

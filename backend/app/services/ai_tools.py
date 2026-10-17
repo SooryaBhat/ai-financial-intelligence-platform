@@ -19,6 +19,7 @@ from uuid import UUID
 from supabase import Client
 
 from app.core.logging import logger
+from app.database.retry import execute_with_retry
 from app.ml.anomaly_detector import detect_anomaly
 from app.ml.business_health import calculate_business_health
 from app.ml.model_loader import get_model_loader
@@ -53,13 +54,13 @@ class AIToolExecutor:
     def _fetch_company_currency(self) -> str:
         """Retrieve currency code for this company."""
         try:
-            res = (
+            query = (
                 self.client.table("companies")
                 .select("currency")
                 .eq("id", self.company_id)
                 .is_("deleted_at", "null")
-                .execute()
             )
+            res = execute_with_retry(query)
             if res.data and res.data[0].get("currency"):
                 return res.data[0]["currency"]
         except Exception as e:
@@ -101,7 +102,7 @@ class AIToolExecutor:
             elif period == "last_90_days":
                 query = query.gte("sale_date", (today - timedelta(days=90)).isoformat())
 
-            res = query.limit(100).execute()
+            res = execute_with_retry(query.limit(100))
             sales = res.data or []
 
             if not sales:
@@ -157,12 +158,12 @@ class AIToolExecutor:
             sale_ids = [str(s["id"]) for s in sales[:30] if s.get("id")]
             if sale_ids:
                 try:
-                    items_res = (
+                    items_query = (
                         self.client.table("sale_items")
                         .select("quantity, unit_price, line_total, product_id, products(name, sku)")
                         .in_("sale_id", sale_ids)
-                        .execute()
                     )
+                    items_res = execute_with_retry(items_query)
                     items = items_res.data or []
                     prod_agg: Dict[str, Dict[str, Any]] = {}
                     for item in items:
@@ -260,7 +261,7 @@ class AIToolExecutor:
             elif period == "last_30_days":
                 query = query.gte("expense_date", (today - timedelta(days=30)).isoformat())
 
-            res = query.limit(100).execute()
+            res = execute_with_retry(query.limit(100))
             expenses = res.data or []
 
             # Optional in-memory filter by category
@@ -341,22 +342,22 @@ class AIToolExecutor:
         limit = max(1, min(50, int(limit or 10)))
 
         try:
-            prod_res = (
+            prod_query = (
                 self.client.table("products")
                 .select("id, name, sku, cost_price, selling_price, type")
                 .eq("company_id", self.company_id)
                 .is_("deleted_at", "null")
-                .execute()
             )
+            prod_res = execute_with_retry(prod_query)
             products = prod_res.data or []
             total_products = len(products)
 
-            inv_res = (
+            inv_query = (
                 self.client.table("inventory")
                 .select("product_id, quantity, reorder_level, products(name, sku), warehouses(name)")
                 .eq("company_id", self.company_id)
-                .execute()
             )
+            inv_res = execute_with_retry(inv_query)
             inventory_items = inv_res.data or []
 
             total_units = sum(_safe_float(i.get("quantity")) for i in inventory_items)
@@ -451,14 +452,14 @@ class AIToolExecutor:
 
         try:
             # Query actual monthly sales numbers for company
-            sales_res = (
+            sales_query = (
                 self.client.table("sales")
                 .select("total_amount, sale_date, status")
                 .eq("company_id", self.company_id)
                 .is_("deleted_at", "null")
                 .order("sale_date", desc=False)
-                .execute()
             )
+            sales_res = execute_with_retry(sales_query)
             sales = sales_res.data or []
 
             # Aggregate monthly historical totals
@@ -538,15 +539,15 @@ class AIToolExecutor:
 
         try:
             # Query recent sales to calculate 28-day baseline
-            sales_res = (
+            sales_query = (
                 self.client.table("sales")
                 .select("id, sale_number, total_amount, subtotal, discount_amount, sale_date")
                 .eq("company_id", self.company_id)
                 .is_("deleted_at", "null")
                 .order("sale_date", desc=True)
                 .limit(50)
-                .execute()
             )
+            sales_res = execute_with_retry(sales_query)
             sales = sales_res.data or []
             amounts = [_safe_float(s.get("total_amount")) for s in sales if _safe_float(s.get("total_amount")) > 0]
 
@@ -693,14 +694,14 @@ class AIToolExecutor:
 
             # Derive payment collection
             if payment_collection is None:
-                invc_res = (
+                invc_query = (
                     self.client.table("invoices")
                     .select("total_amount, amount_paid, amount_due, status")
                     .eq("company_id", self.company_id)
                     .eq("invoice_type", "receivable")
                     .is_("deleted_at", "null")
-                    .execute()
                 )
+                invc_res = execute_with_retry(invc_query)
                 invoices = invc_res.data or []
                 if invoices:
                     tot_due = sum(_safe_float(i.get("total_amount")) for i in invoices)

@@ -4,6 +4,7 @@ from uuid import UUID
 
 from supabase import Client
 
+from app.database.retry import execute_with_retry
 from app.repositories.base import BaseRepository
 
 
@@ -21,21 +22,24 @@ class NotificationRepository(BaseRepository):
         )
         if unread_only:
             query = query.eq("is_read", False)
-        response = query.execute()
+        response = execute_with_retry(query)
         return response.data or []
 
     def mark_read(self, notification_ids: List[UUID], user_id: UUID) -> None:
-        self._query().update({"is_read": True}).in_(
-            "id", [str(nid) for nid in notification_ids]
-        ).eq("user_id", str(user_id)).execute()
+        execute_with_retry(
+            self._query()
+            .update({"is_read": True})
+            .in_("id", [str(nid) for nid in notification_ids])
+            .eq("user_id", str(user_id))
+        )
 
     def count_unread(self, company_id: UUID, user_id: UUID) -> int:
-        response = (
+        query = (
             self._query()
             .select("id", count="exact")
             .eq("company_id", str(company_id))
             .eq("user_id", str(user_id))
             .eq("is_read", False)
-            .execute()
         )
+        response = execute_with_retry(query)
         return response.count or 0

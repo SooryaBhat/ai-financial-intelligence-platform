@@ -19,6 +19,7 @@ from uuid import UUID
 from supabase import Client
 
 from app.core.logging import logger
+from app.database.retry import execute_with_retry
 from app.exceptions import DatabaseError, NotFoundError
 
 
@@ -59,7 +60,7 @@ class BaseRepository:
         if not include_deleted and self._has_soft_delete():
             query = query.is_("deleted_at", "null")
 
-        response = query.single().execute()
+        response = execute_with_retry(query.single())
 
         if not response.data:
             raise NotFoundError(resource=self.table.rstrip("s").capitalize(), resource_id=str(record_id))
@@ -98,7 +99,7 @@ class BaseRepository:
         query = query.order(order_by, desc=not ascending)
         query = query.range(offset, offset + limit - 1)
 
-        response = query.execute()
+        response = execute_with_retry(query)
         return response.data or []
 
     def count(
@@ -124,7 +125,7 @@ class BaseRepository:
         if search_column and search_value:
             query = query.ilike(search_column, f"%{search_value}%")
 
-        response = query.execute()
+        response = execute_with_retry(query)
         return response.count or 0
 
     def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -133,7 +134,7 @@ class BaseRepository:
         `data` should already include company_id where applicable.
         """
         try:
-            response = self._query().insert(data).execute()
+            response = execute_with_retry(self._query().insert(data))
             if not response.data:
                 self._handle_error("create", "No data returned after insert")
             return response.data[0]
@@ -161,7 +162,7 @@ class BaseRepository:
             query = self._query().update(update_data).eq("id", str(record_id))
             if company_id:
                 query = query.eq("company_id", str(company_id))
-            response = query.execute()
+            response = execute_with_retry(query)
             if not response.data:
                 raise NotFoundError(
                     resource=self.table.rstrip("s").capitalize(),
@@ -188,7 +189,7 @@ class BaseRepository:
             )
             if company_id:
                 query = query.eq("company_id", str(company_id))
-            response = query.execute()
+            response = execute_with_retry(query)
             if not response.data:
                 raise NotFoundError(
                     resource=self.table.rstrip("s").capitalize(),
@@ -208,7 +209,7 @@ class BaseRepository:
             query = self._query().delete().eq("id", str(record_id))
             if company_id:
                 query = query.eq("company_id", str(company_id))
-            query.execute()
+            execute_with_retry(query)
             return True
         except Exception as exc:
             self._handle_error("hard_delete", str(exc))

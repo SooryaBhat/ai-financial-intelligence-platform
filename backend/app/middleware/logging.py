@@ -31,6 +31,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
         except Exception as exc:
+            duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
             logger.exception(
                 "[FAIL] {} {} | id={} | Unhandled: {}",
                 request.method,
@@ -38,7 +39,23 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 request_id,
                 str(exc),
             )
-            raise
+            from fastapi.responses import JSONResponse
+            from app.core.config import settings
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "success": False,
+                    "error": {
+                        "code": "INTERNAL_SERVER_ERROR",
+                        "message": str(exc) if settings.debug else "An unexpected error occurred. Please try again later.",
+                        "details": str(exc),
+                    },
+                },
+                headers={
+                    "X-Request-ID": request_id,
+                    "X-Response-Time": f"{duration_ms}ms",
+                },
+            )
 
         duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
