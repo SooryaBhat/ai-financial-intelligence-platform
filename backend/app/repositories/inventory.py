@@ -4,6 +4,7 @@ from uuid import UUID
 
 from supabase import Client
 
+from app.database.retry import execute_with_retry
 from app.repositories.base import BaseRepository
 
 
@@ -56,14 +57,52 @@ class StockMovementRepository(BaseRepository):
     def __init__(self, client: Client) -> None:
         super().__init__(client, "stock_movements")
 
-    def list_by_product(self, company_id: UUID, product_id: UUID, limit: int = 50) -> List[Dict[str, Any]]:
-        response = (
+    def list(
+        self,
+        company_id: Optional[UUID] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        search_column: Optional[str] = None,
+        search_value: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+        order_by: str = "created_at",
+        ascending: bool = False,
+        include_deleted: bool = False,
+    ) -> List[Dict[str, Any]]:
+        query = (
             self._query()
-            .select("*")
+            .select("*, products(name, sku), warehouses(name)")
+            .eq("company_id", str(company_id))
+            .order(order_by, desc=not ascending)
+            .range(offset, offset + limit - 1)
+        )
+        res = execute_with_retry(query)
+        data = res.data or []
+        for row in data:
+            if "products" in row and "product" not in row:
+                row["product"] = row["products"]
+            if "warehouses" in row and "warehouse" not in row:
+                row["warehouse"] = row["warehouses"]
+            if not row.get("reference") and row.get("notes"):
+                row["reference"] = row["notes"]
+        return data
+
+    def list_by_product(self, company_id: UUID, product_id: UUID, limit: int = 50) -> List[Dict[str, Any]]:
+        query = (
+            self._query()
+            .select("*, products(name, sku), warehouses(name)")
             .eq("company_id", str(company_id))
             .eq("product_id", str(product_id))
             .order("created_at", desc=True)
             .limit(limit)
-            .execute()
         )
-        return response.data or []
+        res = execute_with_retry(query)
+        data = res.data or []
+        for row in data:
+            if "products" in row and "product" not in row:
+                row["product"] = row["products"]
+            if "warehouses" in row and "warehouse" not in row:
+                row["warehouse"] = row["warehouses"]
+            if not row.get("reference") and row.get("notes"):
+                row["reference"] = row["notes"]
+        return data

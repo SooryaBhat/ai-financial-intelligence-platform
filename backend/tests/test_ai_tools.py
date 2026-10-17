@@ -129,8 +129,9 @@ def mock_supabase_client():
 
 
 def test_tool_declarations_registry():
-    """Verify all 7 tools are declared with schema properties."""
+    """Verify all 8 enterprise tools are declared with schema properties."""
     names = [d["name"] for d in TOOL_DECLARATIONS]
+    assert "get_company_profile" in names
     assert "get_sales_analysis" in names
     assert "get_expense_summary" in names
     assert "get_inventory_status" in names
@@ -138,7 +139,7 @@ def test_tool_declarations_registry():
     assert "detect_transaction_anomalies" in names
     assert "get_business_health_analysis" in names
     assert "search_business_knowledge_base" in names
-    assert len(TOOL_DECLARATIONS) == 7
+    assert len(TOOL_DECLARATIONS) == 8
 
 
 def test_tool_sales_analysis(mock_supabase_client, sample_company_id):
@@ -252,3 +253,62 @@ def test_empty_company_data_handling(sample_company_id):
 
     inv_res = executor.get_inventory_status()
     assert inv_res["total_catalog_products"] == 0
+
+
+def test_get_company_profile_tenant_isolation(sample_company_id):
+    """Test get_company_profile strictly scopes to self.company_id and returns safe metadata."""
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.is_.return_value.execute.return_value.data = [
+        {
+            "id": str(sample_company_id),
+            "name": "Horizon Retail Ltd",
+            "slug": "horizon-retail-ltd",
+            "industry": "Retail",
+            "country": "India",
+            "currency": "INR",
+            "timezone": "Asia/Kolkata",
+            "subscription_status": "trialing",
+            "is_active": True,
+        }
+    ]
+
+    executor = AIToolExecutor(client, sample_company_id)
+    profile = executor.get_company_profile()
+
+    assert profile["company_id"] == str(sample_company_id)
+    assert profile["company_name"] == "Horizon Retail Ltd"
+    assert profile["currency"] == "INR"
+    assert profile["industry"] == "Retail"
+    assert "Horizon Retail Ltd" in profile["summary"]
+    # Verify execute gateway also calls it
+    res_gateway = executor.execute("get_company_profile", {})
+    assert res_gateway["company_name"] == "Horizon Retail Ltd"
+
+
+def test_get_sales_analysis_historical_december_2024(mock_supabase_client, sample_company_id):
+    """Test get_sales_analysis parses historical period 'december 2024' into ISO range."""
+    executor = AIToolExecutor(mock_supabase_client, sample_company_id)
+    res = executor.get_sales_analysis(period="december 2024")
+
+    assert res["period"] == "December 2024"
+    assert "total_revenue" in res
+    assert "December 2024" in res["summary"]
+
+
+def test_get_sales_analysis_future_empty_period(sample_company_id):
+    """Test get_sales_analysis truthfully reports empty period without hallucination."""
+    empty_client = MagicMock()
+    query_mock = MagicMock()
+    empty_client.table.return_value.select.return_value.eq.return_value.is_.return_value.order.return_value = query_mock
+    query_mock.gte.return_value = query_mock
+    query_mock.lte.return_value = query_mock
+    query_mock.limit.return_value.execute.return_value.data = []
+
+    executor = AIToolExecutor(empty_client, sample_company_id)
+    res = executor.get_sales_analysis(period="october 2026")
+
+    assert res["total_revenue"] == 0.0
+    assert res["total_sales_count"] == 0
+    assert "No confirmed sales transactions found" in res["summary"]
+    assert "Note: Current recorded historical transactions exist up to December 2024" in res["summary"]
+

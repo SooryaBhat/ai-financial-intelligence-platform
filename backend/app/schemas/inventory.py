@@ -39,9 +39,10 @@ class AdjustInventoryRequest(AppBaseModel):
 class StockMovementCreate(AppBaseModel):
     product_id: UUID
     warehouse_id: UUID
-    movement_type: StockMovementType
-    quantity: float = Field(..., description="Positive = in, Negative = out")
-    reference_type: Optional[StockReferenceType] = None
+    movement_type: str = Field(..., description="Movement type: 'IN', 'OUT', 'TRANSFER', or StockMovementType enum value")
+    quantity: float = Field(..., gt=0, description="Quantity of items to move (must be positive)")
+    reference: Optional[str] = None
+    reference_type: Optional[str] = None
     reference_id: Optional[UUID] = None
     notes: Optional[str] = None
 
@@ -51,10 +52,11 @@ class StockMovementResponse(AppBaseModel):
     company_id: UUID
     product_id: UUID
     warehouse_id: UUID
-    movement_type: StockMovementType
+    movement_type: str
     quantity: float
-    reference_type: Optional[StockReferenceType] = None
+    reference: Optional[str] = None
+    reference_type: Optional[str] = None
     reference_id: Optional[UUID] = None
     notes: Optional[str] = None
     created_by: Optional[UUID] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None

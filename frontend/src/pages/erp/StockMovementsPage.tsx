@@ -63,7 +63,14 @@ export const StockMovementsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] })
       setIsModalOpen(false)
     },
-    onError: () => toast.error('Failed to log movement'),
+    onError: (err: any) => {
+      const msg =
+        err?.response?.data?.detail ||
+        err?.response?.data?.message ||
+        err?.message ||
+        'Failed to log movement'
+      toast.error(msg)
+    },
   })
 
   const handleOpenCreate = () => {

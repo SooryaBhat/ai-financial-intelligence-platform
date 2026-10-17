@@ -1,19 +1,22 @@
 """
 AI Assistant Tool Definitions and Secure Execution Engine.
 
-Provides 7 enterprise-grade tools scoped strictly to the authenticated company and knowledge base:
-1. get_sales_analysis — Sales performance, top products, MoM growth, recent transactions
-2. get_expense_summary — Expense totals, category breakdowns, recent expenses
-3. get_inventory_status — Total inventory units, catalog count, reorder alerts
-4. forecast_revenue — ML-driven revenue forecasting (XGBoost / SARIMA)
-5. detect_transaction_anomalies — Isolation Forest transaction anomaly scanner
-6. get_business_health_analysis — 5-KPI composite business health scoring & grade
-7. search_business_knowledge_base — Verified business guidelines, official MSME schemes & policies, and RAG retrieval
+Provides 8 enterprise-grade tools scoped strictly to the authenticated company and knowledge base:
+1. get_company_profile — Verified business name, industry, functional currency, and metadata
+2. get_sales_analysis — Sales performance, top products, MoM growth, recent transactions (supports custom & historical dates)
+3. get_expense_summary — Expense totals, category breakdowns, recent expenses (supports custom & historical dates)
+4. get_inventory_status — Total inventory units, catalog count, reorder alerts
+5. forecast_revenue — ML-driven revenue forecasting (XGBoost / SARIMA)
+6. detect_transaction_anomalies — Isolation Forest transaction anomaly scanner
+7. get_business_health_analysis — 5-KPI composite business health scoring & grade
+8. search_business_knowledge_base — Verified business guidelines, official MSME schemes & policies, and RAG retrieval
 
 All operations are read-only and strictly scoped to company_id or platform knowledge.
 """
+import calendar
+import re
 from datetime import date, datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from uuid import UUID
 
 from supabase import Client
@@ -38,6 +41,87 @@ def _safe_float(val: Any, default: float = 0.0) -> float:
         return float(val)
     except (ValueError, TypeError):
         return default
+
+
+def _parse_period_date_range(
+    period: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> Tuple[Optional[str], Optional[str], str]:
+    """
+    Parse a historical or relative period string or explicit start/end dates.
+    Returns (start_iso_date, end_iso_date, display_label).
+    Enables historical queries such as 'december 2024', '2024', custom dates, etc.
+    """
+    if start_date and end_date:
+        s = str(start_date)[:10]
+        e = str(end_date)[:10]
+        return s, e, f"{s} to {e}"
+
+    p = (period or "all").strip().lower()
+    today = date.today()
+
+    month_lookup = {
+        "jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3,
+        "apr": 4, "april": 4, "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
+        "aug": 8, "august": 8, "sep": 9, "september": 9, "oct": 10, "october": 10,
+        "nov": 11, "november": 11, "dec": 12, "december": 12,
+    }
+
+    if p in ("all", "any", "total", "all_time", "everything"):
+        return None, None, "all recorded history"
+
+    if p == "this_month":
+        start = today.replace(day=1)
+        return start.isoformat(), today.isoformat(), "this month"
+
+    if p == "last_month":
+        first_this = today.replace(day=1)
+        last_prev = first_this - timedelta(days=1)
+        first_prev = last_prev.replace(day=1)
+        return first_prev.isoformat(), last_prev.isoformat(), "last month"
+
+    if p == "last_30_days":
+        return (today - timedelta(days=30)).isoformat(), today.isoformat(), "the last 30 days"
+
+    if p == "last_90_days":
+        return (today - timedelta(days=90)).isoformat(), today.isoformat(), "the last 90 days"
+
+    # Explicit ISO range: YYYY-MM-DD to YYYY-MM-DD
+    iso_range = re.search(r"(\d{4}-\d{2}-\d{2})\s*(?:to|through|–|-)\s*(\d{4}-\d{2}-\d{2})", p)
+    if iso_range:
+        return iso_range.group(1), iso_range.group(2), f"{iso_range.group(1)} to {iso_range.group(2)}"
+
+    # YYYY-MM
+    ym_match = re.search(r"\b(20\d{2})-(0[1-9]|1[0-2])\b", p)
+    if ym_match:
+        y, m = int(ym_match.group(1)), int(ym_match.group(2))
+        _, last_day = calendar.monthrange(y, m)
+        return f"{y:04d}-{m:02d}-01", f"{y:04d}-{m:02d}-{last_day:02d}", f"{calendar.month_name[m]} {y}"
+
+    # Month name + Year (e.g. "december 2024", "dec 2024")
+    my_match = re.search(r"([a-z]+)[,\s_-]+(20\d{2})", p)
+    if my_match and my_match.group(1) in month_lookup:
+        m = month_lookup[my_match.group(1)]
+        y = int(my_match.group(2))
+        _, last_day = calendar.monthrange(y, m)
+        return f"{y:04d}-{m:02d}-01", f"{y:04d}-{m:02d}-{last_day:02d}", f"{calendar.month_name[m]} {y}"
+
+    # Year + Month name (e.g. "2024 december")
+    ym2_match = re.search(r"(20\d{2})[,\s_-]+([a-z]+)", p)
+    if ym2_match and ym2_match.group(2) in month_lookup:
+        y = int(ym2_match.group(1))
+        m = month_lookup[ym2_match.group(2)]
+        _, last_day = calendar.monthrange(y, m)
+        return f"{y:04d}-{m:02d}-01", f"{y:04d}-{m:02d}-{last_day:02d}", f"{calendar.month_name[m]} {y}"
+
+    # Full year (e.g. "2024", "year 2024")
+    y_match = re.search(r"\b(20\d{2})\b", p)
+    if y_match:
+        y = int(y_match.group(1))
+        return f"{y:04d}-01-01", f"{y:04d}-12-31", f"the year {y}"
+
+    return None, None, p
 
 
 class AIToolExecutor:
@@ -67,22 +151,83 @@ class AIToolExecutor:
             logger.warning("Failed to fetch company currency: {}", e)
         return "USD"
 
+    # ── Tool 0: Company Profile & Identity ────────────────────────────
+
+    def get_company_profile(self) -> Dict[str, Any]:
+        """
+        Retrieve verified, safe company profile and identity metadata for the authenticated company.
+        Company identity is derived strictly from the server-side authenticated context (self.company_id).
+        Never trusts client- or LLM-supplied company IDs.
+        """
+        try:
+            query = (
+                self.client.table("companies")
+                .select("id, name, slug, industry, country, currency, timezone, subscription_status, is_active")
+                .eq("id", self.company_id)
+                .is_("deleted_at", "null")
+            )
+            res = execute_with_retry(query)
+            if not res.data:
+                return {
+                    "company_name": "Unknown",
+                    "currency": "USD",
+                    "error": "Company profile not found.",
+                    "summary": "No company record found for the authenticated session.",
+                }
+            comp = res.data[0]
+            name = comp.get("name") or "Business"
+            industry = comp.get("industry") or "General Enterprise"
+            country = comp.get("country") or "Global"
+            currency = comp.get("currency") or "USD"
+            tz = comp.get("timezone") or "UTC"
+            sub_status = comp.get("subscription_status") or "active"
+
+            summary = (
+                f"The authenticated company name is '{name}'. It operates in the '{industry}' industry "
+                f"based in {country}, with functional currency {currency} and timezone {tz}."
+            )
+            return {
+                "company_id": self.company_id,
+                "company_name": name,
+                "slug": comp.get("slug"),
+                "industry": industry,
+                "country": country,
+                "currency": currency,
+                "timezone": tz,
+                "subscription_status": sub_status,
+                "is_active": comp.get("is_active", True),
+                "summary": summary,
+            }
+        except Exception as e:
+            logger.error("Error retrieving company profile: {}", e)
+            return {
+                "company_name": "Unknown",
+                "currency": "USD",
+                "error": str(e),
+                "summary": "An error occurred while retrieving company profile metadata.",
+            }
+
     # ── Tool 1: Sales Analysis ────────────────────────────────────────
 
     def get_sales_analysis(
         self,
         period: str = "all",
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
         limit: int = 5,
     ) -> Dict[str, Any]:
         """
         Analyze company sales records, revenue, top products, and growth.
 
         Args:
-            period: Filter window ('all', 'this_month', 'last_month', 'last_30_days', 'last_90_days').
+            period: Filter window ('all', 'december 2024', '2024', 'this_month', 'last_month', 'last_30_days', 'last_90_days').
+            start_date: Optional explicit ISO start date (YYYY-MM-DD).
+            end_date: Optional explicit ISO end date (YYYY-MM-DD).
             limit: Maximum number of recent sales and top products to inspect (1 to 20).
         """
         limit = max(1, min(20, int(limit or 5)))
         currency = self._fetch_company_currency()
+        start_iso, end_iso, period_label = _parse_period_date_range(period, start_date, end_date)
 
         try:
             query = (
@@ -93,16 +238,13 @@ class AIToolExecutor:
                 .order("sale_date", desc=True)
             )
 
-            # Apply date filters if requested
-            today = date.today()
-            if period == "this_month":
-                query = query.gte("sale_date", today.replace(day=1).isoformat())
-            elif period == "last_30_days":
-                query = query.gte("sale_date", (today - timedelta(days=30)).isoformat())
-            elif period == "last_90_days":
-                query = query.gte("sale_date", (today - timedelta(days=90)).isoformat())
+            # Apply date filters if resolved
+            if start_iso:
+                query = query.gte("sale_date", start_iso)
+            if end_iso:
+                query = query.lte("sale_date", end_iso)
 
-            res = execute_with_retry(query.limit(100))
+            res = execute_with_retry(query.limit(400))
             sales = res.data or []
 
             if not sales:
@@ -116,7 +258,8 @@ class AIToolExecutor:
                     "growth_percentage": None,
                     "top_products": [],
                     "recent_sales": [],
-                    "summary": f"No confirmed sales transactions found for company in period '{period}'.",
+                    "period": period_label,
+                    "summary": f"No confirmed sales transactions found for company in period '{period_label}'. Note: Current recorded historical transactions exist up to December 2024.",
                 }
 
             confirmed_sales = [
@@ -129,6 +272,7 @@ class AIToolExecutor:
             avg_sale_val = (total_revenue / total_sales_count) if total_sales_count > 0 else 0.0
 
             # MoM calculations
+            today = date.today()
             first_this_month = today.replace(day=1)
             last_month_end = first_this_month - timedelta(days=1)
             first_last_month = last_month_end.replace(day=1)
@@ -155,7 +299,7 @@ class AIToolExecutor:
 
             # Top selling products aggregation
             top_products = []
-            sale_ids = [str(s["id"]) for s in sales[:30] if s.get("id")]
+            sale_ids = [str(s["id"]) for s in sales[:50] if s.get("id")]
             if sale_ids:
                 try:
                     items_query = (
@@ -200,7 +344,7 @@ class AIToolExecutor:
             ]
 
             summary_parts = [
-                f"Total sales revenue is {currency} {total_revenue:,.2f} across {total_sales_count} sales transactions (avg order value: {currency} {avg_sale_val:,.2f})."
+                f"Total sales revenue for {period_label} is {currency} {total_revenue:,.2f} across {total_sales_count} sales transactions (avg order value: {currency} {avg_sale_val:,.2f})."
             ]
             if growth_pct is not None:
                 summary_parts.append(f"Month-over-month sales growth is {growth_pct}%.")
@@ -217,6 +361,7 @@ class AIToolExecutor:
                 "growth_percentage": growth_pct,
                 "top_products": top_products,
                 "recent_sales": recent_sales,
+                "period": period_label,
                 "summary": " ".join(summary_parts),
             }
         except Exception as e:
@@ -232,6 +377,8 @@ class AIToolExecutor:
     def get_expense_summary(
         self,
         period: str = "all",
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
         category: str = "",
         limit: int = 5,
     ) -> Dict[str, Any]:
@@ -239,12 +386,15 @@ class AIToolExecutor:
         Aggregate company operational expenses, category distribution, and recent spendings.
 
         Args:
-            period: Time period filter ('all', 'this_month', 'last_30_days').
+            period: Time period filter ('all', 'december 2024', '2024', 'this_month', 'last_month', 'last_30_days').
+            start_date: Optional explicit ISO start date (YYYY-MM-DD).
+            end_date: Optional explicit ISO end date (YYYY-MM-DD).
             category: Optional category name to filter by.
             limit: Maximum recent expense records to include (1 to 20).
         """
         limit = max(1, min(20, int(limit or 5)))
         currency = self._fetch_company_currency()
+        start_iso, end_iso, period_label = _parse_period_date_range(period, start_date, end_date)
 
         try:
             query = (
@@ -255,14 +405,25 @@ class AIToolExecutor:
                 .order("expense_date", desc=True)
             )
 
-            today = date.today()
-            if period == "this_month":
-                query = query.gte("expense_date", today.replace(day=1).isoformat())
-            elif period == "last_30_days":
-                query = query.gte("expense_date", (today - timedelta(days=30)).isoformat())
+            # Apply date filters if resolved
+            if start_iso:
+                query = query.gte("expense_date", start_iso)
+            if end_iso:
+                query = query.lte("expense_date", end_iso)
 
-            res = execute_with_retry(query.limit(100))
+            res = execute_with_retry(query.limit(400))
             expenses = res.data or []
+
+            if not expenses:
+                return {
+                    "company_currency": currency,
+                    "total_expenses": 0.0,
+                    "expense_count": 0,
+                    "category_breakdown": [],
+                    "recent_expenses": [],
+                    "period": period_label,
+                    "summary": f"No expenses found for company in period '{period_label}'. Note: Current recorded historical transactions exist up to December 2024.",
+                }
 
             # Optional in-memory filter by category
             if category.strip():
@@ -301,7 +462,7 @@ class AIToolExecutor:
             ]
 
             summary = (
-                f"Total recorded expenses are {currency} {total_expenses:,.2f} across {expense_count} expense entries. "
+                f"Total recorded expenses for {period_label} are {currency} {total_expenses:,.2f} across {expense_count} expense entries. "
             )
             if cat_breakdown:
                 top_cat = cat_breakdown[0]
@@ -315,6 +476,7 @@ class AIToolExecutor:
                 "expense_count": expense_count,
                 "category_breakdown": cat_breakdown,
                 "recent_expenses": recent,
+                "period": period_label,
                 "summary": summary,
             }
         except Exception as e:
@@ -852,6 +1014,7 @@ class AIToolExecutor:
         Dynamically and safely dispatch execution to the matching tool function.
         """
         tool_map: Dict[str, Callable[..., Dict[str, Any]]] = {
+            "get_company_profile": self.get_company_profile,
             "get_sales_analysis": self.get_sales_analysis,
             "get_expense_summary": self.get_expense_summary,
             "get_inventory_status": self.get_inventory_status,
@@ -888,17 +1051,39 @@ class AIToolExecutor:
 
 TOOL_DECLARATIONS = [
     {
+        "name": "get_company_profile",
+        "description": (
+            "Retrieve verified company identity and profile metadata (company name, industry, "
+            "country of operation, functional currency, timezone, and fiscal calendar) for the authenticated business. "
+            "Use this tool when asked about the company name, business identity, what company this is, "
+            "or basic business profile."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {},
+        },
+    },
+    {
         "name": "get_sales_analysis",
         "description": (
             "Retrieve verified company sales metrics including total revenue, order count, "
-            "average order value, month-over-month growth rate, top-selling products, and recent sales transactions."
+            "average order value, month-over-month growth rate, top-selling products, and recent sales transactions. "
+            "Supports historical date filtering (e.g. 'december 2024', '2024', or custom start/end dates)."
         ),
         "parameters": {
             "type": "OBJECT",
             "properties": {
                 "period": {
                     "type": "STRING",
-                    "description": "Time window: 'all', 'this_month', 'last_month', 'last_30_days', 'last_90_days'.",
+                    "description": "Time window: e.g. 'all', 'december 2024', '2024', 'this_month', 'last_month', 'last_30_days', 'last_90_days'.",
+                },
+                "start_date": {
+                    "type": "STRING",
+                    "description": "Optional ISO start date (YYYY-MM-DD) for custom historical ranges.",
+                },
+                "end_date": {
+                    "type": "STRING",
+                    "description": "Optional ISO end date (YYYY-MM-DD) for custom historical ranges.",
                 },
                 "limit": {
                     "type": "INTEGER",
@@ -911,14 +1096,22 @@ TOOL_DECLARATIONS = [
         "name": "get_expense_summary",
         "description": (
             "Retrieve verified company operating expenses, total expenditure, category-wise breakdown, "
-            "and recent expense ledger entries."
+            "and recent expense ledger entries. Supports historical date filtering (e.g. 'december 2024', '2024', or custom dates)."
         ),
         "parameters": {
             "type": "OBJECT",
             "properties": {
                 "period": {
                     "type": "STRING",
-                    "description": "Time period: 'all', 'this_month', 'last_30_days'.",
+                    "description": "Time period: e.g. 'all', 'december 2024', '2024', 'this_month', 'last_month', 'last_30_days'.",
+                },
+                "start_date": {
+                    "type": "STRING",
+                    "description": "Optional ISO start date (YYYY-MM-DD).",
+                },
+                "end_date": {
+                    "type": "STRING",
+                    "description": "Optional ISO end date (YYYY-MM-DD).",
                 },
                 "category": {
                     "type": "STRING",

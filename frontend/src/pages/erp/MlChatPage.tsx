@@ -10,6 +10,7 @@ import {
   TrendingUp,
   ShieldAlert,
   HeartPulse,
+  Building2,
   Wrench,
   ChevronDown,
   ChevronRight,
@@ -27,15 +28,23 @@ interface ChatMessage {
   text: string
   timestamp: string
   tools_used?: ToolCallExecution[]
+  provider?: string
+  model?: string
+  fallback_used?: boolean
+  fallback_reason?: string
 }
 
 export const MlChatPage: React.FC = () => {
   const { activeCompany } = useAuth()
   const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>({})
+  const [providerInfo, setProviderInfo] = useState<{ provider: string; model?: string }>({
+    provider: 'ollama',
+    model: 'qwen3:4b',
+  })
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       sender: 'assistant',
-      text: `Hello! I am your ALLADIN Decision Intelligence Copilot. How can I assist you with analyzing revenue forecasts, stock replenishment, or business health for ${
+      text: `Hello! I am your ALLADIN Decision Intelligence Copilot. How can I assist you with company profile queries, revenue forecasts, stock replenishment, or business health for ${
         activeCompany?.company_name || 'your organization'
       }?`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -45,6 +54,8 @@ export const MlChatPage: React.FC = () => {
 
   const getToolMeta = (toolName: string) => {
     switch (toolName) {
+      case 'get_company_profile':
+        return { label: 'Company Profile', icon: Building2, bg: 'bg-indigo-50 text-indigo-800 border-indigo-200' }
       case 'get_sales_analysis':
         return { label: 'Sales Analysis', icon: ShoppingCart, bg: 'bg-emerald-50 text-emerald-800 border-emerald-200' }
       case 'get_expense_summary':
@@ -68,6 +79,9 @@ export const MlChatPage: React.FC = () => {
         company_id: activeCompany?.company_id || activeCompany?.id,
       }),
     onSuccess: (data) => {
+      if (data?.provider) {
+        setProviderInfo({ provider: data.provider, model: data.model })
+      }
       setMessages((prev) => [
         ...prev,
         {
@@ -75,15 +89,25 @@ export const MlChatPage: React.FC = () => {
           text: data?.message || 'I have analyzed your query based on current ledger records and ML forecasts.',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           tools_used: data?.tools_used,
+          provider: data?.provider,
+          model: data?.model,
+          fallback_used: data?.fallback_used,
+          fallback_reason: data?.fallback_reason,
         },
       ])
     },
-    onError: () => {
+    onError: (err: any) => {
+      const errDetail =
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.detail ||
+        err?.response?.data?.message ||
+        err?.message ||
+        'Unable to query the AI intelligence engine. Please check backend connection and retry.'
       setMessages((prev) => [
         ...prev,
         {
           sender: 'assistant',
-          text: 'Unable to query the AI intelligence engine. Please check backend connection and retry.',
+          text: `⚠️ Error: ${errDetail}`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ])
@@ -109,7 +133,8 @@ export const MlChatPage: React.FC = () => {
   }
 
   const suggestedPrompts = [
-    "Summarize this month's sales and revenue.",
+    'What is the name of our company and our business profile?',
+    "Summarize sales and revenue for December 2024.",
     'Which products may need replenishment?',
     'Explain the 6-month revenue forecast.',
     'Show unusual expenses that need review.',
@@ -139,8 +164,21 @@ export const MlChatPage: React.FC = () => {
               {activeCompany?.company_name || 'Active Workspace'} &bull; Database Grounded &bull; Multi-Tenant Isolated
             </CardDescription>
           </div>
-          <Badge variant="default" className="bg-teal-50 text-teal-800 border-teal-200">
-            FastAPI &bull; Gemini Grounded
+          <Badge
+            variant="default"
+            className={
+              providerInfo.provider === 'ollama'
+                ? 'bg-blue-50 text-blue-800 border-blue-200'
+                : providerInfo.provider === 'gemini'
+                ? 'bg-teal-50 text-teal-800 border-teal-200'
+                : 'bg-amber-50 text-amber-800 border-amber-200'
+            }
+          >
+            {providerInfo.provider === 'ollama'
+              ? `FastAPI • Ollama (${providerInfo.model || 'qwen3:4b'})`
+              : providerInfo.provider === 'gemini'
+              ? 'FastAPI • Gemini Grounded'
+              : 'FastAPI • ERP Rule Engine'}
           </Badge>
         </CardHeader>
 
@@ -226,9 +264,21 @@ export const MlChatPage: React.FC = () => {
                   </div>
                 )}
 
-                <p className={`text-[9px] text-right ${msg.sender === 'user' ? 'text-teal-200' : 'text-slate-400'}`}>
-                  {msg.timestamp}
-                </p>
+                <div className="flex items-center justify-between text-[9px] pt-1 gap-2">
+                  {msg.provider && msg.sender === 'assistant' ? (
+                    <span className="font-medium text-slate-500 truncate">
+                      {msg.provider === 'ollama'
+                        ? `Ollama (${msg.model || 'qwen3:4b'})`
+                        : msg.provider === 'gemini'
+                        ? 'Gemini Grounded'
+                        : 'ERP Rule Engine'}
+                      {msg.fallback_used ? ' • Fallback' : ''}
+                    </span>
+                  ) : <span />}
+                  <span className={`shrink-0 ${msg.sender === 'user' ? 'text-teal-200' : 'text-slate-400'}`}>
+                    {msg.timestamp}
+                  </span>
+                </div>
               </div>
             </div>
           ))}

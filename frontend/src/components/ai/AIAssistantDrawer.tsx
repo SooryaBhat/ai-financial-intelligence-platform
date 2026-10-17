@@ -13,6 +13,7 @@ import {
   TrendingUp,
   ShieldAlert,
   HeartPulse,
+  Building2,
   Wrench,
   ChevronDown,
   ChevronRight,
@@ -29,6 +30,8 @@ interface ChatMessage {
   timestamp: string
   sources?: string[]
   tools_used?: ToolCallExecution[]
+  provider?: string
+  model?: string
 }
 
 interface AIAssistantDrawerProps {
@@ -48,6 +51,10 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [providerInfo, setProviderInfo] = useState<{ provider: string; model?: string }>({
+    provider: 'ollama',
+    model: 'qwen3:4b',
+  })
   const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>({})
 
 
@@ -158,6 +165,10 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
         company_id: activeCompany?.company_id || activeCompany?.id,
       })
 
+      if (response?.provider) {
+        setProviderInfo({ provider: response.provider, model: response.model })
+      }
+
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
@@ -166,13 +177,19 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
           'Analysis complete based on current ledger and model telemetry.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         tools_used: response?.tools_used,
+        provider: response?.provider,
+        model: response?.model,
       }
 
       setMessages((prev) => [...prev, assistantMessage])
-    } catch {
-      setError(
+    } catch (err: any) {
+      const errMsg =
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.detail ||
+        err?.response?.data?.message ||
+        err?.message ||
         'Unable to query the AI intelligence engine. Please check backend connection and retry.'
-      )
+      setError(errMsg)
     } finally {
       setIsLoading(false)
     }
@@ -180,6 +197,8 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
 
   const getToolMeta = (toolName: string) => {
     switch (toolName) {
+      case 'get_company_profile':
+        return { label: 'Company Profile', icon: Building2, bg: 'bg-indigo-50 text-indigo-800 border-indigo-200' }
       case 'get_sales_analysis':
         return { label: 'Sales Analysis', icon: ShoppingCart, bg: 'bg-emerald-50 text-emerald-800 border-emerald-200' }
       case 'get_expense_summary':
@@ -272,7 +291,11 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
               <span className="truncate">Context active: {location.pathname}</span>
             </span>
             <span className="text-[10px] uppercase font-bold tracking-wider text-teal-700 bg-white/70 px-1.5 py-0.5 rounded border border-teal-200/50">
-              Grounded
+              {providerInfo.provider === 'ollama'
+                ? `Ollama (${providerInfo.model || 'qwen3:4b'})`
+                : providerInfo.provider === 'gemini'
+                ? 'Gemini Grounded'
+                : 'ERP Grounded'}
             </span>
           </div>
 
