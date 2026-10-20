@@ -10,6 +10,7 @@ import { Table, Column } from '@/components/ui/Table'
 import { Modal } from '@/components/ui/Modal'
 import { Pagination } from '@/components/ui/Pagination'
 import { ErrorState } from '@/components/ui/ErrorState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useToast } from '@/hooks/useToast'
 import { formatDate } from '@/lib/utils'
 
@@ -119,17 +120,21 @@ export const StockMovementsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100">Stock Movements Audit Log</h1>
-          <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
-            Audit trail of goods receipts, sales dispatches, and warehouse transfers
-          </p>
-        </div>
-        <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="w-4 h-4" />}>
-          Log Movement
-        </Button>
-      </div>
+      <PageHeader
+        title="Stock Movements & Audit Log"
+        description="Audit trail of inward receipts, sales dispatches, returns, and warehouse stock transfers"
+        icon={<ArrowLeftRight className="w-5 h-5 text-teal-700" />}
+        breadcrumbs={[
+          { label: 'Apps', href: '/apps' },
+          { label: 'Inventory' },
+          { label: 'Stock Movements' },
+        ]}
+        actions={
+          <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="w-4 h-4" />}>
+            Log Movement
+          </Button>
+        }
+      />
 
       <Table columns={columns} data={items} isLoading={isLoading} emptyText="No stock movement records found." />
       <Pagination currentPage={page} totalItems={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />

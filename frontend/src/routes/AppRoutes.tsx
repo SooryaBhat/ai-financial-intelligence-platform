@@ -15,6 +15,7 @@ import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { LandingPage } from '@/pages/LandingPage'
 import { HelpPage } from '@/pages/HelpPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { AppLauncherPage } from '@/pages/AppLauncherPage'
 
 // ERP Module Pages
 import { CompaniesPage } from '@/pages/erp/CompaniesPage'
@@ -76,6 +77,7 @@ export const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       >
+        <Route path="/apps" element={<AppLauncherPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
 
         {/* Platform & Organization */}

@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/Input'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { Badge } from '@/components/ui/Badge'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useAuth } from '@/hooks/useAuth'
 
 interface ChatMessage {
@@ -143,15 +144,17 @@ export const MlChatPage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-          <Bot className="w-5 h-5 text-teal-700" />
-          <span>ALLADIN AI Business Assistant</span>
-        </h1>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Ask natural language questions grounded in your company&apos;s live database, transactions, and predictive models
-        </p>
-      </div>
+      <PageHeader
+        title="AI Copilot & Business Assistant"
+        description="Ask natural language questions grounded in your company's live ledger records, warehouse stock levels, and predictive ML models"
+        icon={<Bot className="w-5 h-5 text-teal-700" />}
+        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-teal-50 text-teal-800 border border-teal-200">AI Copilot</span>}
+        breadcrumbs={[
+          { label: 'Apps', href: '/apps' },
+          { label: 'Intelligence' },
+          { label: 'AI Copilot' },
+        ]}
+      />
 
       <Card className="h-[560px] flex flex-col justify-between overflow-hidden bg-white border-slate-200 shadow-sm">
         <CardHeader className="border-b border-slate-100 py-3 flex flex-row items-center justify-between">

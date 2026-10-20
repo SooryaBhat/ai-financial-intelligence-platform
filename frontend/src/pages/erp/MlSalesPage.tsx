@@ -4,8 +4,9 @@ import { ShoppingCart, BrainCircuit, RefreshCw, Download } from 'lucide-react'
 import { mlService } from '@/services/erp.service'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Spinner } from '@/components/ui/Spinner'
 import { Table, Column } from '@/components/ui/Table'
 import { useToast } from '@/hooks/useToast'
@@ -58,49 +59,51 @@ export const MlSalesPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-emerald-600" />
-            <span>AI Sales Demand Predictor</span>
-          </h1>
-          <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
-            Predict upcoming product and category unit sales volumes using XGBoost or LightGBM
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Select
-            value={entityType}
-            onChange={(e) => setEntityType(e.target.value)}
-            options={[
-              { label: 'Product Level', value: 'product' },
-              { label: 'Category Level', value: 'category' },
-            ]}
-          />
-          <Select
-            value={modelType}
-            onChange={(e) => setModelType(e.target.value)}
-            options={[
-              { label: 'XGBoost Regressor', value: 'xgboost' },
-              { label: 'LightGBM Regressor', value: 'lightgbm' },
-            ]}
-          />
-          <Select
-            value={monthsAhead.toString()}
-            onChange={(e) => setMonthsAhead(Number(e.target.value))}
-            options={[
-              { label: '3 Months Horizon', value: '3' },
-              { label: '6 Months Horizon', value: '6' },
-            ]}
-          />
-          <Button variant="outline" size="sm" onClick={() => refetch()} leftIcon={<RefreshCw className="w-4 h-4" />}>
-            Predict
-          </Button>
-          <Button variant="secondary" size="sm" onClick={handleExport} leftIcon={<Download className="w-4 h-4" />}>
-            Export
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Sales Demand Forecast"
+        description="Predict upcoming product and category unit sales volumes using XGBoost and LightGBM models"
+        icon={<ShoppingCart className="w-5 h-5 text-teal-700" />}
+        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Engine</span>}
+        breadcrumbs={[
+          { label: 'Apps', href: '/apps' },
+          { label: 'Intelligence' },
+          { label: 'Sales Demand' },
+        ]}
+        actions={
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Select
+              value={entityType}
+              onChange={(e) => setEntityType(e.target.value)}
+              options={[
+                { label: 'Product Level', value: 'product' },
+                { label: 'Category Level', value: 'category' },
+              ]}
+            />
+            <Select
+              value={modelType}
+              onChange={(e) => setModelType(e.target.value)}
+              options={[
+                { label: 'XGBoost Regressor', value: 'xgboost' },
+                { label: 'LightGBM Regressor', value: 'lightgbm' },
+              ]}
+            />
+            <Select
+              value={monthsAhead.toString()}
+              onChange={(e) => setMonthsAhead(Number(e.target.value))}
+              options={[
+                { label: '3 Months Horizon', value: '3' },
+                { label: '6 Months Horizon', value: '6' },
+              ]}
+            />
+            <Button variant="outline" size="sm" onClick={() => refetch()} leftIcon={<RefreshCw className="w-4 h-4" />}>
+              Predict
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleExport} leftIcon={<Download className="w-4 h-4" />}>
+              Export
+            </Button>
+          </div>
+        }
+      />
 
       {isLoading ? (
         <Card className="p-12 text-center">

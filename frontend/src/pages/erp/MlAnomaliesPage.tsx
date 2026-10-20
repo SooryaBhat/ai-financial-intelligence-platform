@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useToast } from '@/hooks/useToast'
-import { formatCurrency } from '@/lib/utils'
 
 export const MlAnomaliesPage: React.FC = () => {
   const toast = useToast()
@@ -35,15 +35,17 @@ export const MlAnomaliesPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-amber-600" />
-          <span>Isolation Forest Anomaly Inspector</span>
-        </h1>
-        <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
-          Scan invoices and transaction ledgers for statistical outlier anomalies using Isolation Forest
-        </p>
-      </div>
+      <PageHeader
+        title="Transaction Anomaly Inspector"
+        description="Scan invoices and commercial transactions for statistical outliers and fraud signals using Isolation Forest ML"
+        icon={<AlertTriangle className="w-5 h-5 text-teal-700" />}
+        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Engine</span>}
+        breadcrumbs={[
+          { label: 'Apps', href: '/apps' },
+          { label: 'Intelligence' },
+          { label: 'Anomaly Detection' },
+        ]}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Form Card */}

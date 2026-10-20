@@ -10,6 +10,7 @@ import { Table, Column } from '@/components/ui/Table'
 import { Modal } from '@/components/ui/Modal'
 import { Pagination } from '@/components/ui/Pagination'
 import { ErrorState } from '@/components/ui/ErrorState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useToast } from '@/hooks/useToast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
@@ -113,17 +114,21 @@ export const PaymentsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100">Payments & Remittances</h1>
-          <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
-            Record customer receipts, wire transfers, and invoice clearing entries
-          </p>
-        </div>
-        <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="w-4 h-4" />}>
-          Record Payment
-        </Button>
-      </div>
+      <PageHeader
+        title="Payments & Remittances"
+        description="Customer remittances, wire settlements, and invoice clearing entries"
+        icon={<CreditCard className="w-5 h-5 text-teal-700" />}
+        breadcrumbs={[
+          { label: 'Apps', href: '/apps' },
+          { label: 'Commercial' },
+          { label: 'Payments' },
+        ]}
+        actions={
+          <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="w-4 h-4" />}>
+            Record Payment
+          </Button>
+        }
+      />
 
       <Table columns={columns} data={items} isLoading={isLoading} emptyText="No payment transactions logged." />
       <Pagination currentPage={page} totalItems={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />

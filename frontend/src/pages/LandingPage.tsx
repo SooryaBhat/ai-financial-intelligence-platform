@@ -48,7 +48,7 @@ export const LandingPage: React.FC = () => {
 
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
-              <Link to="/dashboard">
+              <Link to="/apps">
                 <Button variant="primary" size="sm" rightIcon={<ArrowRight className="w-4 h-4" />}>
                   Go to Workspace
                 </Button>

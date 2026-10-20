@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Spinner } from '@/components/ui/Spinner'
 import { useToast } from '@/hooks/useToast'
 import { formatCurrency } from '@/lib/utils'
@@ -40,25 +41,27 @@ export const MlProfitPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-emerald-600" />
-            <span>AI Net Profit & Margin Predictor</span>
-          </h1>
-          <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
-            Forecast upcoming gross & net profit margins, profitability status, and efficiency metrics
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()} leftIcon={<RefreshCw className="w-4 h-4" />}>
-            Re-evaluate
-          </Button>
-          <Button variant="secondary" size="sm" onClick={handleExport} leftIcon={<Download className="w-4 h-4" />}>
-            Export
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Net Profit & Margin Predictor"
+        description="Forecast future net operating profits, gross margins, and profitability status based on ledger cashflows"
+        icon={<DollarSign className="w-5 h-5 text-teal-700" />}
+        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Engine</span>}
+        breadcrumbs={[
+          { label: 'Apps', href: '/apps' },
+          { label: 'Intelligence' },
+          { label: 'Profit Prediction' },
+        ]}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => refetch()} leftIcon={<RefreshCw className="w-4 h-4" />}>
+              Re-evaluate
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleExport} leftIcon={<Download className="w-4 h-4" />}>
+              Export
+            </Button>
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="md:col-span-1">

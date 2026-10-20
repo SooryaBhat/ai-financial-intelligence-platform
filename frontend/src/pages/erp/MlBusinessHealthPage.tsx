@@ -1,7 +1,9 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { BrainCircuit, ShieldCheck, CheckCircle2 } from 'lucide-react'
+import { HeartPulse, ShieldCheck, CheckCircle2, RefreshCw } from 'lucide-react'
 import { mlService } from '@/services/erp.service'
+import { Button } from '@/components/ui/Button'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
@@ -22,15 +24,22 @@ export const MlBusinessHealthPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-          <BrainCircuit className="w-5 h-5 text-indigo-600" />
-          <span>Business Health Score & Risk Evaluator</span>
-        </h1>
-        <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
-          Composite financial health index (0–100), letter grade, and AI advisory recommendations
-        </p>
-      </div>
+      <PageHeader
+        title="Business Health Score & Risk Evaluator"
+        description="Composite financial health index (0–100), operational grade, liquidity rating, and ML advisory recommendations"
+        icon={<HeartPulse className="w-5 h-5 text-teal-700" />}
+        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Engine</span>}
+        breadcrumbs={[
+          { label: 'Apps', href: '/apps' },
+          { label: 'Intelligence' },
+          { label: 'Business Health' },
+        ]}
+        actions={
+          <Button variant="outline" size="sm" onClick={() => refetch()} leftIcon={<RefreshCw className="w-4 h-4" />}>
+            Re-evaluate
+          </Button>
+        }
+      />
 
       {isLoading ? (
         <Card className="p-12 text-center">

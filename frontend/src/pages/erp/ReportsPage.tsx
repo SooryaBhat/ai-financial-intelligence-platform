@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Table, Column } from '@/components/ui/Table'
 import { Modal } from '@/components/ui/Modal'
 import { ErrorState } from '@/components/ui/ErrorState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useToast } from '@/hooks/useToast'
 import { formatDate } from '@/lib/utils'
 
@@ -89,17 +90,21 @@ export const ReportsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100">Financial Reports & Audits</h1>
-          <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
-            Automated PDF balance sheets, income statements, and tax compliance exports
-          </p>
-        </div>
-        <Button variant="primary" onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
-          Generate Report
-        </Button>
-      </div>
+      <PageHeader
+        title="Financial Reports & Audits"
+        description="Automated P&L balance sheets, income statements, tax compliance records, and audit trail exports"
+        icon={<FileText className="w-5 h-5 text-teal-700" />}
+        breadcrumbs={[
+          { label: 'Apps', href: '/apps' },
+          { label: 'Financials' },
+          { label: 'Reports' },
+        ]}
+        actions={
+          <Button variant="primary" onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
+            Generate Report
+          </Button>
+        }
+      />
 
       <Table columns={columns} data={items} isLoading={isLoading} emptyText="No reports generated yet." />
 

@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Search } from '@/components/ui/Search'
 import { Pagination } from '@/components/ui/Pagination'
 import { ErrorState } from '@/components/ui/ErrorState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useToast } from '@/hooks/useToast'
 
 interface UserRecord {
@@ -143,17 +144,21 @@ export const UsersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100">Users & RBAC Access</h1>
-          <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
-            Team members, role permissions, and administrative access
-          </p>
-        </div>
-        <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="w-4 h-4" />}>
-          Invite User
-        </Button>
-      </div>
+      <PageHeader
+        title="Users & RBAC Access"
+        description="Team members, role permissions, and administrative access control"
+        icon={<UserCheck className="w-5 h-5 text-teal-700" />}
+        breadcrumbs={[
+          { label: 'Apps', href: '/apps' },
+          { label: 'Administration' },
+          { label: 'Users & Roles' },
+        ]}
+        actions={
+          <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="w-4 h-4" />}>
+            Invite User
+          </Button>
+        }
+      />
 
       <Search value={search} onChange={setSearch} placeholder="Search users by name or email..." />
       <Table columns={columns} data={items} isLoading={isLoading} emptyText="No user accounts found." />

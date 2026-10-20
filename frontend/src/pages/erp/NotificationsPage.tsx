@@ -5,6 +5,7 @@ import { notificationService } from '@/services/erp.service'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { ErrorState } from '@/components/ui/ErrorState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useToast } from '@/hooks/useToast'
 import { formatDate } from '@/lib/utils'
 
@@ -47,17 +48,21 @@ export const NotificationsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100">System Notifications & Alerts</h1>
-          <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
-            Operational notifications, stock level alerts, and AI anomaly warnings
-          </p>
-        </div>
-        <Button variant="outline" onClick={handleMarkAllRead} leftIcon={<CheckCheck className="w-4 h-4 text-emerald-600" />}>
-          Mark All Read
-        </Button>
-      </div>
+      <PageHeader
+        title="System Notifications & Alerts"
+        description="Operational updates, low stock warnings, transaction approvals, and AI anomaly alerts"
+        icon={<Bell className="w-5 h-5 text-teal-700" />}
+        breadcrumbs={[
+          { label: 'Apps', href: '/apps' },
+          { label: 'Administration' },
+          { label: 'Notifications' },
+        ]}
+        actions={
+          <Button variant="outline" onClick={handleMarkAllRead} leftIcon={<CheckCheck className="w-4 h-4 text-emerald-600" />}>
+            Mark All Read
+          </Button>
+        }
+      />
 
       <div className="space-y-3">
         {isLoading ? (

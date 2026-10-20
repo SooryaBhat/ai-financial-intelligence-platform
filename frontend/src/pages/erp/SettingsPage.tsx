@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { ErrorState } from '@/components/ui/ErrorState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useToast } from '@/hooks/useToast'
 
 export const SettingsPage: React.FC = () => {
@@ -48,15 +49,16 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 flex items-center gap-2">
-          <SettingsIcon className="w-5 h-5 text-primary-600" />
-          <span>System Settings & Governance</span>
-        </h1>
-        <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
-          Tenant settings, tax rates, accounting periods, and security rules
-        </p>
-      </div>
+      <PageHeader
+        title="Platform Settings & Governance"
+        description="Tenant configuration, default ledger currency, tax rates, fiscal periods, and enterprise security policies"
+        icon={<SettingsIcon className="w-5 h-5 text-teal-700" />}
+        breadcrumbs={[
+          { label: 'Apps', href: '/apps' },
+          { label: 'Administration' },
+          { label: 'Settings' },
+        ]}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>

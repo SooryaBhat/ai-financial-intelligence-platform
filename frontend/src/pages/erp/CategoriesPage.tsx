@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Search } from '@/components/ui/Search'
 import { Pagination } from '@/components/ui/Pagination'
 import { ErrorState } from '@/components/ui/ErrorState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useToast } from '@/hooks/useToast'
 
 interface CategoryRecord {
@@ -117,17 +118,21 @@ export const CategoriesPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100">Product Categories</h1>
-          <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
-            Group products by taxonomy, industry sectors, and catalog tags
-          </p>
-        </div>
-        <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="w-4 h-4" />}>
-          Add Category
-        </Button>
-      </div>
+      <PageHeader
+        title="Product Categories & Taxonomy"
+        description="Classify products by category, department hierarchy, catalog tags, and reporting codes"
+        icon={<Tag className="w-5 h-5 text-teal-700" />}
+        breadcrumbs={[
+          { label: 'Apps', href: '/apps' },
+          { label: 'Inventory' },
+          { label: 'Categories' },
+        ]}
+        actions={
+          <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="w-4 h-4" />}>
+            Add Category
+          </Button>
+        }
+      />
 
       <Search value={search} onChange={setSearch} placeholder="Search categories..." />
       <Table columns={columns} data={items} isLoading={isLoading} emptyText="No categories found." />

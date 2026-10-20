@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatCurrency } from '@/lib/utils'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
@@ -30,39 +31,41 @@ export const MlRevenuePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-teal-700" />
-            <span>AI Revenue Forecasting Engine</span>
-          </h1>
-          <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
-            Predict future monthly revenue using trained XGBoost and SARIMA time-series models
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Select
-            value={monthsAhead.toString()}
-            onChange={(e) => setMonthsAhead(Number(e.target.value))}
-            options={[
-              { label: '3 Months Forecast', value: '3' },
-              { label: '6 Months Forecast', value: '6' },
-              { label: '12 Months Forecast', value: '12' },
-            ]}
-          />
-          <Select
-            value={modelType}
-            onChange={(e) => setModelType(e.target.value)}
-            options={[
-              { label: 'XGBoost Regressor', value: 'xgboost' },
-              { label: 'SARIMA Time-Series', value: 'sarima' },
-            ]}
-          />
-          <Button variant="outline" size="sm" onClick={() => refetch()} leftIcon={<RefreshCw className="w-4 h-4" />}>
-            Run Model
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Revenue Forecasting Engine"
+        description="Predict future company revenue and monthly cash inflows using trained XGBoost regression and SARIMA seasonal models"
+        icon={<TrendingUp className="w-5 h-5 text-teal-700" />}
+        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Engine</span>}
+        breadcrumbs={[
+          { label: 'Apps', href: '/apps' },
+          { label: 'Intelligence' },
+          { label: 'Revenue Forecast' },
+        ]}
+        actions={
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Select
+              value={monthsAhead.toString()}
+              onChange={(e) => setMonthsAhead(Number(e.target.value))}
+              options={[
+                { label: '3 Months Forecast', value: '3' },
+                { label: '6 Months Forecast', value: '6' },
+                { label: '12 Months Forecast', value: '12' },
+              ]}
+            />
+            <Select
+              value={modelType}
+              onChange={(e) => setModelType(e.target.value)}
+              options={[
+                { label: 'XGBoost Regressor', value: 'xgboost' },
+                { label: 'SARIMA Time-Series', value: 'sarima' },
+              ]}
+            />
+            <Button variant="outline" size="sm" onClick={() => refetch()} leftIcon={<RefreshCw className="w-4 h-4" />}>
+              Run Model
+            </Button>
+          </div>
+        }
+      />
 
       {isLoading ? (
         <Card className="p-12 text-center">

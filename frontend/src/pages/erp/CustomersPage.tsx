@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Search } from '@/components/ui/Search'
 import { Pagination } from '@/components/ui/Pagination'
 import { ErrorState } from '@/components/ui/ErrorState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { useToast } from '@/hooks/useToast'
 
 interface CustomerRecord {
@@ -144,17 +145,21 @@ export const CustomersPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100">Customers & Clients</h1>
-          <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
-            Customer directory, credit limits, and invoicing details
-          </p>
-        </div>
-        <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="w-4 h-4" />}>
-          Add Customer
-        </Button>
-      </div>
+      <PageHeader
+        title="Customers & CRM Directory"
+        description="Customer directory, client contact details, credit limits, and receivable balances"
+        icon={<Users className="w-5 h-5 text-teal-700" />}
+        breadcrumbs={[
+          { label: 'Apps', href: '/apps' },
+          { label: 'Commercial' },
+          { label: 'Customers' },
+        ]}
+        actions={
+          <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="w-4 h-4" />}>
+            Add Customer
+          </Button>
+        }
+      />
 
       <Search value={search} onChange={setSearch} placeholder="Search customers..." />
       <Table columns={columns} data={items} isLoading={isLoading} emptyText="No customer accounts found." />

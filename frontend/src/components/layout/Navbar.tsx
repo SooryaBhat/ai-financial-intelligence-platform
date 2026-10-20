@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  Menu,
   Bell,
   Search as SearchIcon,
   Bot,
@@ -18,7 +17,20 @@ import {
   Layers,
   FileText,
   Warehouse,
-  BrainCircuit,
+  Settings,
+  GitBranch,
+  UserCheck,
+  Tag,
+  PackageCheck,
+  ArrowLeftRight,
+  ShoppingBag,
+  CreditCard,
+  DollarSign,
+  HeartPulse,
+  AlertTriangle,
+  Menu,
+  X,
+  LayoutDashboard,
 } from 'lucide-react'
 import { AlladinLogo } from '@/components/brand/AlladinLogo'
 import { ProfileMenu } from './ProfileMenu'
@@ -28,27 +40,27 @@ import { notificationService } from '@/services/erp.service'
 import { cn } from '@/lib/utils'
 
 export interface NavbarProps {
-  onMobileMenuToggle: () => void
-  isSidebarCollapsed: boolean
+  onMobileMenuToggle?: () => void
+  isSidebarCollapsed?: boolean
   onOpenSearch: () => void
   onToggleAIAssistant: () => void
 }
 
+type DropdownKey = 'commercial' | 'inventory' | 'finance' | 'ml' | 'admin' | null
+
 export const Navbar: React.FC<NavbarProps> = ({
-  onMobileMenuToggle,
-  isSidebarCollapsed: _isSidebarCollapsed,
   onOpenSearch,
   onToggleAIAssistant,
 }) => {
   const location = useLocation()
   const { activeCompany, companies, setActiveCompanyId } = useAuth()
 
-  const [isErpMenuOpen, setIsErpMenuOpen] = useState(false)
-  const [isForecastMenuOpen, setIsForecastMenuOpen] = useState(false)
+  const [activeDropdown, setActiveDropdown] = useState<DropdownKey>(null)
   const [isCompanyMenuOpen, setIsCompanyMenuOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [mobileSearch, setMobileSearch] = useState('')
 
-  const erpRef = useRef<HTMLDivElement>(null)
-  const forecastRef = useRef<HTMLDivElement>(null)
+  const navRef = useRef<HTMLDivElement>(null)
   const companyRef = useRef<HTMLDivElement>(null)
 
   // Fetch unread notification count
@@ -61,11 +73,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (erpRef.current && !erpRef.current.contains(e.target as Node)) {
-        setIsErpMenuOpen(false)
-      }
-      if (forecastRef.current && !forecastRef.current.contains(e.target as Node)) {
-        setIsForecastMenuOpen(false)
+      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+        setActiveDropdown(null)
       }
       if (companyRef.current && !companyRef.current.contains(e.target as Node)) {
         setIsCompanyMenuOpen(false)
@@ -77,266 +86,527 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   // Close menus on route change
   useEffect(() => {
-    setIsErpMenuOpen(false)
-    setIsForecastMenuOpen(false)
+    setActiveDropdown(null)
     setIsCompanyMenuOpen(false)
+    setIsMobileMenuOpen(false)
   }, [location.pathname])
 
-  const isErpActive =
-    !location.pathname.startsWith('/ml') &&
-    !location.pathname.startsWith('/help') &&
-    location.pathname !== '/'
+  const toggleDropdown = (key: DropdownKey) => {
+    setActiveDropdown(activeDropdown === key ? null : key)
+  }
 
-  const isForecastActive = location.pathname.startsWith('/ml')
-  const isHelpActive = location.pathname.startsWith('/help')
+  // Active section highlights
+  const isCommercialActive = ['/sales', '/invoices', '/customers', '/payments'].some((p) =>
+    location.pathname.startsWith(p)
+  )
+  const isInventoryActive = [
+    '/products',
+    '/inventory',
+    '/stock-movements',
+    '/warehouses',
+    '/categories',
+    '/purchases',
+    '/suppliers',
+  ].some((p) => location.pathname.startsWith(p))
+  const isFinanceActive = ['/dashboard', '/expenses', '/reports'].some((p) =>
+    location.pathname.startsWith(p)
+  )
+  const isMlActive = location.pathname.startsWith('/ml')
+  const isAdminActive = ['/companies', '/branches', '/users', '/settings', '/notifications'].some((p) =>
+    location.pathname.startsWith(p)
+  )
+
+  const isLauncherActive = location.pathname === '/apps'
 
   return (
-    <header className="sticky top-0 z-30 h-14 bg-white border-b border-slate-200 transition-colors flex items-center justify-between px-3 sm:px-5 select-none">
-      {/* ── Left section: Brand, Mobile Toggle, Primary Destinations ── */}
-      <div className="flex items-center gap-2 sm:gap-4">
+    <header className="sticky top-0 z-30 h-14 bg-white border-b border-slate-200 transition-colors flex items-center justify-between px-3 sm:px-6 select-none shadow-xs">
+      {/* ── Left section: Odoo App Launcher Button, Brand Logo, Modular Top Nav ── */}
+      <div className="flex items-center gap-2 sm:gap-4" ref={navRef}>
+        {/* Mobile Menu Toggle Button */}
         <button
-          onClick={onMobileMenuToggle}
-          className="lg:hidden p-1.5 rounded-md text-slate-600 hover:bg-slate-100 transition-colors"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="lg:hidden p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
           title="Toggle Navigation Menu"
         >
-          <Menu className="w-5 h-5" />
+          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
 
-        {/* ALLADIN Logo on top bar */}
-        <AlladinLogo size="sm" showFullName={false} to="/dashboard" />
+        {/* Odoo-style App Launcher Waffle Button */}
+        <Link
+          to="/apps"
+          className={cn(
+            'flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg transition-all duration-150',
+            isLauncherActive
+              ? 'bg-teal-50 text-teal-800 ring-1 ring-teal-200'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          )}
+          title="Application Launcher (Home)"
+        >
+          <LayoutGrid className="w-4 h-4 text-teal-700" />
+          <span className="text-xs font-bold hidden sm:inline">Apps</span>
+        </Link>
 
-        <div className="h-4 w-px bg-slate-200 hidden md:block" />
+        {/* ALLADIN Logo */}
+        <AlladinLogo size="sm" showFullName={false} to="/apps" />
 
-        {/* ── Primary Destinations Tabs (Odoo-inspired) ── */}
-        <nav className="hidden md:flex items-center gap-1 text-xs">
-          {/* 1. ERP Tab & App Launcher Dropdown */}
-          <div className="relative" ref={erpRef}>
+        <div className="h-4 w-px bg-slate-200 hidden lg:block" />
+
+        {/* ── Primary Modular Dropdowns (Odoo enterprise pattern) ── */}
+        <nav className="hidden lg:flex items-center gap-1 text-xs">
+          {/* 1. Commercial & Sales */}
+          <div className="relative">
             <button
-              onClick={() => setIsErpMenuOpen(!isErpMenuOpen)}
+              onClick={() => toggleDropdown('commercial')}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-md font-semibold transition-colors',
-                isErpActive
+                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-semibold transition-colors',
+                isCommercialActive
                   ? 'bg-teal-50 text-teal-800'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               )}
             >
-              <LayoutGrid className="w-3.5 h-3.5 text-teal-700" />
-              <span>ERP</span>
+              <ShoppingCart className="w-3.5 h-3.5 text-teal-700" />
+              <span>Sales</span>
               <ChevronDown className="w-3 h-3 text-slate-400" />
             </button>
 
-            {/* Odoo-style ERP Modules Grid Dropdown */}
-            {isErpMenuOpen && (
-              <div className="absolute left-0 mt-1.5 w-80 bg-white border border-slate-200 rounded-xl shadow-xl py-3 px-3 z-50 animate-fade-in">
-                <div className="px-2 pb-2 mb-2 border-b border-slate-100 flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    ALLADIN ERP Suite
-                  </span>
-                  <Link
-                    to="/dashboard"
-                    onClick={() => setIsErpMenuOpen(false)}
-                    className="text-[10px] font-semibold text-teal-700 hover:underline"
-                  >
-                    Dashboard &rarr;
-                  </Link>
+            {activeDropdown === 'commercial' && (
+              <div className="absolute left-0 mt-1.5 w-60 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in text-xs">
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                  Sales & Commercial
                 </div>
-
-                <div className="grid grid-cols-2 gap-1 text-xs">
+                <div className="py-1">
                   <Link
                     to="/sales"
-                    onClick={() => setIsErpMenuOpen(false)}
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-teal-800 transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <ShoppingCart className="w-4 h-4 text-teal-600" />
-                    <span>Sales Orders</span>
+                    <ShoppingCart className="w-4 h-4 text-emerald-600" />
+                    <div>
+                      <div className="font-semibold">Sales Orders</div>
+                      <div className="text-[10px] text-slate-400">Order management & pipelines</div>
+                    </div>
                   </Link>
-
                   <Link
                     to="/invoices"
-                    onClick={() => setIsErpMenuOpen(false)}
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-teal-800 transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Receipt className="w-4 h-4 text-teal-600" />
-                    <span>Invoices</span>
+                    <Receipt className="w-4 h-4 text-blue-600" />
+                    <div>
+                      <div className="font-semibold">Invoices & Billing</div>
+                      <div className="text-[10px] text-slate-400">Receivables & tax invoices</div>
+                    </div>
                   </Link>
-
-                  <Link
-                    to="/products"
-                    onClick={() => setIsErpMenuOpen(false)}
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-teal-800 transition-colors"
-                  >
-                    <Package className="w-4 h-4 text-teal-600" />
-                    <span>Products</span>
-                  </Link>
-
-                  <Link
-                    to="/inventory"
-                    onClick={() => setIsErpMenuOpen(false)}
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-teal-800 transition-colors"
-                  >
-                    <Warehouse className="w-4 h-4 text-teal-600" />
-                    <span>Inventory</span>
-                  </Link>
-
-                  <Link
-                    to="/purchases"
-                    onClick={() => setIsErpMenuOpen(false)}
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-teal-800 transition-colors"
-                  >
-                    <Briefcase className="w-4 h-4 text-teal-600" />
-                    <span>Purchases</span>
-                  </Link>
-
                   <Link
                     to="/customers"
-                    onClick={() => setIsErpMenuOpen(false)}
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-teal-800 transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Users className="w-4 h-4 text-teal-600" />
-                    <span>Customers</span>
+                    <Users className="w-4 h-4 text-violet-600" />
+                    <div>
+                      <div className="font-semibold">Customers Directory</div>
+                      <div className="text-[10px] text-slate-400">Client CRM & account ledgers</div>
+                    </div>
                   </Link>
-
                   <Link
-                    to="/expenses"
-                    onClick={() => setIsErpMenuOpen(false)}
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-teal-800 transition-colors"
+                    to="/payments"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Layers className="w-4 h-4 text-teal-600" />
-                    <span>Expenses</span>
-                  </Link>
-
-                  <Link
-                    to="/reports"
-                    onClick={() => setIsErpMenuOpen(false)}
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 text-slate-700 hover:text-teal-800 transition-colors"
-                  >
-                    <FileText className="w-4 h-4 text-teal-600" />
-                    <span>Reports</span>
+                    <CreditCard className="w-4 h-4 text-sky-600" />
+                    <div>
+                      <div className="font-semibold">Payments & Collections</div>
+                      <div className="text-[10px] text-slate-400">Settlements & payment vouchers</div>
+                    </div>
                   </Link>
                 </div>
               </div>
             )}
           </div>
 
-          {/* 2. Forecasting Tab & Dropdown */}
-          <div className="relative" ref={forecastRef}>
+          {/* 2. Procurement & Inventory */}
+          <div className="relative">
             <button
-              onClick={() => setIsForecastMenuOpen(!isForecastMenuOpen)}
+              onClick={() => toggleDropdown('inventory')}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-md font-semibold transition-colors',
-                isForecastActive
+                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-semibold transition-colors',
+                isInventoryActive
+                  ? 'bg-teal-50 text-teal-800'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              )}
+            >
+              <Package className="w-3.5 h-3.5 text-teal-700" />
+              <span>Inventory</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+
+            {activeDropdown === 'inventory' && (
+              <div className="absolute left-0 mt-1.5 w-64 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in text-xs">
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                  Procurement & Inventory
+                </div>
+                <div className="py-1">
+                  <Link
+                    to="/products"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <Package className="w-4 h-4 text-indigo-600" />
+                    <div>
+                      <div className="font-semibold">Products & SKUs</div>
+                      <div className="text-[10px] text-slate-400">Master catalog & pricing</div>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/inventory"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <PackageCheck className="w-4 h-4 text-teal-600" />
+                    <div>
+                      <div className="font-semibold">Current Stock</div>
+                      <div className="text-[10px] text-slate-400">On-hand quantities by location</div>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/stock-movements"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <ArrowLeftRight className="w-4 h-4 text-slate-600" />
+                    <div>
+                      <div className="font-semibold">Stock Movements</div>
+                      <div className="text-[10px] text-slate-400">Inbound, outbound & transfers</div>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/warehouses"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <Warehouse className="w-4 h-4 text-amber-600" />
+                    <div>
+                      <div className="font-semibold">Warehouses</div>
+                      <div className="text-[10px] text-slate-400">Storage facilities & zones</div>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/categories"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <Tag className="w-4 h-4 text-rose-600" />
+                    <div>
+                      <div className="font-semibold">Categories</div>
+                      <div className="text-[10px] text-slate-400">Taxonomy & classification</div>
+                    </div>
+                  </Link>
+                  <div className="my-1 border-t border-slate-100" />
+                  <Link
+                    to="/purchases"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <ShoppingBag className="w-4 h-4 text-cyan-600" />
+                    <div>
+                      <div className="font-semibold">Purchase Orders</div>
+                      <div className="text-[10px] text-slate-400">Supplier procurement orders</div>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/suppliers"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <Briefcase className="w-4 h-4 text-stone-600" />
+                    <div>
+                      <div className="font-semibold">Suppliers</div>
+                      <div className="text-[10px] text-slate-400">Vendor master directory</div>
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 3. Finance & Accounting */}
+          <div className="relative">
+            <button
+              onClick={() => toggleDropdown('finance')}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-semibold transition-colors',
+                isFinanceActive
+                  ? 'bg-teal-50 text-teal-800'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              )}
+            >
+              <DollarSign className="w-3.5 h-3.5 text-teal-700" />
+              <span>Accounting</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+
+            {activeDropdown === 'finance' && (
+              <div className="absolute left-0 mt-1.5 w-60 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in text-xs">
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                  Financial Intelligence
+                </div>
+                <div className="py-1">
+                  <Link
+                    to="/dashboard"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <LayoutDashboard className="w-4 h-4 text-teal-600" />
+                    <div>
+                      <div className="font-semibold">Executive Dashboard</div>
+                      <div className="text-[10px] text-slate-400">KPIs, ledger charts & alerts</div>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/invoices"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <Receipt className="w-4 h-4 text-blue-600" />
+                    <div>
+                      <div className="font-semibold">Invoices & Receivables</div>
+                      <div className="text-[10px] text-slate-400">Customer billing & tax records</div>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/expenses"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <Layers className="w-4 h-4 text-orange-600" />
+                    <div>
+                      <div className="font-semibold">Expenses</div>
+                      <div className="text-[10px] text-slate-400">Operating vouchers & approvals</div>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/payments"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <CreditCard className="w-4 h-4 text-sky-600" />
+                    <div>
+                      <div className="font-semibold">Payments</div>
+                      <div className="text-[10px] text-slate-400">Bank settlements & receipts</div>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/reports"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <FileText className="w-4 h-4 text-indigo-600" />
+                    <div>
+                      <div className="font-semibold">Financial Reports</div>
+                      <div className="text-[10px] text-slate-400">P&L, balance sheets & audit</div>
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 4. AI & ML Forecasts */}
+          <div className="relative">
+            <button
+              onClick={() => toggleDropdown('ml')}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-semibold transition-colors',
+                isMlActive
                   ? 'bg-teal-50 text-teal-800'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               )}
             >
               <TrendingUp className="w-3.5 h-3.5 text-teal-700" />
-              <span>Forecasting</span>
+              <span>Forecasts & AI</span>
+              <span className="px-1.5 py-0.2 text-[9px] font-bold rounded bg-purple-50 text-purple-700 border border-purple-200/60">
+                ML
+              </span>
               <ChevronDown className="w-3 h-3 text-slate-400" />
             </button>
 
-            {isForecastMenuOpen && (
-              <div className="absolute left-0 mt-1.5 w-64 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in text-xs">
-                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
-                  ML Prediction Engines
+            {activeDropdown === 'ml' && (
+              <div className="absolute left-0 mt-1.5 w-68 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in text-xs">
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 flex items-center justify-between">
+                  <span>ML Prediction Engines</span>
+                  <span className="text-[9px] text-purple-600 font-bold uppercase">Decision AI</span>
                 </div>
                 <div className="py-1">
                   <Link
                     to="/ml/revenue"
-                    onClick={() => setIsForecastMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <TrendingUp className="w-3.5 h-3.5 text-teal-600" />
-                    <span>Revenue Forecast</span>
+                    <TrendingUp className="w-4 h-4 text-purple-600" />
+                    <div>
+                      <div className="font-semibold">Revenue Forecast</div>
+                      <div className="text-[10px] text-slate-400">XGBoost & SARIMA projections</div>
+                    </div>
                   </Link>
                   <Link
                     to="/ml/sales"
-                    onClick={() => setIsForecastMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <ShoppingCart className="w-3.5 h-3.5 text-teal-600" />
-                    <span>Sales Demand Forecast</span>
+                    <ShoppingCart className="w-4 h-4 text-emerald-600" />
+                    <div>
+                      <div className="font-semibold">Sales Demand Forecast</div>
+                      <div className="text-[10px] text-slate-400">Product order volume prediction</div>
+                    </div>
                   </Link>
                   <Link
                     to="/ml/inventory"
-                    onClick={() => setIsForecastMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Package className="w-3.5 h-3.5 text-teal-600" />
-                    <span>Inventory Reorder Demand</span>
+                    <PackageCheck className="w-4 h-4 text-blue-600" />
+                    <div>
+                      <div className="font-semibold">Inventory Reorder Intelligence</div>
+                      <div className="text-[10px] text-slate-400">Replenishment recommendations</div>
+                    </div>
                   </Link>
                   <Link
                     to="/ml/profit"
-                    onClick={() => setIsForecastMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <TrendingUp className="w-3.5 h-3.5 text-teal-600" />
-                    <span>Profit Margin Prediction</span>
+                    <DollarSign className="w-4 h-4 text-teal-600" />
+                    <div>
+                      <div className="font-semibold">Profit Margin Forecast</div>
+                      <div className="text-[10px] text-slate-400">Gross & net margin trends</div>
+                    </div>
                   </Link>
                   <Link
                     to="/ml/expense"
-                    onClick={() => setIsForecastMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Layers className="w-3.5 h-3.5 text-teal-600" />
-                    <span>Expense Forecast</span>
+                    <Layers className="w-4 h-4 text-orange-600" />
+                    <div>
+                      <div className="font-semibold">Expense Forecast</div>
+                      <div className="text-[10px] text-slate-400">Operating overhead prediction</div>
+                    </div>
                   </Link>
+                  <div className="my-1 border-t border-slate-100" />
                   <Link
                     to="/ml/business-health"
-                    onClick={() => setIsForecastMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <BrainCircuit className="w-3.5 h-3.5 text-teal-600" />
-                    <span>Business Health Score</span>
+                    <HeartPulse className="w-4 h-4 text-rose-600" />
+                    <div>
+                      <div className="font-semibold">Business Health Score</div>
+                      <div className="text-[10px] text-slate-400">Solvency & composite health metric</div>
+                    </div>
                   </Link>
                   <Link
                     to="/ml/anomalies"
-                    onClick={() => setIsForecastMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <BrainCircuit className="w-3.5 h-3.5 text-teal-600" />
-                    <span>Anomaly Detection</span>
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    <div>
+                      <div className="font-semibold">Transaction Anomalies</div>
+                      <div className="text-[10px] text-slate-400">Outlier & fraud risk detection</div>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/ml/chat"
+                    className="flex items-center gap-2.5 px-3 py-2 text-teal-800 bg-teal-50/60 hover:bg-teal-50 transition-colors"
+                  >
+                    <Bot className="w-4 h-4 text-teal-700" />
+                    <div>
+                      <div className="font-bold">AI Assistant Dedicated Page</div>
+                      <div className="text-[10px] text-teal-700">Full-screen decision copilot</div>
+                    </div>
                   </Link>
                 </div>
               </div>
             )}
           </div>
 
-          {/* 3. AI Assistant Trigger */}
+          {/* 5. Administration & Settings */}
+          <div className="relative">
+            <button
+              onClick={() => toggleDropdown('admin')}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-semibold transition-colors',
+                isAdminActive
+                  ? 'bg-teal-50 text-teal-800'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              )}
+            >
+              <Settings className="w-3.5 h-3.5 text-slate-500" />
+              <span>Admin</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+
+            {activeDropdown === 'admin' && (
+              <div className="absolute left-0 mt-1.5 w-56 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in text-xs">
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                  Workspace Administration
+                </div>
+                <div className="py-1">
+                  <Link
+                    to="/companies"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <Building2 className="w-4 h-4 text-slate-600" />
+                    <div>
+                      <div className="font-semibold">Companies</div>
+                      <div className="text-[10px] text-slate-400">Entities & multi-tenancy</div>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/branches"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <GitBranch className="w-4 h-4 text-indigo-600" />
+                    <div>
+                      <div className="font-semibold">Branches</div>
+                      <div className="text-[10px] text-slate-400">Branch offices & divisions</div>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/users"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <UserCheck className="w-4 h-4 text-violet-600" />
+                    <div>
+                      <div className="font-semibold">Users & Roles</div>
+                      <div className="text-[10px] text-slate-400">Permissions & user access</div>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/notifications"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <Bell className="w-4 h-4 text-amber-600" />
+                    <div>
+                      <div className="font-semibold">Notifications</div>
+                      <div className="text-[10px] text-slate-400">Alerts & workflow triggers</div>
+                    </div>
+                  </Link>
+                  <Link
+                    to="/settings"
+                    className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
+                  >
+                    <Settings className="w-4 h-4 text-slate-600" />
+                    <div>
+                      <div className="font-semibold">Settings</div>
+                      <div className="text-[10px] text-slate-400">Platform preferences</div>
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Direct link to AI Assistant Drawer */}
           <button
             onClick={onToggleAIAssistant}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-slate-700 hover:text-teal-800 hover:bg-teal-50 transition-colors font-semibold"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-teal-800 bg-teal-50/70 hover:bg-teal-100/80 transition-colors font-bold border border-teal-200/60"
+            title="Open AI Decision Assistant Drawer"
           >
             <Bot className="w-3.5 h-3.5 text-teal-700" />
-            <span>AI Assistant</span>
+            <span>AI Copilot</span>
           </button>
-
-          {/* 4. Help & Docs */}
-          <Link
-            to="/help"
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-md font-semibold transition-colors',
-              isHelpActive
-                ? 'bg-teal-50 text-teal-800'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            )}
-          >
-            <HelpCircle className="w-3.5 h-3.5 text-slate-500" />
-            <span>Help</span>
-          </Link>
         </nav>
       </div>
 
-      {/* ── Right section: Global Search, Active Company, Notifications, Profile ── */}
+      {/* ── Right section: Global Search, Company Switcher, Notifications, Profile ── */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Global Search Button */}
+        {/* Global Search Button (Ctrl+K) */}
         <button
           onClick={onOpenSearch}
           className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-500 hover:border-slate-300 hover:bg-white hover:text-slate-700 transition-all shadow-2xs"
-          title="Search commands and records (Ctrl+K)"
+          title="Search commands, modules, records (Ctrl+K)"
         >
           <SearchIcon className="w-3.5 h-3.5 text-slate-400" />
-          <span className="hidden sm:inline">Search records or modules...</span>
-          <kbd className="hidden sm:inline-block ml-2 px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-200 text-slate-600 border border-slate-300">
+          <span className="hidden md:inline">Search...</span>
+          <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-200 text-slate-600 border border-slate-300">
             ⌘K
           </kbd>
         </button>
@@ -345,11 +615,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="relative hidden md:block" ref={companyRef}>
           <button
             onClick={() => setIsCompanyMenuOpen(!isCompanyMenuOpen)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-800 transition-colors"
-            title="Active Organization Workspace"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-800 transition-colors shadow-2xs"
+            title="Current Organization Workspace"
           >
             <Building2 className="w-3.5 h-3.5 text-teal-700 shrink-0" />
-            <span className="max-w-[130px] truncate">
+            <span className="max-w-[120px] truncate">
               {activeCompany?.company_name || 'Organization'}
             </span>
             <ChevronDown className="w-3 h-3 text-slate-400" />
@@ -405,7 +675,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         >
           <Bell className="w-4 h-4" />
           {typeof unreadCount === 'number' && unreadCount > 0 && (
-            <span className="absolute top-1 right-1 flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-teal-600 text-white text-[9px] font-bold">
+            <span className="absolute top-1 right-1 flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-teal-600 text-white text-[9px] font-bold animate-pulse">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -416,6 +686,195 @@ export const Navbar: React.FC<NavbarProps> = ({
           <ProfileMenu />
         </div>
       </div>
+
+      {/* ── Responsive Mobile Menu Overlay (Clean Top Modal, No Left Sidebar) ── */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 top-14 z-50 bg-slate-900/40 backdrop-blur-xs lg:hidden animate-fade-in flex flex-col justify-start">
+          <div className="bg-white border-b border-slate-200 shadow-2xl max-h-[85vh] overflow-y-auto p-4 space-y-4">
+            {/* Mobile Search input */}
+            <div className="relative">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search modules..."
+                value={mobileSearch}
+                onChange={(e) => setMobileSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-500"
+              />
+            </div>
+
+            {/* Quick App Launcher link */}
+            <Link
+              to="/apps"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-3 p-3 rounded-xl bg-teal-50 border border-teal-200/60 text-teal-900 font-bold text-xs"
+            >
+              <LayoutGrid className="w-5 h-5 text-teal-700" />
+              <div>
+                <div>Application Launcher</div>
+                <div className="text-[10px] text-teal-700 font-normal">All ALLADIN modules & workflows</div>
+              </div>
+            </Link>
+
+            {/* Grouped Links */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                  Sales & CRM
+                </div>
+                <Link
+                  to="/sales"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                >
+                  <ShoppingCart className="w-4 h-4 text-emerald-600" />
+                  <span>Sales Orders</span>
+                </Link>
+                <Link
+                  to="/invoices"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                >
+                  <Receipt className="w-4 h-4 text-blue-600" />
+                  <span>Invoices</span>
+                </Link>
+                <Link
+                  to="/customers"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                >
+                  <Users className="w-4 h-4 text-violet-600" />
+                  <span>Customers</span>
+                </Link>
+                <Link
+                  to="/payments"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                >
+                  <CreditCard className="w-4 h-4 text-sky-600" />
+                  <span>Payments</span>
+                </Link>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                  Inventory & Stock
+                </div>
+                <Link
+                  to="/products"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                >
+                  <Package className="w-4 h-4 text-indigo-600" />
+                  <span>Products</span>
+                </Link>
+                <Link
+                  to="/inventory"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                >
+                  <PackageCheck className="w-4 h-4 text-teal-600" />
+                  <span>Inventory</span>
+                </Link>
+                <Link
+                  to="/purchases"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                >
+                  <ShoppingBag className="w-4 h-4 text-cyan-600" />
+                  <span>Purchases</span>
+                </Link>
+                <Link
+                  to="/warehouses"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                >
+                  <Warehouse className="w-4 h-4 text-amber-600" />
+                  <span>Warehouses</span>
+                </Link>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                  Finance & Reports
+                </div>
+                <Link
+                  to="/dashboard"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                >
+                  <LayoutDashboard className="w-4 h-4 text-teal-600" />
+                  <span>Dashboard</span>
+                </Link>
+                <Link
+                  to="/expenses"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                >
+                  <Layers className="w-4 h-4 text-orange-600" />
+                  <span>Expenses</span>
+                </Link>
+                <Link
+                  to="/reports"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                >
+                  <FileText className="w-4 h-4 text-indigo-600" />
+                  <span>Reports</span>
+                </Link>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                  AI & Forecasts
+                </div>
+                <Link
+                  to="/ml/revenue"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                >
+                  <TrendingUp className="w-4 h-4 text-purple-600" />
+                  <span>Revenue ML</span>
+                </Link>
+                <Link
+                  to="/ml/chat"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-teal-800 font-semibold hover:bg-teal-50"
+                >
+                  <Bot className="w-4 h-4 text-teal-700" />
+                  <span>AI Copilot</span>
+                </Link>
+                <Link
+                  to="/ml/business-health"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
+                >
+                  <HeartPulse className="w-4 h-4 text-rose-600" />
+                  <span>Health Score</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Close button */}
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+              <Link
+                to="/help"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-xs text-slate-500 hover:text-teal-700 flex items-center gap-1"
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                <span>Help & Documentation</span>
+              </Link>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   )
 }

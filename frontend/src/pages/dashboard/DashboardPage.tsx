@@ -12,6 +12,7 @@ import {
   Receipt,
   Bot,
   RefreshCw,
+  LayoutGrid,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -62,6 +63,15 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
+          <Link to="/apps">
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<LayoutGrid className="w-3.5 h-3.5 text-teal-700" />}
+            >
+              Apps Launcher
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
