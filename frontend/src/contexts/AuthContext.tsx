@@ -14,7 +14,9 @@ interface AuthContextType {
   activeCompanyId: string | null
   activeCompany: CompanyMembership | null
   companies: CompanyMembership[]
+  activeBranchId: string | null
   setActiveCompanyId: (id: string) => void
+  setActiveBranchId: (id: string | null) => void
   login: (credentials: LoginRequest) => Promise<void>
   signup: (data: SignupRequest) => Promise<void>
   logout: () => Promise<void>
@@ -29,10 +31,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activeCompanyId, setActiveCompanyIdState] = useState<string | null>(() => {
     return localStorage.getItem('active_company_id')
   })
+  const [activeBranchId, setActiveBranchIdState] = useState<string | null>(() => {
+    return localStorage.getItem('active_branch_id')
+  })
 
   const setActiveCompanyId = useCallback((id: string) => {
     localStorage.setItem('active_company_id', id)
     setActiveCompanyIdState(id)
+  }, [])
+
+  const setActiveBranchId = useCallback((id: string | null) => {
+    if (id) {
+      localStorage.setItem('active_branch_id', id)
+    } else {
+      localStorage.removeItem('active_branch_id')
+    }
+    setActiveBranchIdState(id)
   }, [])
 
   const refreshUser = useCallback(async (): Promise<MeResponse | null> => {
@@ -115,6 +129,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setUser(null)
       setActiveCompanyIdState(null)
+      setActiveBranchIdState(null)
+      localStorage.removeItem('active_branch_id')
       setIsLoading(false)
     }
   }
@@ -133,7 +149,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         activeCompanyId,
         activeCompany,
         companies: user?.companies || [],
+        activeBranchId,
         setActiveCompanyId,
+        setActiveBranchId,
         login,
         signup,
         logout,

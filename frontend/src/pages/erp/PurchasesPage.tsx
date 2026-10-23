@@ -180,7 +180,7 @@ export const PurchasesPage: React.FC = () => {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'Edit Purchase Order' : 'Log New Purchase Order'}>
         <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(formData) }} className="space-y-4">
           <Select label="Supplier Vendor" value={formData.supplier_id} onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })} options={supplierOptions} required />
-          <Input label="Total Amount ($)" type="number" step="0.01" value={formData.total_amount} onChange={(e) => setFormData({ ...formData, total_amount: Number(e.target.value) })} required />
+          <Input label="Total Amount (₹)" type="number" step="0.01" value={formData.total_amount} onChange={(e) => setFormData({ ...formData, total_amount: Number(e.target.value) })} required />
           <Select
             label="Order Status"
             value={formData.status}

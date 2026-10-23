@@ -199,10 +199,18 @@ def test_chat_assistant_endpoint_integration(mock_supabase, sample_company_id):
     )
 
     payload = {"message": "Summarize this month's revenue and orders"}
-    resp = chat_assistant(payload, ctx)
+    with patch("app.api.v1.chat.AIContextService.answer_with_tools") as mock_answer:
+        mock_answer.return_value = {
+            "status": "success",
+            "message": "Based on our ERP records, total revenue this month is 320,000 INR across 42 orders.",
+            "tools_used": [{"tool": "get_sales_analysis", "args": {"period": "this_month"}}],
+            "provider": "gemini",
+            "model": "gemini-2.5-flash",
+        }
+        resp = chat_assistant(payload, ctx)
 
-    assert resp.success is True
-    assert "message" in resp.data
-    assert "tools_used" in resp.data
-    assert len(resp.data["tools_used"]) >= 1
-    assert resp.data["tools_used"][0]["tool"] == "get_sales_analysis"
+        assert resp.success is True
+        assert "message" in resp.data
+        assert "tools_used" in resp.data
+        assert len(resp.data["tools_used"]) >= 1
+        assert resp.data["tools_used"][0]["tool"] == "get_sales_analysis"

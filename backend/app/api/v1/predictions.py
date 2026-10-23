@@ -32,7 +32,9 @@ def create_prediction(payload: PredictionCreate, ctx: RequestContext = Depends(g
     repo = PredictionRepository(ctx.user_client)
     data = {
         "company_id": str(ctx.company_id),
+        "branch_id": str(payload.branch_id) if payload.branch_id else None,
         "ml_model_id": str(payload.ml_model_id) if payload.ml_model_id else None,
+        "model_version": payload.model_version,
         "prediction_type": payload.prediction_type.value,
         "period_start": payload.period_start.isoformat() if payload.period_start else None,
         "period_end": payload.period_end.isoformat() if payload.period_end else None,

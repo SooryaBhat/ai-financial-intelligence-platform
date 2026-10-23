@@ -1,0 +1,21 @@
+expense_date,category,description,amount,payment_method,reference
+2026-01-05,Rent & Leases,Monthly Central Godown Lease - Kadri Mangaluru,35000.00,bank_transfer,VCH-2026-0101
+2026-01-12,Utilities,MESCOM Electricity Bill - Hampankatta Main Branch,4820.00,bank_transfer,NEFT-MESCOM-8831
+2026-01-28,Logistics & Freight,DTDC Express Inter-city Consignment Charges,2650.00,card,DTDC-TRK-99214
+2026-02-04,Office Supplies,POS Thermal Receipt Paper Rolls & Barcode Labels,3400.00,cash,CASH-REC-102
+2026-02-15,Marketing & Promotion,Udayavani Daily Coastal Print Advertisement,12500.00,bank_transfer,VCH-2026-0145
+2026-02-28,Maintenance & Repairs,Quarterly Servicing of Cold Storage Compressors,6800.00,cheque,CHQ-SBIN-773190
+2026-03-05,Rent & Leases,Monthly Branch Lease - Koramangala Bengaluru,45000.00,bank_transfer,VCH-2026-0205
+2026-03-16,Utilities,BESCOM Power Utility Bill - Bengaluru Outlet,7150.00,bank_transfer,BESCOM-NEFT-4410
+2026-03-31,Staff Welfare,Monthly Staff Refreshments and Tea Services,3200.00,cash,PETTY-2026-03
+2026-04-06,Insurance,Commercial Fire & Burglary Warehouse Policy Renewal,18400.00,bank_transfer,POL-NEWIND-99120
+2026-04-18,Logistics & Freight,Local Tempo Transport for Cashew Procurement Batch,4200.00,cash,TRUCK-KA19-8812
+2026-05-02,Professional Fees,Chartered Accountant GST Filing & Audit Retainer,15000.00,bank_transfer,INV-CA-2026-05
+2026-05-19,IT & Software,High-Speed Commercial Fiber Broadband - Airtel,2399.00,card,AIRTEL-FIB-88132
+2026-06-04,Rent & Leases,Monthly Warehouse Rent - Gokulam Mysuru,28000.00,bank_transfer,VCH-2026-0312
+2026-06-22,Office Supplies,Heavy Duty Packaging Tape & Carton Strapping Rolls,3850.00,cash,CANARA-PACK-109
+2026-07-08,Maintenance & Repairs,Annual Pest Control & Rodent Treatment in Godown,5500.00,cheque,CHQ-UBIN-441829
+2026-07-25,Marketing & Promotion,Social Media Paid Campaign - Monsoon Coastal Flavors,8500.00,card,META-ADS-2026-07
+2026-08-11,Utilities,CESC Mysuru Commercial Electricity Consumption,4120.00,bank_transfer,CESC-NEFT-90214
+2026-08-28,Staff Welfare,First Aid Medical Restocking & Safety Helmets,1950.00,cash,MED-REC-2026-88
+2026-09-14,Logistics & Freight,VRL Logistics Road Cargo - Bengaluru to Mangaluru,6400.00,bank_transfer,VRL-LR-789210

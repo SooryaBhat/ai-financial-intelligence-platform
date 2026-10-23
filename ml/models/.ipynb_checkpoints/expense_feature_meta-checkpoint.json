@@ -1,0 +1,61 @@
+{
+  "pipeline": "operating_expense_forecasting",
+  "target": "total_expense",
+  "horizon": "1 month ahead per expense category",
+  "features": [
+    "lag_1",
+    "lag_2",
+    "lag_3",
+    "lag_6",
+    "roll3_mean",
+    "roll6_mean",
+    "roll3_std",
+    "txn_count_lag1",
+    "avg_expense_lag1",
+    "month_num",
+    "quarter",
+    "year",
+    "is_q4",
+    "is_q1"
+  ],
+  "selected_model": "LightGBM",
+  "selected_artifact": "expense_prediction_selected.pkl",
+  "training_companies": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
+  ],
+  "holdout_company": "00000000-0000-0000-0000-000000000003",
+  "test_metrics": {
+    "rmse": 43237.64825451905,
+    "mae": 27601.722846626377,
+    "mape": 71.37810230168978,
+    "smape": 40.87118139696765,
+    "wape": 16.45250253744721,
+    "r2": 0.9784
+  },
+  "approach_c_holdout_co3_metrics": {
+    "rmse": 59451.864610027595,
+    "mae": 33117.18969346028,
+    "mape": 95.15204261282362,
+    "smape": 42.4715653703453,
+    "wape": 18.904003201751774,
+    "r2": 0.9634,
+    "baseline_naive_metrics": {
+      "rmse": 82152.40949734602,
+      "mae": 45157.49708185053,
+      "mape": 115.68570482600032,
+      "smape": 56.60698307075195,
+      "wape": 25.776869273028087,
+      "r2": 0.9302
+    },
+    "baseline_snaive_metrics": {
+      "rmse": 75378.27279782375,
+      "mae": 43626.923736654804,
+      "mape": 97.26847868605708,
+      "smape": 56.84778495231739,
+      "wape": 24.903185132377423,
+      "r2": 0.9412
+    },
+    "n_observations": 281
+  }
+}

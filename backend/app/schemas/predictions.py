@@ -18,6 +18,8 @@ from app.schemas.common import AppBaseModel, TimestampMixin
 
 class PredictionCreate(AppBaseModel):
     ml_model_id: Optional[UUID] = None
+    branch_id: Optional[UUID] = None
+    model_version: Optional[str] = None
     prediction_type: PredictionType
     period_start: Optional[date] = None
     period_end: Optional[date] = None
@@ -35,7 +37,9 @@ class PredictionUpdate(AppBaseModel):
 class PredictionResponse(TimestampMixin):
     id: UUID
     company_id: UUID
+    branch_id: Optional[UUID] = None
     ml_model_id: Optional[UUID] = None
+    model_version: Optional[str] = None
     prediction_type: PredictionType
     period_start: Optional[date] = None
     period_end: Optional[date] = None

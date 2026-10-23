@@ -325,47 +325,142 @@ npm install
 
 Configure the frontend environment variables according to the existing Vite configuration. Use only the public values intended for browser access; never expose a Supabase service-role key in frontend code.
 
-### 4. Configure Supabase
+### 4. Configure Supabase and Database Migrations
 
 1. Create or select a Supabase project.
-2. Configure the required PostgreSQL schema and tables.
-3. Apply the project's schema and security policies, where provided.
-4. Configure authentication and company-level access.
-5. Load authorized development or synthetic data if available.
+2. In the Supabase SQL Editor or via Supabase CLI, apply the migrations in strict sequential order:
 
-The database schema and seed-data setup must match the actual SQL files and migrations in the repository.
+```text
+Migration Execution Order:
+1. supabase/migrations/20260703000001_platform_domain.sql      (Companies, users, memberships, audit logs)
+2. supabase/migrations/20260703000002_business_domain.sql      (Products, sales, inventory, expenses, invoices)
+3. supabase/migrations/20260703000003_ai_domain.sql            (Predictions, anomaly logs, feature store)
+4. supabase/migrations/20260703000004_system_domain.sql        (System configs, jobs, health logs)
+5. supabase/migrations/20260703000005_indexes.sql              (Performance and foreign key indexes)
+6. supabase/migrations/20260703000006_rls_policies.sql         (Row-Level Security for multi-tenancy)
+7. supabase/migrations/20260703000007_seed.sql                 (Baseline reference data and demo tenants)
+8. supabase/migrations/20261015000001_knowledge_base_rag.sql   (RAG document chunks and vector embeddings)
+9. supabase/migrations/20261021000001_ml_predictions_and_outlets.sql  (ML outlet scoping & all 7 pipeline targets)
+10. supabase/migrations/20261021000002_import_batches.sql      (Import batch audit log and idempotency tracking)
+```
+
+> [!NOTE]
+> Migrations 9 (`20261021000001`) and 10 (`20261021000002`) are optional schema additions designed to support branch-scoped prediction audit histories and bulk import tracking. The backend service layers (`app/services/predictions.py` and `app/services/imports.py`) feature graceful fallbacks to allow full functionality even before these two migrations are applied to a live database.
 
 ---
 
 ## Environment Configuration
 
-Create a local `.env` file in the appropriate backend directory and provide the values required by the application.
-
-Example configuration template:
+Create a local `.env` file in `backend/` and configure the required settings:
 
 ```dotenv
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
+# Supabase Configuration
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_public_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_server_only_service_role_key
-JWT_SECRET=your_jwt_secret
 
-# Configure only if required by the active provider
-GEMINI_API_KEY=your_api_key
+# Authentication
+JWT_SECRET=your_strong_jwt_signing_secret
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
-# Local Ollama configuration for supported integrations
+# AI Provider Configuration (Optional / Local LLM)
+GEMINI_API_KEY=your_gemini_api_key
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=qwen3:4b
 ```
 
-This is an illustrative template, not a guarantee that every variable is currently read by the application. Check the backend settings and provider implementation for the exact required names and defaults.
+Create a local `.env` file in `frontend/`:
 
-**Security requirements:**
+```dotenv
+VITE_API_BASE_URL=http://localhost:8000
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_public_anon_key
+```
 
-- Never commit `.env` files or real API keys.
-- Keep service-role credentials on the backend only.
-- Use environment variables for secrets.
-- Rotate any credentials that have been exposed.
-- Ensure tenant authorization is enforced by the backend and database policies.
+> [!WARNING]
+> Never expose `SUPABASE_SERVICE_ROLE_KEY` or `JWT_SECRET` in the `frontend/.env` file or anywhere in frontend source code.
+
+---
+
+## Running the Automated Test Suites
+
+The repository includes comprehensive automated test suites covering unit logic, integration flows, multi-tenant isolation, ML pipelines, and bulk file imports.
+
+### 1. Backend Test Suite (Pytest)
+
+Run all backend tests using the virtual environment:
+
+```powershell
+cd backend
+.\venv\Scripts\python.exe -m pytest tests/ -v
+```
+
+To run focused integration test suites:
+
+```powershell
+# Run import pipeline integration tests (CSV/XLSX/PDF, validation, formula safety)
+.\venv\Scripts\python.exe -m pytest tests/test_imports_integration.py -v
+
+# Run database-backed ML pipeline integration tests (all 7 pipelines, fallbacks)
+.\venv\Scripts\python.exe -m pytest tests/test_step5_supabase_ml_integration.py -v
+
+# Run live Supabase RAG and tenant isolation tests (read-only)
+.\venv\Scripts\python.exe -m pytest tests/test_live_supabase_rag.py -v
+```
+
+### 2. Frontend Build and Type Verification
+
+```bash
+cd frontend
+npm run build
+```
+
+### 3. Frontend Linting
+
+```bash
+cd frontend
+npm run lint
+```
+
+---
+
+## Safe Test Company Setup & Multi-Tenant Verification
+
+To safely verify multi-tenancy without risking live production records:
+
+1. **Seed Isolated Test Companies**:
+   Use two distinct company UUIDs (e.g. `00000000-0000-0000-0000-000000000001` and `00000000-0000-0000-0000-000000000002`).
+2. **Verify Cross-Tenant Isolation**:
+   - Issue an authenticated token for Company 1.
+   - Attempting to query records or trigger predictions with `company_id=00000000-0000-0000-0000-000000000002` via query parameters, request bodies, or headers returns an HTTP 403 Forbidden.
+   - Automated test `tests/test_step5_supabase_ml_integration.py::TestSupabaseMLIntegration::test_cross_company_access_denied` enforces this contract.
+
+---
+
+## Major Workflows Testing Guide
+
+### 1. ERP Record Management
+- Navigate to `/sales`, `/expenses`, `/inventory`, `/products`, `/invoices`, or `/branches`.
+- Test Create, Read, Update, and Delete operations.
+- Verify numeric constraints (positive prices/quantities) and date filtering.
+- Confirm stock movement audit records are created upon inventory adjustments.
+
+### 2. Seven Machine Learning Workflows
+- **Revenue Forecast** (`/forecast`): Predicts future revenue periods with fallback handling for short history.
+- **Product Demand** (`/products`): Forecasts product-level units based on historical sales velocity.
+- **Inventory & Reorder Recommendations** (`/inventory`): Suggests reorder quantities based on lead times and stock thresholds.
+- **Profit Forecast** (`/reports`): Analyzes projected gross and net margins.
+- **Expense Forecast** (`/expenses`): Predicts operational and overhead expenditure patterns.
+- **Business Health Scoring** (`/health`): Evaluates financial stability, solvency, and liquidity indices.
+- **Anomaly Detection** (`/anomalies`): Highlights statistical deviations in transaction amounts (flagged for review, not definitive fraud).
+
+### 3. Data Import Center (CSV, Excel, PDF)
+- Navigate to `/imports`.
+- **Step 1: Upload**: Drag and drop a `.csv`, `.xlsx`, or text-based `.pdf`. Automatic delimiter sniffing (`,`, `;`, `\t`) and formula neutralization (`=`, `@`, `+`, `-`) are applied.
+- **Step 2: Column Mapping**: Map source columns to ERP destination fields with intuitive auto-matching.
+- **Step 3: Validation & Preview**: View row validation errors, duplicate SKU/invoice detection, and normalized records before writing any data.
+- **Step 4: Confirmation & Result**: Execute the import. Review summary of created, updated, and skipped rows, with full batch history logged.
 
 ---
 
@@ -504,15 +599,14 @@ No real-world accuracy or business-impact claims should be made without appropri
 
 ## Current Limitations
 
-- Historical development data may not cover recent business periods.
-- Forecast accuracy depends on the quantity and quality of historical records.
-- Some analytical components use business rules or calculated indicators rather than trained ML models.
-- Anomaly detection identifies unusual patterns and does not establish fraudulent intent.
-- ERP forms and persistence workflows require end-to-end validation to ensure frontend submissions are stored correctly in Supabase.
-- Support for arbitrary historical date ranges depends on the corresponding backend tool implementation.
-- Ollama has been tested locally, but the complete local-model integration with ALLADIN requires verification.
-- RAG-based document retrieval remains a planned extension until its ingestion, retrieval, and response workflow is implemented and tested.
-- Production readiness requires further security, data-integrity, performance, and user-acceptance testing.
+- **PDF Import Limitations**: PDF extraction is built for text-based, digitally generated PDF documents (such as invoices and tabular statements parsed with `pdfplumber`/`pypdf`). Scanned image PDFs and camera photos requiring OCR are not supported in this version.
+- **Synthetic-Only ML Validation**: All 7 machine learning pipelines were trained, calibrated, and stress-tested on multi-tenant synthetic retail data simulating Indian MSMEs. While models include rigorous time-series cross-validation and zero-shot unseen company holdouts, synthetic performance does not guarantee real-world business accuracy.
+- **Live Supabase Verification Prerequisites**: Before deploying or testing against live production Supabase instances:
+  1. Manually review and execute migrations `supabase/migrations/20261021000001_ml_predictions_and_outlets.sql` and `supabase/migrations/20261021000002_import_batches.sql` in sequence.
+  2. Confirm RLS policies on tables `predictions` and `import_batches` are enabled.
+  3. Validate environment credentials using isolated test tenant IDs before granting access to production organizations.
+- **Historical Data Dependency**: Forecast accuracy depends on the quantity and quality of historical records. Companies with fewer than 7 recorded transaction days receive honest statistical moving-average fallbacks rather than ML predictions.
+- **Anomaly Interpretability**: The anomaly detection module identifies statistical outliers and unusual transaction volumes; it flags transactions for human audit rather than declaring confirmed fraud.
 
 ---
 

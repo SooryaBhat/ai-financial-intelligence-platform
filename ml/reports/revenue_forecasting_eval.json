@@ -1,34 +1,107 @@
 {
-  "task": "revenue_forecasting",
-  "models": [
-    {
-      "model": "Naive Baseline",
-      "RMSE": 7712077.26,
-      "MAE": 7298558.35,
-      "MAPE_%": 28.91,
-      "R2": -0.0003
-    },
-    {
-      "model": "SARIMA(1,d,1)(1,1,0,12)",
-      "RMSE": 5060627.75,
-      "MAE": 4665915.92,
-      "MAPE_%": 18.96,
-      "R2": 0.5693
-    },
-    {
-      "model": "XGBoost",
-      "RMSE": 5027159.33,
-      "MAE": 4238383.6,
-      "MAPE_%": 14.39,
-      "R2": 0.5749
-    },
-    {
-      "model": "LightGBM",
-      "RMSE": 8440735.77,
-      "MAE": 7673211.0,
-      "MAPE_%": 26.94,
-      "R2": -0.1983
-    }
+  "pipeline": "revenue_forecasting",
+  "strategy": "Global Models trained on Dev Companies 1 & 2 with zero-shot holdout evaluation on Company 3",
+  "training_companies": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
   ],
-  "best_model": "XGBoost"
+  "holdout_company": "00000000-0000-0000-0000-000000000003",
+  "selected_model": "AAGF_Custom",
+  "selection_metric": "val_wape_pct",
+  "candidates": {
+    "Naive_Baseline": {
+      "val_wape_pct": 14.21,
+      "val_rmse": 45469.95,
+      "val_mae": 34771.94,
+      "val_r2": 0.1247,
+      "test_wape_pct": 19.33,
+      "test_rmse": 86905.54,
+      "test_r2": -0.0873,
+      "details": {}
+    },
+    "Seasonal_Naive": {
+      "val_wape_pct": 23.05,
+      "val_rmse": 63116.82,
+      "val_mae": 56393.04,
+      "val_r2": -0.6866,
+      "test_wape_pct": 18.16,
+      "test_rmse": 65245.71,
+      "test_r2": 0.3871,
+      "details": {}
+    },
+    "Linear_Regression": {
+      "val_wape_pct": 21.96,
+      "val_rmse": 64684.93,
+      "val_mae": 53734.53,
+      "val_r2": -0.7714,
+      "test_wape_pct": 15.22,
+      "test_rmse": 51151.48,
+      "test_r2": 0.6233,
+      "details": {}
+    },
+    "Random_Forest": {
+      "val_wape_pct": 19.55,
+      "val_rmse": 53629.96,
+      "val_mae": 47836.74,
+      "val_r2": -0.2177,
+      "test_wape_pct": 20.63,
+      "test_rmse": 80796.93,
+      "test_r2": 0.0602,
+      "details": {}
+    },
+    "XGBoost": {
+      "val_wape_pct": 24.66,
+      "val_rmse": 70308.24,
+      "val_mae": 60348.89,
+      "val_r2": -1.0928,
+      "test_wape_pct": 23.18,
+      "test_rmse": 91413.23,
+      "test_r2": -0.203,
+      "details": {}
+    },
+    "LightGBM": {
+      "val_wape_pct": 17.44,
+      "val_rmse": 51025.49,
+      "val_mae": 42663.44,
+      "val_r2": -0.1023,
+      "test_wape_pct": 26.85,
+      "test_rmse": 99616.36,
+      "test_r2": -0.4286,
+      "details": {}
+    },
+    "AAGF_Custom": {
+      "val_wape_pct": 12.72,
+      "val_rmse": 41073.18,
+      "val_mae": 31121.16,
+      "val_r2": 0.2858,
+      "test_wape_pct": 15.58,
+      "test_rmse": 65340.27,
+      "test_r2": 0.3854,
+      "details": {
+        "blend_weights": [
+          0.4010152872011907,
+          0.3419185417380123,
+          0.25706617106079716
+        ]
+      }
+    },
+    "SARIMA": {
+      "val_wape_pct": 47.38,
+      "val_rmse": 246939.32,
+      "val_mae": 231897.41,
+      "val_r2": -39.9974,
+      "test_wape_pct": 33.0,
+      "test_rmse": 192264.45,
+      "test_r2": -1.8913,
+      "details": {}
+    }
+  },
+  "approach_c_holdout_company3_metrics": {
+    "wape_pct": 15.18,
+    "rmse": 50865.62,
+    "mae": 42190.87,
+    "r2": 0.289,
+    "naive_baseline_wape_pct": 16.06,
+    "naive_baseline_r2": 0.1758
+  }
 }

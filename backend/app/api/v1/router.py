@@ -31,6 +31,7 @@ from app.api.v1 import (
     suppliers,
     users,
     warehouses,
+    imports,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -55,6 +56,7 @@ api_router.include_router(purchases.router)
 api_router.include_router(invoices.router)
 api_router.include_router(payments.router)
 api_router.include_router(expenses.router)
+api_router.include_router(imports.router)
 
 # AI
 api_router.include_router(ml.router)

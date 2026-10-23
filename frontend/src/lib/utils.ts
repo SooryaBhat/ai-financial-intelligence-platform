@@ -5,10 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(amount: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
+export function formatCurrency(amount: number, currency: string = 'INR'): string {
+  const isINR = currency === 'INR' || currency === '₹'
+  return new Intl.NumberFormat(isINR ? 'en-IN' : 'en-US', {
     style: 'currency',
-    currency: currency,
+    currency: isINR ? 'INR' : currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount)

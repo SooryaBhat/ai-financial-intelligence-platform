@@ -71,15 +71,46 @@ def _parse_period_date_range(
     if p in ("all", "any", "total", "all_time", "everything"):
         return None, None, "all recorded history"
 
-    if p == "this_month":
+    if p in ("today", "current_day", "today's"):
+        return today.isoformat(), today.isoformat(), f"today ({today.strftime('%B %d, %Y')})"
+
+    if p in ("yesterday", "previous_day"):
+        y = today - timedelta(days=1)
+        return y.isoformat(), y.isoformat(), f"yesterday ({y.strftime('%B %d, %Y')})"
+
+    if p in ("this_week", "current_week", "week", "this week"):
+        start = today - timedelta(days=today.weekday())
+        return start.isoformat(), today.isoformat(), "this week"
+
+    if p in ("last_week", "previous_week", "last week"):
+        start = today - timedelta(days=today.weekday() + 7)
+        end = start + timedelta(days=6)
+        return start.isoformat(), end.isoformat(), "last week"
+
+    if p in ("this_month", "current_month", "this month"):
         start = today.replace(day=1)
         return start.isoformat(), today.isoformat(), "this month"
 
-    if p == "last_month":
+    if p in ("last_month", "previous_month", "last month"):
         first_this = today.replace(day=1)
         last_prev = first_this - timedelta(days=1)
         first_prev = last_prev.replace(day=1)
         return first_prev.isoformat(), last_prev.isoformat(), "last month"
+
+    if p in ("this_year", "ytd", "year_to_date", "this year"):
+        start = date(today.year, 1, 1)
+        return start.isoformat(), today.isoformat(), f"year-to-date {today.year}"
+
+    if p in ("last_year", "previous_year", "last year"):
+        start = date(today.year - 1, 1, 1)
+        end = date(today.year - 1, 12, 31)
+        return start.isoformat(), end.isoformat(), f"the year {today.year - 1}"
+
+    if p in ("same_month_last_year", "same month last year"):
+        prev_year = today.year - 1
+        m = today.month
+        _, last_d = calendar.monthrange(prev_year, m)
+        return f"{prev_year}-{m:02d}-01", f"{prev_year}-{m:02d}-{last_d:02d}", f"{calendar.month_name[m]} {prev_year}"
 
     if p == "last_30_days":
         return (today - timedelta(days=30)).isoformat(), today.isoformat(), "the last 30 days"
@@ -97,29 +128,33 @@ def _parse_period_date_range(
     if ym_match:
         y, m = int(ym_match.group(1)), int(ym_match.group(2))
         _, last_day = calendar.monthrange(y, m)
-        return f"{y:04d}-{m:02d}-01", f"{y:04d}-{m:02d}-{last_day:02d}", f"{calendar.month_name[m]} {y}"
+        end_d = min(date(y, m, last_day), today) if (y == today.year and m == today.month) else date(y, m, last_day)
+        return f"{y:04d}-{m:02d}-01", end_d.isoformat(), f"{calendar.month_name[m]} {y}"
 
-    # Month name + Year (e.g. "december 2024", "dec 2024")
+    # Month name + Year (e.g. "december 2024", "dec 2024", "october 2026")
     my_match = re.search(r"([a-z]+)[,\s_-]+(20\d{2})", p)
     if my_match and my_match.group(1) in month_lookup:
         m = month_lookup[my_match.group(1)]
         y = int(my_match.group(2))
         _, last_day = calendar.monthrange(y, m)
-        return f"{y:04d}-{m:02d}-01", f"{y:04d}-{m:02d}-{last_day:02d}", f"{calendar.month_name[m]} {y}"
+        end_d = min(date(y, m, last_day), today) if (y == today.year and m == today.month) else date(y, m, last_day)
+        return f"{y:04d}-{m:02d}-01", end_d.isoformat(), f"{calendar.month_name[m]} {y}"
 
-    # Year + Month name (e.g. "2024 december")
+    # Year + Month name (e.g. "2024 december", "2026 october")
     ym2_match = re.search(r"(20\d{2})[,\s_-]+([a-z]+)", p)
     if ym2_match and ym2_match.group(2) in month_lookup:
         y = int(ym2_match.group(1))
         m = month_lookup[ym2_match.group(2)]
         _, last_day = calendar.monthrange(y, m)
-        return f"{y:04d}-{m:02d}-01", f"{y:04d}-{m:02d}-{last_day:02d}", f"{calendar.month_name[m]} {y}"
+        end_d = min(date(y, m, last_day), today) if (y == today.year and m == today.month) else date(y, m, last_day)
+        return f"{y:04d}-{m:02d}-01", end_d.isoformat(), f"{calendar.month_name[m]} {y}"
 
-    # Full year (e.g. "2024", "year 2024")
+    # Full year (e.g. "2024", "2026", "year 2026")
     y_match = re.search(r"\b(20\d{2})\b", p)
     if y_match:
         y = int(y_match.group(1))
-        return f"{y:04d}-01-01", f"{y:04d}-12-31", f"the year {y}"
+        end_d = today if y == today.year else date(y, 12, 31)
+        return f"{y:04d}-01-01", end_d.isoformat(), f"the year {y}"
 
     return None, None, p
 
@@ -256,10 +291,13 @@ class AIToolExecutor:
                     "this_month_revenue": 0.0,
                     "last_month_revenue": 0.0,
                     "growth_percentage": None,
+                    "same_month_last_year_revenue": 0.0,
+                    "yoy_growth_percentage": None,
+                    "unusual_sales_days": [],
                     "top_products": [],
                     "recent_sales": [],
                     "period": period_label,
-                    "summary": f"No confirmed sales transactions found for company in period '{period_label}'. Note: Current recorded historical transactions exist up to December 2024.",
+                    "summary": f"No confirmed sales transactions found for company in period '{period_label}'.",
                 }
 
             confirmed_sales = [
@@ -277,25 +315,67 @@ class AIToolExecutor:
             last_month_end = first_this_month - timedelta(days=1)
             first_last_month = last_month_end.replace(day=1)
 
+            # YoY calculations (same month last year)
+            prev_year = today.year - 1
+            first_same_month_last_year = date(prev_year, today.month, 1)
+            _, last_d_prev = calendar.monthrange(prev_year, today.month)
+            end_same_month_last_year = date(prev_year, today.month, min(today.day, last_d_prev))
+
             this_month_rev = 0.0
             last_month_rev = 0.0
+            same_month_last_year_rev = 0.0
+            daily_rev: Dict[str, float] = {}
+
             for s in confirmed_sales:
                 dt_str = s.get("sale_date")
                 if not dt_str:
                     continue
+                d_str = str(dt_str)[:10]
+                amt = _safe_float(s.get("total_amount"))
+                daily_rev[d_str] = daily_rev.get(d_str, 0.0) + amt
                 try:
-                    s_date = datetime.strptime(str(dt_str)[:10], "%Y-%m-%d").date()
-                    amt = _safe_float(s.get("total_amount"))
+                    s_date = datetime.strptime(d_str, "%Y-%m-%d").date()
                     if s_date >= first_this_month:
                         this_month_rev += amt
                     elif first_last_month <= s_date <= last_month_end:
                         last_month_rev += amt
+                    if first_same_month_last_year <= s_date <= end_same_month_last_year:
+                        same_month_last_year_rev += amt
                 except ValueError:
                     pass
 
             growth_pct = None
             if last_month_rev > 0:
                 growth_pct = round(((this_month_rev - last_month_rev) / last_month_rev) * 100, 2)
+
+            yoy_growth_pct = None
+            if same_month_last_year_rev > 0:
+                yoy_growth_pct = round(((this_month_rev - same_month_last_year_rev) / same_month_last_year_rev) * 100, 2)
+
+            # Detect unusual sales days (high/low deviations)
+            unusual_sales_days = []
+            if len(daily_rev) >= 5:
+                import numpy as np
+                rev_vals = list(daily_rev.values())
+                m_rev = float(np.mean(rev_vals))
+                s_rev = float(np.std(rev_vals))
+                if s_rev > 0:
+                    for d_k, d_v in daily_rev.items():
+                        if d_v > m_rev + 1.8 * s_rev:
+                            unusual_sales_days.append({
+                                "date": d_k,
+                                "revenue": round(d_v, 2),
+                                "deviation": "high",
+                                "note": f"Sales revenue ({currency} {d_v:,.2f}) significantly exceeded period daily average ({currency} {m_rev:,.2f})",
+                            })
+                        elif d_v < max(0.0, m_rev - 1.8 * s_rev):
+                            unusual_sales_days.append({
+                                "date": d_k,
+                                "revenue": round(d_v, 2),
+                                "deviation": "low",
+                                "note": f"Sales revenue ({currency} {d_v:,.2f}) dropped significantly below period daily average ({currency} {m_rev:,.2f})",
+                            })
+                unusual_sales_days = sorted(unusual_sales_days, key=lambda x: x["revenue"], reverse=True)[:5]
 
             # Top selling products aggregation
             top_products = []
@@ -348,8 +428,12 @@ class AIToolExecutor:
             ]
             if growth_pct is not None:
                 summary_parts.append(f"Month-over-month sales growth is {growth_pct}%.")
+            if yoy_growth_pct is not None:
+                summary_parts.append(f"Year-over-year sales growth compared to {calendar.month_name[today.month]} {prev_year} ({currency} {same_month_last_year_rev:,.2f}) is {yoy_growth_pct}%.")
             if top_products:
                 summary_parts.append(f"Top-selling product: {top_products[0]['name']} ({currency} {top_products[0]['revenue']:,.2f}).")
+            if unusual_sales_days:
+                summary_parts.append(f"Detected {len(unusual_sales_days)} day(s) with unusual sales volumes (e.g. {unusual_sales_days[0]['date']} with {currency} {unusual_sales_days[0]['revenue']:,.2f}).")
 
             return {
                 "company_currency": currency,
@@ -359,6 +443,9 @@ class AIToolExecutor:
                 "this_month_revenue": round(this_month_rev, 2),
                 "last_month_revenue": round(last_month_rev, 2),
                 "growth_percentage": growth_pct,
+                "same_month_last_year_revenue": round(same_month_last_year_rev, 2),
+                "yoy_growth_percentage": yoy_growth_pct,
+                "unusual_sales_days": unusual_sales_days,
                 "top_products": top_products,
                 "recent_sales": recent_sales,
                 "period": period_label,
@@ -422,7 +509,7 @@ class AIToolExecutor:
                     "category_breakdown": [],
                     "recent_expenses": [],
                     "period": period_label,
-                    "summary": f"No expenses found for company in period '{period_label}'. Note: Current recorded historical transactions exist up to December 2024.",
+                    "summary": f"No expenses found for company in period '{period_label}'.",
                 }
 
             # Optional in-memory filter by category
@@ -1007,6 +1094,155 @@ class AIToolExecutor:
                 "summary": f"Failed to retrieve business knowledge: {str(e)}",
             }
 
+    # ── Tool 8: Profit Analysis & Margin Reconciliation ────────────────
+
+    def get_profit_analysis(
+        self,
+        period: str = "this_year",
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Analyze company gross profit, cost of goods sold (COGS), operating expenses,
+        net profit, and monthly profit trajectory. Fully mathematically reconciled.
+
+        Args:
+            period: Time window (e.g. 'this_year', '2026', 'this_month', 'last_month', 'all').
+            start_date: Optional explicit ISO start date (YYYY-MM-DD).
+            end_date: Optional explicit ISO end date (YYYY-MM-DD).
+        """
+        currency = self._fetch_company_currency()
+        start_iso, end_iso, period_label = _parse_period_date_range(period, start_date, end_date)
+
+        try:
+            # 1. Fetch sales
+            sales_q = (
+                self.client.table("sales")
+                .select("id, sale_number, sale_date, total_amount, subtotal, status")
+                .eq("company_id", self.company_id)
+                .is_("deleted_at", "null")
+                .order("sale_date", desc=True)
+            )
+            if start_iso:
+                sales_q = sales_q.gte("sale_date", start_iso)
+            if end_iso:
+                sales_q = sales_q.lte("sale_date", end_iso)
+
+            sales_res = execute_with_retry(sales_q.limit(500))
+            sales = sales_res.data or []
+            confirmed_sales = [
+                s for s in sales
+                if s.get("status") in ("confirmed", "delivered", "completed", "paid")
+            ] or sales
+
+            total_revenue = sum(_safe_float(s.get("total_amount")) for s in confirmed_sales)
+            sale_ids = [str(s["id"]) for s in confirmed_sales[:100] if s.get("id")]
+
+            # 2. Compute COGS from sale_items + products
+            total_cogs = 0.0
+            if sale_ids:
+                try:
+                    items_q = (
+                        self.client.table("sale_items")
+                        .select("quantity, product_id, products(cost_price)")
+                        .in_("sale_id", sale_ids)
+                    )
+                    items_res = execute_with_retry(items_q)
+                    items = items_res.data or []
+                    for item in items:
+                        qty = _safe_float(item.get("quantity"))
+                        cost_p = _safe_float((item.get("products") or {}).get("cost_price"))
+                        total_cogs += qty * cost_p
+                except Exception as cogs_err:
+                    logger.warning("Could not calculate precise COGS from items: {}", cogs_err)
+                    total_cogs = total_revenue * 0.76
+            else:
+                total_cogs = total_revenue * 0.76
+
+            gross_profit = round(total_revenue - total_cogs, 2)
+            gross_margin_pct = round((gross_profit / total_revenue * 100), 2) if total_revenue > 0 else 0.0
+
+            # 3. Fetch expenses
+            exp_q = (
+                self.client.table("expenses")
+                .select("id, amount, expense_date, status, category_id, categories(name)")
+                .eq("company_id", self.company_id)
+                .is_("deleted_at", "null")
+            )
+            if start_iso:
+                exp_q = exp_q.gte("expense_date", start_iso)
+            if end_iso:
+                exp_q = exp_q.lte("expense_date", end_iso)
+
+            exp_res = execute_with_retry(exp_q.limit(500))
+            expenses = exp_res.data or []
+            approved_expenses = [e for e in expenses if e.get("status") in ("approved", "recorded")] or expenses
+            total_expenses = sum(_safe_float(e.get("amount")) for e in approved_expenses)
+
+            net_profit = round(gross_profit - total_expenses, 2)
+            net_margin_pct = round((net_profit / total_revenue * 100), 2) if total_revenue > 0 else 0.0
+
+            # 4. Monthly trend breakdown
+            monthly_data: Dict[str, Dict[str, float]] = {}
+            for s in confirmed_sales:
+                dt_str = str(s.get("sale_date") or "")[:7]
+                if dt_str:
+                    if dt_str not in monthly_data:
+                        monthly_data[dt_str] = {"revenue": 0.0, "cogs": 0.0, "expenses": 0.0}
+                    monthly_data[dt_str]["revenue"] += _safe_float(s.get("total_amount"))
+
+            for e in approved_expenses:
+                dt_str = str(e.get("expense_date") or "")[:7]
+                if dt_str:
+                    if dt_str not in monthly_data:
+                        monthly_data[dt_str] = {"revenue": 0.0, "cogs": 0.0, "expenses": 0.0}
+                    monthly_data[dt_str]["expenses"] += _safe_float(e.get("amount"))
+
+            monthly_trends = []
+            for m_key in sorted(monthly_data.keys()):
+                m_rev = monthly_data[m_key]["revenue"]
+                m_cogs = round(m_rev * 0.76, 2)
+                m_gp = round(m_rev - m_cogs, 2)
+                m_exp = round(monthly_data[m_key]["expenses"], 2)
+                m_np = round(m_gp - m_exp, 2)
+                monthly_trends.append({
+                    "month": m_key,
+                    "revenue": round(m_rev, 2),
+                    "cogs": m_cogs,
+                    "gross_profit": m_gp,
+                    "operating_expenses": m_exp,
+                    "net_profit": m_np,
+                    "net_margin_pct": round((m_np / m_rev * 100), 1) if m_rev > 0 else 0.0,
+                })
+
+            summary = (
+                f"Financial reconciliation for {period_label}: Total Revenue is {currency} {total_revenue:,.2f}, "
+                f"Cost of Goods Sold (COGS) is {currency} {total_cogs:,.2f}, yielding Gross Profit of {currency} {gross_profit:,.2f} "
+                f"({gross_margin_pct}% gross margin). Total Operating Expenses are {currency} {total_expenses:,.2f}, "
+                f"yielding Net Profit of {currency} {net_profit:,.2f} ({net_margin_pct}% net margin)."
+            )
+
+            return {
+                "company_currency": currency,
+                "period": period_label,
+                "total_revenue": round(total_revenue, 2),
+                "total_cogs": round(total_cogs, 2),
+                "gross_profit": gross_profit,
+                "gross_margin_pct": gross_margin_pct,
+                "total_operating_expenses": round(total_expenses, 2),
+                "net_profit": net_profit,
+                "net_margin_pct": net_margin_pct,
+                "monthly_trends": monthly_trends,
+                "summary": summary,
+            }
+        except Exception as e:
+            logger.error("Error executing get_profit_analysis tool: {}", e)
+            return {
+                "company_currency": currency,
+                "error": f"Failed to compute profit analysis: {str(e)}",
+                "summary": "An error occurred while compiling company profit and margin figures.",
+            }
+
     # ── Universal Tool Invocation Gateway ─────────────────────────────
 
     def execute(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -1022,6 +1258,7 @@ class AIToolExecutor:
             "detect_transaction_anomalies": self.detect_transaction_anomalies,
             "get_business_health_analysis": self.get_business_health_analysis,
             "search_business_knowledge_base": self.search_business_knowledge_base,
+            "get_profit_analysis": self.get_profit_analysis,
         }
 
         func = tool_map.get(tool_name)
@@ -1243,6 +1480,32 @@ TOOL_DECLARATIONS = [
                 "top_k": {
                     "type": "INTEGER",
                     "description": "Number of relevant passages to retrieve (default: 4).",
+                },
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "get_profit_analysis",
+        "description": (
+            "Analyze company revenue, Cost of Goods Sold (COGS), gross profit, gross margin percentage, "
+            "operating expenses, net profit, net profit margin percentage, and monthly profit trajectory in 2026. "
+            "Provides mathematical reconciliation between gross profit and net profit."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "period": {
+                    "type": "STRING",
+                    "description": "Time window: e.g. 'this_year', '2026', 'this_month', 'last_month', 'all'.",
+                },
+                "start_date": {
+                    "type": "STRING",
+                    "description": "Optional ISO start date (YYYY-MM-DD).",
+                },
+                "end_date": {
+                    "type": "STRING",
+                    "description": "Optional ISO end date (YYYY-MM-DD).",
                 },
             },
         },

@@ -1,20 +1,212 @@
 {
-  "task": "inventory_prediction",
-  "models": [
-    {
-      "Model": "Moving Average",
-      "RMSE": 20.375065851739663,
-      "MAE": 16.037709215567656,
-      "MAPE_%": 147.32322606973477
-    },
-    {
-      "Model": "XGBoost",
-      "RMSE": 17.681136533360295,
-      "MAE": 13.69239616394043,
-      "MAPE_%": 134.5461622165689
-    }
+  "pipeline": "inventory_demand_and_reorder_prediction",
+  "selected_model": "LightGBM",
+  "selection_metric": "val_wape",
+  "training_companies": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
   ],
-  "stockout_rate_pct": 45.37205081669691,
-  "overstock_rate_pct": 22.50453720508167,
-  "reorder_alerts": 0
+  "holdout_company": "00000000-0000-0000-0000-000000000003",
+  "features": [
+    "lag_1",
+    "lag_2",
+    "lag_3",
+    "lag_6",
+    "roll3_mean",
+    "roll6_mean",
+    "month_num",
+    "quarter",
+    "year",
+    "is_q4",
+    "is_q1"
+  ],
+  "demand_candidates": {
+    "Demand_History_Baseline": {
+      "val_metrics": {
+        "rmse": 17.815787176750643,
+        "mae": 12.354545454545455,
+        "mape": 160.80605469998292,
+        "smape": 76.48424707795223,
+        "wape": 78.75977977397855,
+        "r2": -0.9482
+      },
+      "test_metrics": {
+        "rmse": 19.215073448182487,
+        "mae": 13.284656084656085,
+        "mape": 169.3107700335165,
+        "smape": 78.51548785226223,
+        "wape": 79.77885104219624,
+        "r2": -1.0221
+      }
+    },
+    "Moving_Average_Baseline": {
+      "val_metrics": {
+        "rmse": 14.513242820669582,
+        "mae": 10.369318181818182,
+        "mape": 151.58772316395846,
+        "smape": 65.21464415698486,
+        "wape": 66.10402781802375,
+        "r2": -0.2929
+      },
+      "test_metrics": {
+        "rmse": 15.395850620973413,
+        "mae": 10.7015873015873,
+        "mape": 150.02102696432195,
+        "smape": 64.88250326877304,
+        "wape": 64.26664972038637,
+        "r2": -0.2981
+      }
+    },
+    "Random_Forest": {
+      "val_metrics": {
+        "rmse": 13.36474885718879,
+        "mae": 9.357239652682976,
+        "mape": 151.43473223845547,
+        "smape": 60.012790452832846,
+        "wape": 59.65206385367298,
+        "r2": -0.0963
+      },
+      "test_metrics": {
+        "rmse": 13.766544547218178,
+        "mae": 9.35627838707071,
+        "mape": 140.35347826120756,
+        "smape": 58.29801767129088,
+        "wape": 56.18761486897446,
+        "r2": -0.0379
+      }
+    },
+    "XGBoost": {
+      "val_metrics": {
+        "rmse": 13.072886080842622,
+        "mae": 9.262436254457993,
+        "mape": 147.71560584113047,
+        "smape": 60.31971856411115,
+        "wape": 59.04769562389912,
+        "r2": -0.049
+      },
+      "test_metrics": {
+        "rmse": 13.735343921207894,
+        "mae": 9.30149631601162,
+        "mape": 137.59841757618355,
+        "smape": 58.15837048900042,
+        "wape": 55.858630011635626,
+        "r2": -0.0332
+      }
+    },
+    "LightGBM": {
+      "val_metrics": {
+        "rmse": 12.946215470130014,
+        "mae": 9.155816946640423,
+        "mape": 146.38502044370708,
+        "smape": 60.03017213880386,
+        "wape": 58.36800139846111,
+        "r2": -0.0287
+      },
+      "test_metrics": {
+        "rmse": 13.636079109850709,
+        "mae": 9.257264832772938,
+        "mape": 137.14939459433182,
+        "smape": 58.18084571615947,
+        "wape": 55.59300500108303,
+        "r2": -0.0183
+      }
+    }
+  },
+  "dev_reorder_policy_evaluation": {
+    "evaluation_type": "Multi-period chronological evaluation with boundary simulation and native baseline audit",
+    "test_period_total_observations": 945,
+    "unique_products_evaluated": 200,
+    "safety_stock_units": 10.32,
+    "lead_time_days": 7,
+    "boundary_simulation_metrics": {
+      "description": "Replenishment decision accuracy when stock varies around the reorder threshold (0.5x to 1.5x ROP)",
+      "sample_size": 945,
+      "true_positives": 413,
+      "false_positives": 60,
+      "false_negatives": 77,
+      "true_negatives": 395,
+      "precision": 0.8732,
+      "recall": 0.8429,
+      "f1_score": 0.8577,
+      "accuracy": 0.855,
+      "positive_support_count": 490,
+      "positive_support_pct": 51.85
+    },
+    "native_baseline_audit": {
+      "description": "Evaluation on native synthetic inventory where buffer stock was high (~1,200 units vs ~18 monthly sales)",
+      "sample_size": 200,
+      "true_positives": 0,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "true_negatives": 200,
+      "precision": null,
+      "recall": null,
+      "f1_score": null,
+      "service_level_pct": 100.0,
+      "limitation": "Native synthetic inventory generator maintained excess buffer stock; zero natural stockout events occurred. Claiming F1=1.0 on zero positive support is mathematically degenerate; boundary simulation provides the genuine predictive policy score."
+    }
+  },
+  "co3_reorder_policy_evaluation": {
+    "evaluation_type": "Multi-period chronological evaluation with boundary simulation and native baseline audit",
+    "test_period_total_observations": 534,
+    "unique_products_evaluated": 100,
+    "safety_stock_units": 10.32,
+    "lead_time_days": 7,
+    "boundary_simulation_metrics": {
+      "description": "Replenishment decision accuracy when stock varies around the reorder threshold (0.5x to 1.5x ROP)",
+      "sample_size": 534,
+      "true_positives": 232,
+      "false_positives": 21,
+      "false_negatives": 66,
+      "true_negatives": 215,
+      "precision": 0.917,
+      "recall": 0.7785,
+      "f1_score": 0.8421,
+      "accuracy": 0.8371,
+      "positive_support_count": 298,
+      "positive_support_pct": 55.81
+    },
+    "native_baseline_audit": {
+      "description": "Evaluation on native synthetic inventory where buffer stock was high (~1,200 units vs ~18 monthly sales)",
+      "sample_size": 100,
+      "true_positives": 0,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "true_negatives": 100,
+      "precision": null,
+      "recall": null,
+      "f1_score": null,
+      "service_level_pct": 100.0,
+      "limitation": "Native synthetic inventory generator maintained excess buffer stock; zero natural stockout events occurred. Claiming F1=1.0 on zero positive support is mathematically degenerate; boundary simulation provides the genuine predictive policy score."
+    }
+  },
+  "approach_c_holdout_co3": {
+    "business_id": "00000000-0000-0000-0000-000000000003",
+    "business_name": "Apna Kirana Store",
+    "metrics": {
+      "rmse": 15.28797570055675,
+      "mae": 10.545407068428784,
+      "mape": 119.53463723688911,
+      "smape": 58.54329533009789,
+      "wape": 54.59132109122464,
+      "r2": -0.0816,
+      "baseline_lag1_metrics": {
+        "rmse": 20.68759371103615,
+        "mae": 15.073281185673116,
+        "mape": 161.65148741905895,
+        "smape": 78.55193179007645,
+        "wape": 78.03115875620725,
+        "r2": -0.9805
+      },
+      "baseline_ma_metrics": {
+        "rmse": 16.873520787455565,
+        "mae": 12.383696994648004,
+        "mape": 148.49555310167867,
+        "smape": 65.29111133867308,
+        "wape": 64.10775558918182,
+        "r2": -0.3176
+      },
+      "n_observations": 2429
+    }
+  }
 }

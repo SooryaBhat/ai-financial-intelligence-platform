@@ -15,11 +15,13 @@ from app.schemas.ml import (
 
 
 def _default_profit_history() -> List[float]:
-    return [4500000.0, 5200000.0, 4800000.0, 5100000.0, 6800000.0, 5900000.0]
+    """Default historical monthly net profit aligned with simulated retail business scale."""
+    return [-1550000.0, -1620000.0, -1580000.0, -1510000.0, -1490000.0, -1540000.0]
 
 
 def _default_revenue_history() -> List[float]:
-    return [17600000.0, 20400000.0, 17500000.0, 18800000.0, 25100000.0, 21300000.0]
+    """Default historical monthly revenue aligned with simulated retail business scale."""
+    return [245000.0, 255000.0, 240000.0, 260000.0, 275000.0, 268000.0]
 
 
 def predict_profit(
@@ -41,9 +43,9 @@ def predict_profit(
         r_hist = request.historical_revenues or _default_revenue_history()
 
         while len(p_hist) < 6:
-            p_hist.insert(0, p_hist[0] if p_hist else 4000000.0)
+            p_hist.insert(0, p_hist[0] if p_hist else -1550000.0)
         while len(r_hist) < 6:
-            r_hist.insert(0, r_hist[0] if r_hist else 18000000.0)
+            r_hist.insert(0, r_hist[0] if r_hist else 250000.0)
 
         current_date = datetime.now()
         m_idx = current_date.month

@@ -23,6 +23,11 @@ api.interceptors.request.use(
       config.headers['X-Company-ID'] = companyId
     }
 
+    const branchId = localStorage.getItem('active_branch_id')
+    if (branchId) {
+      config.headers['X-Branch-ID'] = branchId
+    }
+
     return config
   },
   (error) => Promise.reject(error)

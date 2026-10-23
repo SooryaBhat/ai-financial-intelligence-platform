@@ -28,6 +28,7 @@ import {
   Bell,
   PieChart,
   Bot,
+  UploadCloud,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -51,6 +52,7 @@ const navGroups: NavGroup[] = [
     title: 'Operations & Commercial',
     items: [
       { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Data Import Center', href: '/imports', icon: UploadCloud, badge: 'New' },
       { label: 'Sales Orders', href: '/sales', icon: ShoppingCart },
       { label: 'Invoices & Billing', href: '/invoices', icon: Receipt },
       { label: 'Customer Directory', href: '/customers', icon: Users },

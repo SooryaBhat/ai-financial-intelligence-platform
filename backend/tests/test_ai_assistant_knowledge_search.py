@@ -7,6 +7,7 @@ Focused Integration Tests: AI Assistant Knowledge Search (RAG Tool Calling)
 5. Verify graceful handling when no relevant knowledge results exist (no hallucinations).
 6. Verify clear separation between live ERP facts and conceptual knowledge search.
 """
+import os
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 import pytest
@@ -129,6 +130,10 @@ def test_gemini_provider_knowledge_search_loop(sample_company_id):
 
 # ── Test 4: AIAssistantService Live End-to-End Execution ────────────────
 
+@pytest.mark.skipif(
+    not os.getenv("RUN_LIVE_GEMINI"),
+    reason="Requires active live external Gemini API access (Level C live verification)",
+)
 def test_ai_assistant_live_knowledge_search(admin_client, sample_company_id):
     """Verify AIAssistantService answers a live knowledge question with source citations."""
     assistant = AIAssistantService(admin_client, sample_company_id)

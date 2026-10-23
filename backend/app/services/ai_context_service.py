@@ -379,7 +379,14 @@ class AIContextService:
 
     # ── Gemini Assistant Execution ─────────────────────────────────────
 
-    def answer_with_tools(self, question: str) -> Dict[str, Any]:
+    def answer_with_tools(
+        self,
+        question: str,
+        history: Optional[List[Dict[str, Any]]] = None,
+        summary: Optional[str] = None,
+        memories: Optional[List[Dict[str, Any]]] = None,
+        provider: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
         Invoke AI Assistant with LLM tool/function calling grounded in live ERP database records.
         Returns response message, tools_used metadata, and execution details.
@@ -389,8 +396,13 @@ class AIContextService:
             cid = UUID(str(self.company_id))
         except (ValueError, TypeError):
             cid = self.company_id
-        assistant = AIAssistantService(self.client, cid)
-        return assistant.answer_question(question)
+        assistant = AIAssistantService(self.client, cid, provider=provider)
+        return assistant.answer_question(
+            question,
+            history=history,
+            summary=summary,
+            memories=memories,
+        )
 
     def answer_question(self, question: str) -> str:
         """

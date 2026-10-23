@@ -1,5 +1,7 @@
 {
   "task": "revenue_forecasting",
+  "selected_model": "AAGF_Custom",
+  "selected_artifact": "revenue_forecasting_selected.pkl",
   "features": [
     "lag_1",
     "lag_2",
@@ -9,6 +11,26 @@
     "roll3_mean",
     "roll6_mean",
     "month_num",
-    "quarter"
-  ]
+    "quarter",
+    "is_festival_season",
+    "is_diwali_q4",
+    "is_q1_festive",
+    "momentum_3m"
+  ],
+  "training_companies": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
+  ],
+  "holdout_company": "00000000-0000-0000-0000-000000000003",
+  "training_period": "2022-07-31 to 2023-12-31",
+  "validation_period": "2024-01-01 to 2024-06-30",
+  "dev_test_period": "2024-07-01 to 2024-12-31",
+  "algorithm_artifacts": {
+    "linear_regression": "revenue_forecasting_linear_regression.pkl",
+    "xgboost": "revenue_forecasting_xgboost.pkl",
+    "aagf_custom": "revenue_forecasting_aagf.pkl",
+    "sarima": "revenue_forecasting_sarima.pkl"
+  },
+  "selection_rationale": "Validation WAPE on Dev Companies (1 & 2) 2024-01-01 to 2024-06-30",
+  "synthetic_data_evaluation_only": true
 }

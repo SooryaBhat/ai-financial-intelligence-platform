@@ -40,18 +40,27 @@ def predict_sales(
         if entity_type == "category":
             model_key = "sales_xgb_category"
             model_name = "XGBoost Category Sales Predictor"
+        elif model_type == "aagf":
+            model_key = "sales_aagf"
+            model_name = "ALLADIN Adaptive Global Forecaster (AAGF)"
         elif model_type == "lightgbm":
             model_key = "sales_lgb_product"
             model_name = "LightGBM Product Sales Predictor"
-        else:
+        elif model_type in ["linear", "linear_regression"]:
+            model_key = "sales_linear_regression"
+            model_name = "Linear Regression Product Sales Predictor"
+        elif model_type == "xgboost":
             model_key = "sales_xgb_product"
             model_name = "XGBoost Product Sales Predictor"
+        else:
+            model_key = "sales_selected"
+            model_name = "ALLADIN Selected Forecaster (AAGF)"
 
         model_obj = loader.get_model(model_key)
         if not model_obj or not isinstance(model_obj, dict):
-            # Fallback to product xgb
-            model_obj = loader.get_model("sales_xgb_product")
-            model_name = "XGBoost Product Sales Predictor (Fallback)"
+            # Fallback to selected or product xgb
+            model_obj = loader.get_model("sales_selected") or loader.get_model("sales_xgb_product")
+            model_name = "Product Sales Predictor (Fallback)"
 
         if not model_obj:
             raise ValueError(f"Sales model artifact '{model_key}' is not available.")
@@ -91,8 +100,12 @@ def predict_sales(
                     "is_jan": 1.0 if m_idx == 1 else 0.0,
                 }
 
-            X = np.array([[feat_dict.get(col, 0.0) for col in feat_cols]], dtype=np.float32)
-            pred_units = float(model.predict(X)[0])
+            if hasattr(model, "weights") or hasattr(model, "trend_anchor"):
+                feat_df = pd.DataFrame([feat_dict])
+                pred_units = float(model.predict(feat_df)[0])
+            else:
+                X = np.array([[feat_dict.get(col, 0.0) for col in feat_cols]], dtype=np.float32)
+                pred_units = float(model.predict(X)[0])
             pred_units = max(1.0, pred_units)
             pred_amount = pred_units * avg_unit_price
 

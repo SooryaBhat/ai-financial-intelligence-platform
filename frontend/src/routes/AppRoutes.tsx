@@ -36,6 +36,7 @@ import { ExpensesPage } from '@/pages/erp/ExpensesPage'
 import { ReportsPage } from '@/pages/erp/ReportsPage'
 import { NotificationsPage } from '@/pages/erp/NotificationsPage'
 import { SettingsPage } from '@/pages/erp/SettingsPage'
+import { ImportCenterPage } from '@/pages/erp/ImportCenterPage'
 
 // ML & AI Intelligence Pages
 import { MlRevenuePage } from '@/pages/erp/MlRevenuePage'
@@ -104,6 +105,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/expenses" element={<ExpensesPage />} />
 
         {/* Reports & System */}
+        <Route path="/imports" element={<ImportCenterPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/settings" element={<SettingsPage />} />

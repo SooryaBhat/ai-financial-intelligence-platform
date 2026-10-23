@@ -30,7 +30,18 @@ def unread_count(
     ctx: RequestContext = Depends(get_request_context),
     svc: NotificationService = Depends(_get_service),
 ):
-    return SuccessResponse(data={"count": svc.count_unread(ctx)})
+    try:
+        count = svc.count_unread(ctx)
+        return SuccessResponse(data={"count": count})
+    except Exception as exc:
+        err_str = str(exc)
+        if any(term in err_str for term in ("DATABASE_UNAVAILABLE", "ConnectError", "11001", "getaddrinfo", "RemoteProtocolError")):
+            from app.core.logging import logger
+            from app.exceptions.http_exceptions import DatabaseConnectionError
+            logger.warning("[Notifications] Database connectivity failure while counting unread notifications: {}", exc)
+            raise DatabaseConnectionError("Database is temporarily unreachable while checking notification count.") from exc
+        raise exc
+
 
 
 @router.post("/mark-read", response_model=SuccessResponse, summary="Mark notifications as read")

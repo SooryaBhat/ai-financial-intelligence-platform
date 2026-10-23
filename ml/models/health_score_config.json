@@ -1,4 +1,5 @@
 {
+  "engine": "Transparent KPI Scorecard + Forward Health Transition Predictor",
   "weights": {
     "revenue_growth": 0.25,
     "profit_margin": 0.25,
@@ -6,33 +7,47 @@
     "inventory_turnover": 0.15,
     "payment_collection": 0.15
   },
-  "score_cols": [
-    "score_revenue_growth",
-    "score_profit_margin",
-    "score_expense_control",
-    "score_inventory_turnover",
-    "score_payment_collection"
-  ],
   "kpi_ranges": {
     "revenue_growth": [
-      -0.7243095299414152,
-      1.396013661088132
+      -0.5,
+      1.0
     ],
     "profit_margin": [
-      -0.35708951880979334,
-      0.383903918430231
+      -0.2,
+      0.4
     ],
-    "expense_ratio": [
-      0.12777812345875486,
-      0.8538926795375759
+    "expense_control": [
+      0.0,
+      1.0
     ],
     "inventory_turnover": [
-      172.0454950106826,
-      239.14656888476011
+      0.0,
+      10.0
     ],
-    "collection_rate": [
-      0.4173696480069294,
-      0.9185395375391502
+    "payment_collection": [
+      0.0,
+      1.0
     ]
+  },
+  "grade_thresholds": {
+    "A": 80.0,
+    "B": 65.0,
+    "C": 50.0,
+    "D": 35.0,
+    "F": 0.0
+  },
+  "selected_transition_model": "Random_Forest",
+  "training_companies": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
+  ],
+  "holdout_company": "00000000-0000-0000-0000-000000000003",
+  "transition_test_metrics": {
+    "rmse": 5.208078543746177,
+    "mae": 3.826838190449627,
+    "mape": 10.86969714197494,
+    "smape": 11.489097063023355,
+    "wape": 11.577184058235147,
+    "r2": -0.1495
   }
 }

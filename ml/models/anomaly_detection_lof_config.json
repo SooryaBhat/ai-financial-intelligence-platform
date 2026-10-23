@@ -1,16 +1,32 @@
 {
-  "model_type": "LocalOutlierFactor",
-  "n_neighbors": 20,
-  "contamination": 0.01,
-  "feature_cols": [
+  "algorithm": "LocalOutlierFactor",
+  "n_neighbors": 25,
+  "contamination": 0.015,
+  "novelty": true,
+  "features": [
     "net_amount",
+    "discount_pct",
     "day_of_week",
     "is_weekend",
     "month",
-    "discount_pct",
     "status_enc",
     "roll28_mean",
     "roll28_std",
     "amount_z_rolling"
-  ]
+  ],
+  "training_companies": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
+  ],
+  "holdout_company": "00000000-0000-0000-0000-000000000003",
+  "test_metrics": {
+    "precision": 0.1875,
+    "recall": 0.375,
+    "f1_score": 0.25,
+    "total_anomalies_actual": 8,
+    "total_anomalies_flagged": 16,
+    "roc_auc": 0.8729,
+    "pr_auc": 0.312
+  },
+  "disclaimer": "Unsupervised anomaly detection flags statistical transaction outliers. It is not an absolute fraud determination."
 }

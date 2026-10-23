@@ -220,9 +220,9 @@ def main():
     results = []
 
     for nb_name in NOTEBOOKS:
-        print(f"\n{'─'*70}")
+        print(f"\n{'-'*70}")
         print(f"  Processing: {nb_name}")
-        print(f"{'─'*70}")
+        print(f"{'-'*70}")
 
         nb_path = NOTEBOOKS_DIR / nb_name
         if not nb_path.exists():
@@ -255,13 +255,13 @@ def main():
             print(key_error)
             results.append({'notebook': nb_name, 'status': 'FAILED', 'error': key_error})
 
-    # ── Summary ───────────────────────────────────────────────────────────────
+    # Summary
     print()
     print("=" * 70)
-    print("  PIPELINE EXECUTION SUMMARY")
+    print("  NOTEBOOK EXECUTION SUMMARY")
     print("=" * 70)
     for r in results:
-        icon = "✓" if r['status'] == 'SUCCESS' else "✗"
+        icon = "[OK]" if r['status'] == 'SUCCESS' else "[FAIL]"
         print(f"  {icon} {r['notebook']:<40}  {r['status']}")
 
     successful = [r for r in results if r['status'] == 'SUCCESS']
@@ -273,8 +273,8 @@ def main():
     print(f"  Failed:    {len(failed)}")
 
     # Save summary JSON
-    summary_path = REPORTS_DIR / 'pipeline_execution_summary.json'
-    with open(summary_path, 'w') as f:
+    summary_path = REPORTS_DIR / 'notebook_execution_summary.json'
+    with open(summary_path, 'w', encoding='utf-8') as f:
         json.dump(results, f, indent=2)
     print(f"\n  Summary saved: {summary_path}")
 

@@ -1,16 +1,19 @@
+# -*- coding: utf-8 -*-
 """
 feature_engineering.py
-=======================
-Feature creation and selection for all ML models in the platform.
+======================
+Feature creation and transformation pipelines for all seven ALLADIN ML models.
 
-This module provides domain-specific feature engineering functions
-tailored for ERP financial data (sales, expenses, inventory, etc.).
+Transforms cleaned retail data into structured feature matrices with:
+- Calendar & seasonal attributes
+- Lagged time-series features
+- Rolling window statistics
+- Moving consumption proxies
+- Cross-ratio financial metrics
+- Anomaly feature vectors
 
 Usage:
-    python scripts/feature_engineering.py
-
-Output:
-    datasets/processed/*_features.csv
+    python ml/scripts/feature_engineering.py
 """
 
 import sys
@@ -23,304 +26,387 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
     get_logger, load_csv, save_csv, add_date_features,
-    make_lag_features, make_rolling_features, PROCESSED_DIR
+    make_lag_features, PROCESSED_DIR
 )
 
 logger = get_logger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Revenue features
-# ---------------------------------------------------------------------------
-
-def build_revenue_features(
-    sales_df: pd.DataFrame,
-    company_id: Optional[str] = None,
-    freq: str = "M",
-) -> pd.DataFrame:
+def build_revenue_features(daily_kpi_df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     """
-    Build monthly revenue time-series features per company/branch.
-
-    Features created:
-    - year, month, quarter
-    - revenue_lag_1, revenue_lag_2, revenue_lag_3, revenue_lag_12
-    - revenue_roll_mean_3, revenue_roll_mean_6, revenue_roll_std_3
-    - yoy_growth_rate (year-over-year growth)
-    - is_q4 (Q4 seasonal flag)
-    - is_q2 (Q2 seasonal flag)
-
-    Args:
-        sales_df:   Cleaned sales DataFrame.
-        company_id: Filter to specific company UUID (optional).
-        freq:       Aggregation frequency ('M' for monthly, 'Q' for quarterly).
-
-    Returns:
-        Feature DataFrame ready for time-series model training.
+    Build monthly revenue feature matrix across companies.
+    Target: monthly revenue.
+    Features: lag_1, lag_2, lag_3, lag_6, lag_12, roll3_mean, roll6_mean, month_num, quarter.
     """
-    # TODO: Implement revenue feature engineering
-    logger.info("Building revenue features...")
+    if daily_kpi_df is None:
+        daily_kpi_df = load_csv("daily_kpi_clean.csv", PROCESSED_DIR)
 
-    # TODO: Filter by company_id if specified
-    # TODO: Parse sale_date, group by company_id + period, sum net_amount
-    # TODO: add_date_features(df, 'period')
-    # TODO: make_lag_features(df, 'revenue', lags=[1, 2, 3, 12], group_cols=['company_id'])
-    # TODO: make_rolling_features(df, 'revenue', windows=[3, 6])
-    # TODO: Compute YoY growth rate
-    # TODO: Add seasonal dummy flags
+    df = daily_kpi_df.copy()
+    df["date"] = pd.to_datetime(df["date"])
+    
+    # Monthly aggregation per company
+    monthly = (
+        df.groupby(["company_id", pd.Grouper(key="date", freq="ME")])
+        .agg(revenue=("revenue", "sum"), orders=("order_count", "sum"))
+        .reset_index()
+        .rename(columns={"date": "month"})
+        .sort_values(["company_id", "month"])
+        .reset_index(drop=True)
+    )
 
-    raise NotImplementedError("Revenue feature engineering not yet implemented.")
+    records = []
+    for cid, grp in monthly.groupby("company_id"):
+        grp = grp.sort_values("month").copy()
+        for i in range(len(grp)):
+            if i < 12:  # Need 12 lags
+                continue
+            hist = grp.iloc[:i]["revenue"].tolist()
+            m_dt = grp.iloc[i]["month"]
+            records.append({
+                "company_id": cid,
+                "month": m_dt,
+                "revenue": float(grp.iloc[i]["revenue"]),
+                "lag_1": float(hist[-1]),
+                "lag_2": float(hist[-2]),
+                "lag_3": float(hist[-3]),
+                "lag_6": float(hist[-6]),
+                "lag_12": float(hist[-12]),
+                "roll3_mean": float(np.mean(hist[-3:])),
+                "roll6_mean": float(np.mean(hist[-6:])),
+                "month_num": float(m_dt.month),
+                "quarter": float((m_dt.month - 1) // 3 + 1),
+            })
 
+    feat_df = pd.DataFrame(records)
+    logger.info("Built revenue features: %d rows x %d cols", len(feat_df), len(feat_df.columns))
+    return feat_df
 
-# ---------------------------------------------------------------------------
-# Sales features
-# ---------------------------------------------------------------------------
 
 def build_sales_features(
-    sales_df: pd.DataFrame,
-    sale_items_df: pd.DataFrame,
-    products_df: pd.DataFrame,
-    categories_df: pd.DataFrame,
-    level: str = "product",
+    sale_items_df: Optional[pd.DataFrame] = None,
+    sales_df: Optional[pd.DataFrame] = None,
+    products_df: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
     """
-    Build sales features at product or category level.
-
-    Args:
-        sales_df:      Cleaned sales DataFrame.
-        sale_items_df: Cleaned sale_items DataFrame.
-        products_df:   Cleaned products DataFrame.
-        categories_df: Cleaned categories DataFrame.
-        level:         Aggregation level: 'product' or 'category'.
-
-    Returns:
-        Feature DataFrame with lag, rolling, and seasonal features.
+    Build monthly product and category level sales feature matrix.
+    Target: quantity sold.
+    Features: lag_1, lag_2, lag_3, lag_12, roll3_mean, roll6_mean, roll3_std, month_num, quarter, year, is_q4, is_q1.
     """
-    # TODO: Implement sales feature engineering
-    logger.info(f"Building sales features at {level} level...")
+    if sale_items_df is None:
+        sale_items_df = load_csv("sale_items_clean.csv", PROCESSED_DIR)
+    if sales_df is None:
+        sales_df = load_csv("sales_clean.csv", PROCESSED_DIR)
+    if products_df is None:
+        products_df = load_csv("products.csv")
 
-    # TODO: Join sale_items + sales + products + categories
-    # TODO: Group by company_id + product/category + period
-    # TODO: Sum quantity and revenue
-    # TODO: make_lag_features(..., lags=[1, 2, 3, 6, 12])
-    # TODO: make_rolling_features(..., windows=[3, 6])
-    # TODO: Add price sensitivity features (avg unit_price, discount ratio)
+    merged = sale_items_df.merge(
+        sales_df[["id", "sale_date", "company_id", "status"]],
+        left_on="sale_id", right_on="id", suffixes=("", "_sale")
+    )
+    merged = merged[merged["status"] == "completed"].copy()
+    merged["sale_date"] = pd.to_datetime(merged["sale_date"])
 
-    raise NotImplementedError("Sales feature engineering not yet implemented.")
+    # Aggregate monthly per product
+    monthly = (
+        merged.groupby(["product_id", "company_id", pd.Grouper(key="sale_date", freq="ME")])
+        .agg(quantity=("quantity", "sum"), revenue=("line_total", "sum"))
+        .reset_index()
+        .rename(columns={"sale_date": "month"})
+        .sort_values(["product_id", "month"])
+        .reset_index(drop=True)
+    )
+
+    records = []
+    for pid, grp in monthly.groupby("product_id"):
+        grp = grp.sort_values("month").copy()
+        cid = grp["company_id"].iloc[0]
+        for i in range(len(grp)):
+            if i < 12:  # Need 12 lags
+                continue
+            hist = grp.iloc[:i]["quantity"].tolist()
+            m_dt = grp.iloc[i]["month"]
+            q = (m_dt.month - 1) // 3 + 1
+            records.append({
+                "product_id": pid,
+                "company_id": cid,
+                "month": m_dt,
+                "quantity": float(grp.iloc[i]["quantity"]),
+                "lag_1": float(hist[-1]),
+                "lag_2": float(hist[-2]),
+                "lag_3": float(hist[-3]),
+                "lag_12": float(hist[-12]),
+                "roll3_mean": float(np.mean(hist[-3:])),
+                "roll6_mean": float(np.mean(hist[-6:])),
+                "roll3_std": float(np.std(hist[-3:])),
+                "month_num": float(m_dt.month),
+                "quarter": float(q),
+                "year": float(m_dt.year),
+                "is_q4": 1.0 if q == 4 else 0.0,
+                "is_q1": 1.0 if q == 1 else 0.0,
+            })
+
+    feat_df = pd.DataFrame(records)
+    logger.info("Built sales features: %d rows x %d cols", len(feat_df), len(feat_df.columns))
+    return feat_df
 
 
-# ---------------------------------------------------------------------------
-# Inventory features
-# ---------------------------------------------------------------------------
-
-def build_inventory_features(
-    inventory_df: pd.DataFrame,
-    stock_movements_df: pd.DataFrame,
-    sales_df: pd.DataFrame,
-    sale_items_df: pd.DataFrame,
-) -> pd.DataFrame:
+def build_inventory_features(stock_movements_df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     """
-    Build inventory demand features.
-
-    Features created:
-    - days_of_stock_remaining (quantity_on_hand / avg_daily_consumption)
-    - stockout_risk_flag (binary: days_remaining < 7)
-    - avg_daily_consumption (rolling 30-day)
-    - reorder_deficit (reorder_quantity - quantity_on_hand if below reorder_level)
-    - in_out_ratio (purchase movements / sale movements)
-
-    Args:
-        inventory_df:       Cleaned inventory DataFrame.
-        stock_movements_df: Cleaned stock_movements DataFrame.
-        sales_df:           Cleaned sales DataFrame.
-        sale_items_df:      Cleaned sale_items DataFrame.
-
-    Returns:
-        Feature DataFrame for inventory demand modeling.
+    Build monthly inventory outbound consumption demand features.
+    Target: units_out (demand).
+    Features: lag_1, lag_2, lag_3, lag_6, roll3_mean, roll6_mean, month_num, quarter, year, is_q4, is_q1.
     """
-    # TODO: Implement inventory feature engineering
-    logger.info("Building inventory features...")
+    if stock_movements_df is None:
+        stock_movements_df = load_csv("stock_movements_clean.csv", PROCESSED_DIR)
 
-    # TODO: Compute daily consumption rate per product per warehouse
-    # TODO: Calculate days_of_stock_remaining
-    # TODO: Flag products below reorder_level
-    # TODO: Add seasonal demand indicators
+    outbound = stock_movements_df[stock_movements_df["movement_type"] == "out"].copy()
+    outbound["moved_at"] = pd.to_datetime(outbound["moved_at"])
 
-    raise NotImplementedError("Inventory feature engineering not yet implemented.")
+    monthly = (
+        outbound.groupby(["product_id", pd.Grouper(key="moved_at", freq="ME")])
+        .agg(units_out=("quantity", "sum"))
+        .reset_index()
+        .rename(columns={"moved_at": "month"})
+        .sort_values(["product_id", "month"])
+        .reset_index(drop=True)
+    )
+
+    records = []
+    for pid, grp in monthly.groupby("product_id"):
+        grp = grp.sort_values("month").copy()
+        for i in range(len(grp)):
+            if i < 6:  # Need 6 lags
+                continue
+            hist = grp.iloc[:i]["units_out"].tolist()
+            m_dt = grp.iloc[i]["month"]
+            q = (m_dt.month - 1) // 3 + 1
+            records.append({
+                "product_id": pid,
+                "month": m_dt,
+                "units_out": float(grp.iloc[i]["units_out"]),
+                "lag_1": float(hist[-1]),
+                "lag_2": float(hist[-2]),
+                "lag_3": float(hist[-3]),
+                "lag_6": float(hist[-6]),
+                "roll3_mean": float(np.mean(hist[-3:])),
+                "roll6_mean": float(np.mean(hist[-6:])),
+                "month_num": float(m_dt.month),
+                "quarter": float(q),
+                "year": float(m_dt.year),
+                "is_q4": 1.0 if q == 4 else 0.0,
+                "is_q1": 1.0 if q == 1 else 0.0,
+            })
+
+    feat_df = pd.DataFrame(records)
+    logger.info("Built inventory features: %d rows x %d cols", len(feat_df), len(feat_df.columns))
+    return feat_df
 
 
-# ---------------------------------------------------------------------------
-# Expense features
-# ---------------------------------------------------------------------------
-
-def build_expense_features(
-    expenses_df: pd.DataFrame,
-    sales_df: pd.DataFrame,
-) -> pd.DataFrame:
+def build_profit_features(daily_kpi_df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     """
-    Build expense prediction features.
-
-    Features created:
-    - expense_lag_1, expense_lag_2, expense_lag_3
-    - expense_roll_mean_3, expense_roll_std_3
-    - expense_to_revenue_ratio (expenses / revenue for same period)
-    - category_encoded (label encoded expense category)
-    - is_year_end (flag for December)
-
-    Args:
-        expenses_df: Cleaned expenses DataFrame.
-        sales_df:    Cleaned sales DataFrame (for revenue ratio).
-
-    Returns:
-        Feature DataFrame for expense forecasting.
+    Build monthly net profit features.
+    Target: net_profit.
+    Features: profit_lag1, profit_lag2, profit_lag3, profit_lag6, profit_roll3, profit_roll6,
+              revenue_lag1, revenue_lag2, revenue_lag3, expense_ratio_lag1, expense_ratio_lag2,
+              month_num, quarter, year, is_q4.
     """
-    # TODO: Implement expense feature engineering
-    logger.info("Building expense features...")
+    if daily_kpi_df is None:
+        daily_kpi_df = load_csv("daily_kpi_clean.csv", PROCESSED_DIR)
 
-    # TODO: Aggregate monthly expenses by company + category
-    # TODO: make_lag_features, make_rolling_features
-    # TODO: Join with revenue to compute expense ratio
+    df = daily_kpi_df.copy()
+    df["date"] = pd.to_datetime(df["date"])
 
-    raise NotImplementedError("Expense feature engineering not yet implemented.")
+    monthly = (
+        df.groupby(["company_id", pd.Grouper(key="date", freq="ME")])
+        .agg(
+            revenue=("revenue", "sum"),
+            cogs=("cogs", "sum"),
+            operating_expenses=("operating_expenses", "sum"),
+            net_profit=("net_profit", "sum"),
+        )
+        .reset_index()
+        .rename(columns={"date": "month"})
+        .sort_values(["company_id", "month"])
+        .reset_index(drop=True)
+    )
+
+    records = []
+    for cid, grp in monthly.groupby("company_id"):
+        grp = grp.sort_values("month").copy()
+        for i in range(len(grp)):
+            if i < 6:
+                continue
+            p_hist = grp.iloc[:i]["net_profit"].tolist()
+            r_hist = grp.iloc[:i]["revenue"].tolist()
+            e_hist = grp.iloc[:i]["operating_expenses"].tolist()
+            m_dt = grp.iloc[i]["month"]
+            q = (m_dt.month - 1) // 3 + 1
+            exp_ratio_1 = e_hist[-1] / (r_hist[-1] + 1e-8)
+            exp_ratio_2 = e_hist[-2] / (r_hist[-2] + 1e-8)
+            records.append({
+                "company_id": cid,
+                "month": m_dt,
+                "net_profit": float(grp.iloc[i]["net_profit"]),
+                "profit_lag1": float(p_hist[-1]),
+                "profit_lag2": float(p_hist[-2]),
+                "profit_lag3": float(p_hist[-3]),
+                "profit_lag6": float(p_hist[-6]),
+                "profit_roll3": float(np.mean(p_hist[-3:])),
+                "profit_roll6": float(np.mean(p_hist[-6:])),
+                "revenue_lag1": float(r_hist[-1]),
+                "revenue_lag2": float(r_hist[-2]),
+                "revenue_lag3": float(r_hist[-3]),
+                "expense_ratio_lag1": float(exp_ratio_1),
+                "expense_ratio_lag2": float(exp_ratio_2),
+                "month_num": float(m_dt.month),
+                "quarter": float(q),
+                "year": float(m_dt.year),
+                "is_q4": 1.0 if q == 4 else 0.0,
+            })
+
+    feat_df = pd.DataFrame(records)
+    logger.info("Built profit features: %d rows x %d cols", len(feat_df), len(feat_df.columns))
+    return feat_df
 
 
-# ---------------------------------------------------------------------------
-# Profit features
-# ---------------------------------------------------------------------------
-
-def build_profit_features(
-    sales_df: pd.DataFrame,
-    sale_items_df: pd.DataFrame,
-    products_df: pd.DataFrame,
-    expenses_df: pd.DataFrame,
-) -> pd.DataFrame:
+def build_expense_features(expenses_df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     """
-    Build profit prediction features.
-
-    Profit = Revenue - COGS - Operating Expenses
-
-    Features created:
-    - gross_profit (revenue - cogs)
-    - net_profit (gross_profit - expenses)
-    - profit_margin_pct (net_profit / revenue × 100)
-    - profit_lag_1, profit_lag_2, profit_lag_3
-    - profit_roll_mean_3, profit_roll_std_3
-    - expense_ratio (expenses / revenue)
-
-    Args:
-        sales_df:      Cleaned sales DataFrame.
-        sale_items_df: Cleaned sale_items DataFrame.
-        products_df:   Products DataFrame (for cost_price).
-        expenses_df:   Cleaned expenses DataFrame.
-
-    Returns:
-        Feature DataFrame for profit prediction.
+    Build monthly expense features per company and category.
+    Target: total_expense.
+    Features: lag_1, lag_2, lag_3, lag_6, roll3_mean, roll6_mean, roll3_std,
+              txn_count, avg_expense, month_num, quarter, year, is_q4, is_q1.
     """
-    # TODO: Implement profit feature engineering
-    logger.info("Building profit features...")
+    if expenses_df is None:
+        expenses_df = load_csv("expenses_clean.csv", PROCESSED_DIR)
 
-    # TODO: Compute COGS = sum(quantity × cost_price) per sale
-    # TODO: Gross profit = revenue - COGS
-    # TODO: Net profit = gross_profit - monthly expenses
-    # TODO: make_lag_features, make_rolling_features
+    app_exp = expenses_df[expenses_df["status"] == "approved"].copy()
+    app_exp["expense_date"] = pd.to_datetime(app_exp["expense_date"])
 
-    raise NotImplementedError("Profit feature engineering not yet implemented.")
+    monthly = (
+        app_exp.groupby(["company_id", "category", pd.Grouper(key="expense_date", freq="ME")])
+        .agg(total_expense=("amount", "sum"), txn_count=("id", "count"))
+        .reset_index()
+        .rename(columns={"expense_date": "month"})
+        .sort_values(["company_id", "category", "month"])
+        .reset_index(drop=True)
+    )
+
+    records = []
+    for (cid, cat), grp in monthly.groupby(["company_id", "category"]):
+        grp = grp.sort_values("month").copy()
+        for i in range(len(grp)):
+            if i < 6:
+                continue
+            hist = grp.iloc[:i]["total_expense"].tolist()
+            m_dt = grp.iloc[i]["month"]
+            q = (m_dt.month - 1) // 3 + 1
+            # Leakage prevention: Use strictly lag-1 transaction count at forecast origin
+            t_cnt_lag1 = float(grp.iloc[i - 1]["txn_count"])
+            avg_exp_lag1 = float(hist[-1] / (t_cnt_lag1 + 1e-6))
+            records.append({
+                "company_id": cid,
+                "category": cat,
+                "month": m_dt,
+                "total_expense": float(grp.iloc[i]["total_expense"]),
+                "lag_1": float(hist[-1]),
+                "lag_2": float(hist[-2]),
+                "lag_3": float(hist[-3]),
+                "lag_6": float(hist[-6]),
+                "roll3_mean": float(np.mean(hist[-3:])),
+                "roll6_mean": float(np.mean(hist[-6:])),
+                "roll3_std": float(np.std(hist[-3:])),
+                "txn_count_lag1": t_cnt_lag1,
+                "avg_expense_lag1": avg_exp_lag1,
+                "txn_count": t_cnt_lag1,  # Safe lagged alias
+                "avg_expense": avg_exp_lag1,  # Safe lagged alias
+                "month_num": float(m_dt.month),
+                "quarter": float(q),
+                "year": float(m_dt.year),
+                "is_q4": 1.0 if q == 4 else 0.0,
+                "is_q1": 1.0 if q == 1 else 0.0,
+            })
+
+    feat_df = pd.DataFrame(records)
+    logger.info("Built expense features: %d rows x %d cols", len(feat_df), len(feat_df.columns))
+    return feat_df
 
 
-# ---------------------------------------------------------------------------
-# Business health features
-# ---------------------------------------------------------------------------
-
-def build_health_score_features(
-    sales_df: pd.DataFrame,
-    expenses_df: pd.DataFrame,
-    invoices_df: pd.DataFrame,
-    payments_df: pd.DataFrame,
-    inventory_df: pd.DataFrame,
-    stock_movements_df: pd.DataFrame,
-) -> pd.DataFrame:
+def build_anomaly_features(sales_df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     """
-    Build KPI features for business health scoring.
-
-    KPIs computed:
-    - revenue_growth_rate (MoM %)
-    - profit_margin_pct
-    - expense_to_revenue_ratio
-    - inventory_turnover_ratio
-    - invoice_collection_rate (paid invoices / total invoices)
-    - avg_days_to_payment (invoice date → payment date)
-
-    Args:
-        sales_df:           Cleaned sales.
-        expenses_df:        Cleaned expenses.
-        invoices_df:        Cleaned invoices.
-        payments_df:        Cleaned payments.
-        inventory_df:       Cleaned inventory.
-        stock_movements_df: Cleaned stock movements.
-
-    Returns:
-        Feature DataFrame for health score computation.
+    Build transaction-level anomaly feature matrix from sales orders.
+    Excludes ground truth is_anomaly from feature inputs.
+    Features: net_amount, discount_pct, day_of_week, is_weekend, month,
+              status_enc, roll28_mean, roll28_std, amount_z_rolling.
     """
-    # TODO: Implement health score feature engineering
-    logger.info("Building business health score features...")
+    if sales_df is None:
+        sales_df = load_csv("sales_clean.csv", PROCESSED_DIR)
 
-    # TODO: Compute all 6 KPIs per company per month
-    # TODO: Normalize each KPI to 0–100 using MinMaxScaler
-    # TODO: Apply weights and compute composite score
+    df = sales_df.copy()
+    df["sale_date"] = pd.to_datetime(df["sale_date"])
+    df = df.sort_values(["company_id", "sale_date"]).reset_index(drop=True)
 
-    raise NotImplementedError("Health score feature engineering not yet implemented.")
+    # Rolling 28 transactions stats per company
+    df["roll28_mean"] = (
+        df.groupby("company_id")["net_amount"]
+        .transform(lambda x: x.shift(1).rolling(28, min_periods=5).mean())
+    )
+    df["roll28_std"] = (
+        df.groupby("company_id")["net_amount"]
+        .transform(lambda x: x.shift(1).rolling(28, min_periods=5).std())
+    )
+    df["amount_z_rolling"] = (
+        (df["net_amount"] - df["roll28_mean"]) / (df["roll28_std"].replace(0, np.nan) + 1e-6)
+    )
 
+    df["day_of_week"] = df["sale_date"].dt.dayofweek.astype(float)
+    df["is_weekend"] = (df["day_of_week"] >= 5).astype(float)
+    df["month"] = df["sale_date"].dt.month.astype(float)
 
-# ---------------------------------------------------------------------------
-# Anomaly detection features
-# ---------------------------------------------------------------------------
+    # Compute discount percentage if total_amount > 0
+    df["discount_pct"] = (
+        df["discount_amount"] / (df["total_amount"] + df["discount_amount"] + 1e-6)
+    ).clip(0.0, 1.0).astype(float)
 
-def build_anomaly_features(
-    sales_df: pd.DataFrame,
-    expenses_df: pd.DataFrame,
-    payments_df: pd.DataFrame,
-    stock_movements_df: pd.DataFrame,
-) -> pd.DataFrame:
-    """
-    Build features for anomaly detection across transaction types.
+    status_map = {"completed": 0.0, "pending": 1.0, "cancelled": 2.0}
+    df["status_enc"] = df["status"].map(status_map).fillna(0.0).astype(float)
 
-    Features created:
-    - amount_zscore (how many std deviations above company mean)
-    - amount_iqr_flag (outside IQR × 1.5)
-    - time_since_last_transaction (in days)
-    - is_large_round_number (suspicious even amounts)
-    - weekend_transaction_flag
-    - transaction_type (sale / expense / payment / stock_movement)
+    feat_cols = [
+        "net_amount", "discount_pct", "day_of_week", "is_weekend",
+        "month", "status_enc", "roll28_mean", "roll28_std", "amount_z_rolling"
+    ]
 
-    Args:
-        sales_df:           Cleaned sales.
-        expenses_df:        Cleaned expenses.
-        payments_df:        Cleaned payments.
-        stock_movements_df: Cleaned stock movements.
+    # Clean NaNs in rolling features
+    df["roll28_mean"] = df["roll28_mean"].fillna(df["net_amount"].median())
+    df["roll28_std"] = df["roll28_std"].fillna(df["net_amount"].std())
+    df["amount_z_rolling"] = df["amount_z_rolling"].fillna(0.0)
 
-    Returns:
-        Unified feature DataFrame for anomaly detection models.
-    """
-    # TODO: Implement anomaly detection feature engineering
-    logger.info("Building anomaly detection features...")
-
-    # TODO: Combine all transaction tables with a common schema
-    # TODO: Compute z-scores per company
-    # TODO: Compute IQR flags
-    # TODO: Add transaction metadata features
-
-    raise NotImplementedError("Anomaly feature engineering not yet implemented.")
+    logger.info("Built anomaly features: %d rows x %d cols", len(df), len(feat_cols))
+    return df
 
 
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
+def run_all_feature_engineering():
+    """Run feature extraction for all pipelines and save to processed/."""
+    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    rev_feat = build_revenue_features()
+    save_csv(rev_feat, "revenue_features.csv", PROCESSED_DIR)
 
-def main() -> None:
-    """Run all feature engineering pipelines."""
-    logger.info("Starting feature engineering pipeline...")
-    # TODO: Load processed CSVs and build feature sets for each model
-    logger.info("Feature engineering complete.")
+    sales_feat = build_sales_features()
+    save_csv(sales_feat, "sales_features.csv", PROCESSED_DIR)
+
+    inv_feat = build_inventory_features()
+    save_csv(inv_feat, "inventory_features.csv", PROCESSED_DIR)
+
+    profit_feat = build_profit_features()
+    save_csv(profit_feat, "profit_features.csv", PROCESSED_DIR)
+
+    exp_feat = build_expense_features()
+    save_csv(exp_feat, "expense_features.csv", PROCESSED_DIR)
+
+    anom_feat = build_anomaly_features()
+    save_csv(anom_feat, "anomaly_features.csv", PROCESSED_DIR)
+
+    logger.info("All feature engineering artifacts generated successfully.")
 
 
 if __name__ == "__main__":
-    main()
+    run_all_feature_engineering()

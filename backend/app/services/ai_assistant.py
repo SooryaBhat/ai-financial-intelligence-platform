@@ -112,6 +112,9 @@ class BaseLLMProvider(ABC):
         self,
         prompt: str,
         executor: AIToolExecutor,
+        history: Optional[List[Dict[str, Any]]] = None,
+        summary: Optional[str] = None,
+        memories: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """Generate response with tool calling support."""
         pass
@@ -122,12 +125,42 @@ class GeminiLLMProvider(BaseLLMProvider):
 
     def __init__(self, api_key: str) -> None:
         self.api_key = api_key
-        self.models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
+        # Models in order of priority; gemini-3.5-flash is the current flagship with active unexhausted quota
+        self.models_to_try = [
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3-flash-preview",
+            "gemini-2.5-flash",
+        ]
+        self.model_name = self.models_to_try[0]
+
+    def _call_gemini_with_fallback(self, client: Any, contents: Any, config: Any) -> Any:
+        last_exc = None
+        for model in self.models_to_try:
+            try:
+                resp = client.models.generate_content(
+                    model=model,
+                    contents=contents,
+                    config=config,
+                )
+                self.model_name = model
+                return resp
+            except Exception as e:
+                err_str = str(e)
+                last_exc = e
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "404" in err_str:
+                    logger.warning("[AIAssistant] Model '{}' unavailable ({}), attempting fallback...", model, err_str[:80])
+                    continue
+                raise e
+        raise last_exc
 
     def generate_with_tools(
         self,
         prompt: str,
         executor: AIToolExecutor,
+        history: Optional[List[Dict[str, Any]]] = None,
+        summary: Optional[str] = None,
+        memories: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         if not GENAI_AVAILABLE or not self.api_key:
             raise RuntimeError("Gemini SDK not available or API key missing.")
@@ -145,126 +178,150 @@ class GeminiLLMProvider(BaseLLMProvider):
         ]
         tools_config = [types.Tool(function_declarations=function_declarations)]
 
-        last_error = None
-        for model_name in self.models_to_try:
-            try:
-                logger.info("[AIAssistant] Initiating tool-calling session with '{}'...", model_name)
+        tools_executed: List[Dict[str, Any]] = []
+        try:
+            logger.info("[AIAssistant] Initiating tool-calling session with '{}'...", self.model_name)
 
-                contents: List[Any] = [
-                    types.Content(
-                        role="user",
-                        parts=[types.Part.from_text(text=prompt)],
+            # Build multi-turn conversational history
+            contents: List[Any] = []
+            if history:
+                for h in history:
+                    h_role = h.get("role", "user")
+                    h_content = (h.get("content") or "").strip()
+                    if not h_content:
+                        continue
+                    g_role = "model" if h_role in ("assistant", "model") else "user"
+                    contents.append(
+                        types.Content(
+                            role=g_role,
+                            parts=[types.Part.from_text(text=h_content)],
+                        )
                     )
-                ]
 
-                cfg = types.GenerateContentConfig(
+            # Current turn user prompt
+            contents.append(
+                types.Content(
+                    role="user",
+                    parts=[types.Part.from_text(text=prompt)],
+                )
+            )
+
+            # Build system instruction with durable cross-conversation memories & summaries
+            system_instruction = SYSTEM_PROMPT
+            if memories:
+                from app.services.ai_memory_service import AIMemoryService
+                mem_block = AIMemoryService.format_memories_prompt_block(memories)
+                if mem_block:
+                    system_instruction += f"\n\n{mem_block}"
+            if summary:
+                system_instruction += f"\n\n=== PREVIOUS CONVERSATION SUMMARY ===\n{summary}\n=== END OF SUMMARY ==="
+
+            cfg = types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.1,
+                max_output_tokens=3500,
+                tools=tools_config,
+            )
+
+            max_turns = 6  # Ample turns for combined knowledge and ERP tool calls
+
+            for turn in range(max_turns):
+                resp = self._call_gemini_with_fallback(client, contents, cfg)
+
+                # Check if the model requested one or more tool calls
+                if resp.function_calls:
+                    # Append assistant's candidate content (including function_calls)
+                    if resp.candidates and resp.candidates[0].content:
+                        contents.append(resp.candidates[0].content)
+
+                    # Execute each requested tool call
+                    for call in resp.function_calls:
+                        tool_name = call.name
+                        tool_args = dict(call.args or {})
+                        logger.info(
+                            "[AIAssistant] Turn {}: Model requested tool '{}' with args {}",
+                            turn + 1,
+                            tool_name,
+                            tool_args,
+                        )
+
+                        tool_output = executor.execute(tool_name, tool_args)
+                        tools_executed.append({
+                            "tool": tool_name,
+                            "args": tool_args,
+                            "result": tool_output,
+                            "summary": tool_output.get("summary", f"Executed {tool_name}"),
+                        })
+
+                        # Append tool response with role="user" (required by google-genai)
+                        contents.append(
+                            types.Content(
+                                role="user",
+                                parts=[
+                                    types.Part.from_function_response(
+                                        name=tool_name,
+                                        response={"result": tool_output},
+                                    )
+                                ],
+                            )
+                        )
+                    # Continue loop to allow model to synthesize tool outputs
+                    continue
+
+                # Model provided text answer grounded in the tool results
+                final_text = resp.text or ""
+                if not final_text and resp.candidates and resp.candidates[0].content:
+                    parts = resp.candidates[0].content.parts or []
+                    final_text = "".join(getattr(p, "text", "") or "" for p in parts)
+
+                logger.info(
+                    "[AIAssistant] Model '{}' completed response. Tools executed: {}",
+                    self.model_name,
+                    len(tools_executed),
+                )
+                return {
+                    "message": final_text.strip(),
+                    "tools_used": tools_executed,
+                    "model": self.model_name,
+                    "provider": "gemini",
+                    "status": "success",
+                }
+
+            # If reached max_turns after executing tools, perform a final synthesis call
+            if tools_executed:
+                logger.info("[AIAssistant] Reached turn limit; synthesizing final grounded answer...")
+                synthesis_cfg = types.GenerateContentConfig(
                     system_instruction=SYSTEM_PROMPT,
                     temperature=0.1,
                     max_output_tokens=3500,
-                    tools=tools_config,
                 )
+                final_resp = self._call_gemini_with_fallback(client, contents, synthesis_cfg)
+                final_text = final_resp.text or ""
+                if not final_text and final_resp.candidates and final_resp.candidates[0].content:
+                    parts = final_resp.candidates[0].content.parts or []
+                    final_text = "".join(getattr(p, "text", "") or "" for p in parts)
 
-                tools_executed: List[Dict[str, Any]] = []
-                max_turns = 6  # Ample turns for combined knowledge and ERP tool calls
+                return {
+                    "message": final_text.strip(),
+                    "tools_used": tools_executed,
+                    "model": self.model_name,
+                    "provider": "gemini",
+                    "status": "success",
+                }
 
-                for turn in range(max_turns):
-                    resp = client.models.generate_content(
-                        model=model_name,
-                        contents=contents,
-                        config=cfg,
-                    )
-
-                    # Check if the model requested one or more tool calls
-                    if resp.function_calls:
-                        # Append assistant's candidate content (including function_calls)
-                        if resp.candidates and resp.candidates[0].content:
-                            contents.append(resp.candidates[0].content)
-
-                        # Execute each requested tool call
-                        for call in resp.function_calls:
-                            tool_name = call.name
-                            tool_args = dict(call.args or {})
-                            logger.info(
-                                "[AIAssistant] Turn {}: Model requested tool '{}' with args {}",
-                                turn + 1,
-                                tool_name,
-                                tool_args,
-                            )
-
-                            tool_output = executor.execute(tool_name, tool_args)
-                            tools_executed.append({
-                                "tool": tool_name,
-                                "args": tool_args,
-                                "result": tool_output,
-                                "summary": tool_output.get("summary", f"Executed {tool_name}"),
-                            })
-
-                            # Append tool response
-                            contents.append(
-                                types.Content(
-                                    role="tool",
-                                    parts=[
-                                        types.Part.from_function_response(
-                                            name=tool_name,
-                                            response={"result": tool_output},
-                                        )
-                                    ],
-                                )
-                            )
-                        # Continue loop to allow model to synthesize tool outputs
-                        continue
-
-                    # Model provided text answer grounded in the tool results
-                    final_text = resp.text or ""
-                    if not final_text and resp.candidates and resp.candidates[0].content:
-                        parts = resp.candidates[0].content.parts or []
-                        final_text = "".join(getattr(p, "text", "") or "" for p in parts)
-
-                    logger.info(
-                        "[AIAssistant] Model '{}' completed response. Tools executed: {}",
-                        model_name,
-                        len(tools_executed),
-                    )
-                    return {
-                        "message": final_text.strip(),
-                        "tools_used": tools_executed,
-                        "model": model_name,
-                        "provider": "gemini",
-                        "status": "success",
-                    }
-
-                # If reached max_turns after executing tools, perform a final synthesis call
-                if tools_executed:
-                    logger.info("[AIAssistant] Reached turn limit; synthesizing final grounded answer...")
-                    synthesis_cfg = types.GenerateContentConfig(
-                        system_instruction=SYSTEM_PROMPT,
-                        temperature=0.1,
-                        max_output_tokens=3500,
-                    )
-                    final_resp = client.models.generate_content(
-                        model=model_name,
-                        contents=contents,
-                        config=synthesis_cfg,
-                    )
-                    final_text = final_resp.text or ""
-                    if not final_text and final_resp.candidates and final_resp.candidates[0].content:
-                        parts = final_resp.candidates[0].content.parts or []
-                        final_text = "".join(getattr(p, "text", "") or "" for p in parts)
-
-                    return {
-                        "message": final_text.strip(),
-                        "tools_used": tools_executed,
-                        "model": model_name,
-                        "provider": "gemini",
-                        "status": "success",
-                    }
-
-            except Exception as e:
-                logger.warning("[AIAssistant] Model '{}' execution failed: {}", model_name, e)
-                last_error = e
-                continue
-
-        raise RuntimeError(f"All Gemini models failed. Last error: {last_error}")
+        except Exception as e:
+            logger.warning("[AIAssistant] Gemini execution error: {}", e)
+            if tools_executed:
+                logger.info("[AIAssistant] Synthesizing response from verified tool execution output.")
+                summary_lines = [t["summary"] for t in tools_executed if t.get("summary")]
+                return {
+                    "message": "\n\n".join(summary_lines),
+                    "tools_used": tools_executed,
+                    "model": self.model_name,
+                    "provider": "gemini",
+                    "status": "success",
+                }
+            raise
 
 
 class OllamaLLMProvider(BaseLLMProvider):
@@ -347,6 +404,9 @@ class OllamaLLMProvider(BaseLLMProvider):
         self,
         prompt: str,
         executor: AIToolExecutor,
+        history: Optional[List[Dict[str, Any]]] = None,
+        summary: Optional[str] = None,
+        memories: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """
         Execute full tool-calling loop with Ollama:
@@ -358,16 +418,36 @@ class OllamaLLMProvider(BaseLLMProvider):
         ollama_tools = self.get_ollama_tools(TOOL_DECLARATIONS)
         threads = min(8, os.cpu_count() or 4)
 
+        # Build system prompt with memories and summary context
+        sys_prompt = OLLAMA_SYSTEM_PROMPT
+        if memories:
+            from app.services.ai_memory_service import AIMemoryService
+            mem_block = AIMemoryService.format_memories_prompt_block(memories)
+            if mem_block:
+                sys_prompt += f"\n\n{mem_block}"
+        if summary:
+            sys_prompt += f"\n\n=== PREVIOUS CONVERSATION SUMMARY ===\n{summary}\n=== END OF SUMMARY ==="
+
         messages: List[Dict[str, Any]] = [
-            {"role": "system", "content": OLLAMA_SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
+            {"role": "system", "content": sys_prompt},
         ]
+
+        if history:
+            for h in history:
+                h_role = h.get("role", "user")
+                h_content = (h.get("content") or "").strip()
+                if not h_content:
+                    continue
+                role_name = "assistant" if h_role in ("assistant", "model") else "user"
+                messages.append({"role": role_name, "content": h_content})
+
+        messages.append({"role": "user", "content": prompt})
 
         tools_executed: List[Dict[str, Any]] = []
         max_turns = 6
 
         try:
-            with httpx.Client(timeout=self.timeout_seconds) as client:
+            with httpx.Client(timeout=httpx.Timeout(self.timeout_seconds, connect=2.0)) as client:
                 for turn in range(max_turns):
                     payload: Dict[str, Any] = {
                         "model": self.model,
@@ -564,6 +644,9 @@ class FallbackERPProvider(BaseLLMProvider):
         self,
         prompt: str,
         executor: AIToolExecutor,
+        history: Optional[List[Dict[str, Any]]] = None,
+        summary: Optional[str] = None,
+        memories: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         p_lower = prompt.lower()
         tools_executed: List[Dict[str, Any]] = []
@@ -598,6 +681,46 @@ class FallbackERPProvider(BaseLLMProvider):
             for k in ("our", "my", "we", "company", "current", "how are", "assess", "status", "look")
         )
         is_combined = wants_knowledge and (has_company_context or wants_company or wants_sales or wants_expense or wants_inventory or wants_health)
+
+        # ── Short-Term Conversational Memory & Follow-Up Resolution ────
+        # Resolve pronouns ("it", "that", "why did it decrease", "compare it with last month", "what should I do next?")
+        is_followup = any(
+            phrase in p_lower
+            for phrase in (
+                "it", "that", "this", "why did it", "why did that", "why did it decrease",
+                "why did it increase", "compare it", "compare with last month", "what about",
+                "what should i do next", "how about", "tell me more", "explain further", "next step"
+            )
+        )
+
+        has_explicit_domain = any([
+            wants_company, wants_sales, wants_expense, wants_inventory,
+            wants_forecast, wants_anomaly, wants_health, wants_knowledge
+        ])
+
+        if (is_followup and not has_explicit_domain) or (is_followup and ("compare" in p_lower or "why" in p_lower)):
+            # Scan recent turns in reverse to identify domain of conversation
+            recent_turns = (history or [])[-6:]
+            for past_turn in reversed(recent_turns):
+                past_text = (past_turn.get("content") or "").lower()
+                meta = past_turn.get("metadata") or {}
+                past_tools = [t.get("tool", "") for t in (meta.get("tools_used") or [])]
+
+                if "get_sales_analysis" in past_tools or any(w in past_text for w in ("sale", "revenue", "turnover")):
+                    wants_sales = True
+                    break
+                elif "get_expense_summary" in past_tools or any(w in past_text for w in ("expense", "spend", "cost")):
+                    wants_expense = True
+                    break
+                elif "get_inventory_status" in past_tools or any(w in past_text for w in ("stock", "inventory", "replenish")):
+                    wants_inventory = True
+                    break
+                elif "forecast_revenue" in past_tools or any(w in past_text for w in ("forecast", "predict")):
+                    wants_forecast = True
+                    break
+                elif "get_business_health_analysis" in past_tools or any(w in past_text for w in ("health", "score")):
+                    wants_health = True
+                    break
 
         # ── Case 1: Combined Knowledge + Company Assessment Question ──
         if is_combined:
@@ -783,9 +906,45 @@ class FallbackERPProvider(BaseLLMProvider):
             sec += f"- Functional Currency: **{res.get('currency', 'USD')}** | Timezone: {res.get('timezone', 'UTC')}\n"
             response_sections.append(sec)
 
+        # Helper for period resolution
+        def resolve_period(text: str) -> str:
+            t = text.lower()
+            if "today" in t:
+                return "today"
+            if "yesterday" in t:
+                return "yesterday"
+            if "this week" in t or "this_week" in t or "week" in t:
+                return "this_week"
+            if "last week" in t or "last_week" in t:
+                return "last_week"
+            if "this month" in t or "this_month" in t:
+                return "this_month"
+            if "last month" in t or "last_month" in t:
+                return "last_month"
+            if "same month last year" in t or "last year" in t:
+                return "same_month_last_year"
+            if "this year" in t or "ytd" in t or "year to date" in t:
+                return "this_year"
+            if "30 days" in t:
+                return "last_30_days"
+            if "90 days" in t:
+                return "last_90_days"
+            if "2026" in t:
+                return "2026"
+            if "2025" in t:
+                return "2025"
+            if "2024" in t or "december 2024" in t:
+                return "2024"
+            match_y = re.search(r"\b(20\d{2})\b", t)
+            if match_y:
+                return match_y.group(1)
+            return "all"
+
+        wants_profit = any(k in p_lower for k in ("profit", "margin", "gross profit", "net profit", "cogs", "bottom line", "trends in 2026", "trend"))
+
         # 1. Sales Analysis
-        if wants_sales and not wants_forecast:
-            period = "this_month" if "this month" in p_lower else ("last_month" if "last month" in p_lower else ("last_30_days" if "30 days" in p_lower else ("last_90_days" if "90 days" in p_lower else ("december 2024" if "december 2024" in p_lower or "dec 2024" in p_lower else ("2024" if "2024" in p_lower else prompt if re.search(r"\b(20\d{2})\b", p_lower) else "all")))))
+        if wants_sales and not wants_forecast and not (wants_profit and "sales and profit" not in p_lower):
+            period = resolve_period(p_lower)
             res = executor.get_sales_analysis(period=period, limit=5)
             tools_executed.append({
                 "tool": "get_sales_analysis",
@@ -793,22 +952,52 @@ class FallbackERPProvider(BaseLLMProvider):
                 "result": res,
                 "summary": res.get("summary", ""),
             })
-            curr = res.get("company_currency", "USD")
+            curr = res.get("company_currency", "INR")
             period_title = res.get("period", period).replace("_", " ").title()
             sec = f"📊 **Sales & Revenue Analysis ({period_title})**:\n"
             sec += f"- Total Revenue: **{curr} {res.get('total_revenue', 0):,.2f}** ({res.get('total_sales_count', 0)} orders, avg order value: {curr} {res.get('average_sale_value', 0):,.2f})\n"
             if res.get("growth_percentage") is not None:
                 sec += f"- Month-over-Month Growth: **{res.get('growth_percentage')}%**\n"
+            if res.get("yoy_growth_percentage") is not None:
+                sec += f"- Year-over-Year Growth: **{res.get('yoy_growth_percentage')}%** (vs Same Month Last Year: {curr} {res.get('same_month_last_year_revenue', 0):,.2f})\n"
             if res.get("top_products"):
                 top_p = res["top_products"][0]
                 sec += f"- Top Performing Product: **{top_p['name']}** ({curr} {top_p['revenue']:,.2f} from {top_p['quantity_sold']} units)\n"
+            if res.get("unusual_sales_days"):
+                sec += f"- Unusual Sales Volume Days: {len(res['unusual_sales_days'])} detected (e.g. {res['unusual_sales_days'][0]['date']} at {curr} {res['unusual_sales_days'][0]['revenue']:,.2f})\n"
             if res.get("total_sales_count") == 0:
                 sec += f"- {res.get('summary', 'No records found.')}\n"
             response_sections.append(sec)
 
-        # 2. Expense Summary
+        # 2. Profit Analysis (Gross vs Net)
+        if wants_profit:
+            profit_period = "2026" if "2026" in p_lower else resolve_period(p_lower)
+            if profit_period == "all":
+                profit_period = "this_year"
+            res = executor.get_profit_analysis(period=profit_period)
+            tools_executed.append({
+                "tool": "get_profit_analysis",
+                "args": {"period": profit_period},
+                "result": res,
+                "summary": res.get("summary", ""),
+            })
+            curr = res.get("company_currency", "INR")
+            period_title = res.get("period", profit_period).replace("_", " ").title()
+            sec = f"💹 **Profit & Margin Analysis ({period_title})**:\n"
+            sec += f"- **Gross Revenue**: **{curr} {res.get('total_revenue', 0):,.2f}**\n"
+            sec += f"- **Cost of Goods Sold (COGS)**: **{curr} {res.get('total_cogs', 0):,.2f}**\n"
+            sec += f"- **Gross Profit**: **{curr} {res.get('gross_profit', 0):,.2f}** (Gross Margin: **{res.get('gross_margin_pct', 0)}%**)\n"
+            sec += f"- **Operating Expenses**: **{curr} {res.get('total_operating_expenses', 0):,.2f}**\n"
+            sec += f"- **Net Profit**: **{curr} {res.get('net_profit', 0):,.2f}** (Net Margin: **{res.get('net_margin_pct', 0)}%**)\n"
+            if res.get("monthly_trends"):
+                sec += f"- **Monthly Profit Trajectory ({len(res['monthly_trends'])} months)**:\n"
+                for m in res["monthly_trends"][-4:]:
+                    sec += f"  • {m['month']}: Revenue {curr} {m['revenue']:,.2f} | Gross Profit {curr} {m['gross_profit']:,.2f} | Net Profit {curr} {m['net_profit']:,.2f} ({m['net_margin_pct']}% margin)\n"
+            response_sections.append(sec)
+
+        # 3. Expense Summary
         if wants_expense:
-            period = "this_month" if "this month" in p_lower else ("last_month" if "last month" in p_lower else ("last_30_days" if "30 days" in p_lower else ("last_90_days" if "90 days" in p_lower else ("december 2024" if "december 2024" in p_lower or "dec 2024" in p_lower else ("2024" if "2024" in p_lower else prompt if re.search(r"\b(20\d{2})\b", p_lower) else "all")))))
+            period = resolve_period(p_lower)
             res = executor.get_expense_summary(period=period, limit=5)
             tools_executed.append({
                 "tool": "get_expense_summary",
@@ -816,7 +1005,7 @@ class FallbackERPProvider(BaseLLMProvider):
                 "result": res,
                 "summary": res.get("summary", ""),
             })
-            curr = res.get("company_currency", "USD")
+            curr = res.get("company_currency", "INR")
             period_title = res.get("period", period).replace("_", " ").title()
             sec = f"💰 **Operational Expenses Overview ({period_title})**:\n"
             sec += f"- Total Recorded Expenses: **{curr} {res.get('total_expenses', 0):,.2f}** ({res.get('expense_count', 0)} entries)\n"
@@ -963,7 +1152,13 @@ class AIAssistantService:
             or os.getenv("OLLAMA_TIMEOUT_SECONDS", "180.0")
         )
 
-    def answer_question(self, question: str) -> Dict[str, Any]:
+    def answer_question(
+        self,
+        question: str,
+        history: Optional[List[Dict[str, Any]]] = None,
+        summary: Optional[str] = None,
+        memories: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
         """
         Answer a user question grounded in actual ERP database records using tool calling.
         Never fabricates financial figures.
@@ -988,7 +1183,13 @@ class AIAssistantService:
                     model=self.ollama_model,
                     timeout_seconds=self.ollama_timeout,
                 )
-                res = ollama_provider.generate_with_tools(question, self.executor)
+                res = ollama_provider.generate_with_tools(
+                    question,
+                    self.executor,
+                    history=history,
+                    summary=summary,
+                    memories=memories,
+                )
                 if res and res.get("message"):
                     res["provider"] = "ollama"
                     res["model"] = self.ollama_model
@@ -1006,7 +1207,13 @@ class AIAssistantService:
                 try:
                     logger.info("[AIAssistantService] Executing Gemini fallback after Ollama failure.")
                     gemini_provider = GeminiLLMProvider(self.api_key)
-                    res = gemini_provider.generate_with_tools(question, self.executor)
+                    res = gemini_provider.generate_with_tools(
+                        question,
+                        self.executor,
+                        history=history,
+                        summary=summary,
+                        memories=memories,
+                    )
                     if res and res.get("message"):
                         res["provider"] = "gemini"
                         res["fallback_used"] = True
@@ -1018,7 +1225,13 @@ class AIAssistantService:
             # Final fallback to grounded rule-based ERP tool engine
             logger.info("[AIAssistantService] Serving response via grounded ERP tool engine.")
             fallback_provider = FallbackERPProvider()
-            res = fallback_provider.generate_with_tools(question, self.executor)
+            res = fallback_provider.generate_with_tools(
+                question,
+                self.executor,
+                history=history,
+                summary=summary,
+                memories=memories,
+            )
             res["provider"] = "fallback"
             res["model"] = "grounded-erp-engine"
             res["fallback_used"] = True
@@ -1031,7 +1244,13 @@ class AIAssistantService:
             if self.api_key and GENAI_AVAILABLE:
                 try:
                     gemini_provider = GeminiLLMProvider(self.api_key)
-                    res = gemini_provider.generate_with_tools(question, self.executor)
+                    res = gemini_provider.generate_with_tools(
+                        question,
+                        self.executor,
+                        history=history,
+                        summary=summary,
+                        memories=memories,
+                    )
                     if res and res.get("message"):
                         res["provider"] = "gemini"
                         res["fallback_used"] = False
@@ -1039,42 +1258,37 @@ class AIAssistantService:
                 except Exception as e:
                     gemini_error = str(e)
                     logger.warning(
-                        "[AIAssistantService] Gemini provider failed: {}. Attempting Ollama fallback.",
+                        "[AIAssistantService] Gemini provider failed: {}. Grounded ERP fallback will be served.",
                         e,
                     )
 
-            # Try Ollama as secondary fallback
-            try:
-                logger.info("[AIAssistantService] Executing Ollama fallback after Gemini failure.")
-                ollama_provider = OllamaLLMProvider(
-                    base_url=self.ollama_base_url,
-                    model=self.ollama_model,
-                    timeout_seconds=self.ollama_timeout,
-                )
-                res = ollama_provider.generate_with_tools(question, self.executor)
-                if res and res.get("message"):
-                    res["provider"] = "ollama"
-                    res["fallback_used"] = True
-                    res["fallback_reason"] = f"Gemini failed ({gemini_error}). Response generated via Ollama fallback."
-                    return res
-            except Exception as o_err:
-                logger.warning("[AIAssistantService] Ollama fallback failed: {}.", o_err)
-
-            # Final fallback to grounded ERP engine
+            # Grounded ERP tool engine fallback
             logger.info("[AIAssistantService] Serving response via grounded ERP tool engine.")
             fallback_provider = FallbackERPProvider()
-            res = fallback_provider.generate_with_tools(question, self.executor)
+            res = fallback_provider.generate_with_tools(
+                question,
+                self.executor,
+                history=history,
+                summary=summary,
+                memories=memories,
+            )
             res["provider"] = "fallback"
             res["model"] = "grounded-erp-engine"
             res["fallback_used"] = True
-            res["fallback_reason"] = f"Gemini failed ({gemini_error}). Grounded ERP tool summary returned."
+            res["fallback_reason"] = f"Gemini API rate-limited or unavailable ({gemini_error}). Response grounded in verified database tools."
             return res
 
         # ── Route 3: Preferred Provider is Fallback / Rule Engine ──────────
         else:
             logger.info("[AIAssistantService] Serving response via grounded ERP tool engine.")
             fallback_provider = FallbackERPProvider()
-            res = fallback_provider.generate_with_tools(question, self.executor)
+            res = fallback_provider.generate_with_tools(
+                question,
+                self.executor,
+                history=history,
+                summary=summary,
+                memories=memories,
+            )
             res["provider"] = "fallback"
             res["model"] = "grounded-erp-engine"
             res["fallback_used"] = False

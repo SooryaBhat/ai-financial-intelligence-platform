@@ -1,0 +1,9 @@
+name,sku,category,selling_price,cost_price,tax_rate,unit,type,description
+Valid Baseline Basmati Rice 5kg,VAL-OK-101,Grains & Staples,450.00,360.00,0.0,bag,product,Clean baseline record expected to validate with status 'valid'
+,VAL-ERR-102,Beverages,220.00,180.00,5.0,pack,product,Missing product name - triggers required field validation error
+Negative Selling Price Test Item,VAL-ERR-103,Snacks,-150.00,100.00,12.0,pcs,product,Negative selling price - triggers numeric constraint min_val >= 0
+Empty Selling Price Test Item,VAL-ERR-104,Spices,,80.00,5.0,pack,product,Blank selling price - triggers missing required price validation error
+Duplicate SKU In File Test Item,VAL-OK-101,Grains & Staples,490.00,390.00,0.0,bag,product,SKU identical to Row 1 - triggers in-file duplicate SKU error
+Excessive Tax Rate Above 100 Test Item,VAL-ERR-106,Household,350.00,250.00,180.0,pcs,product,Tax rate 180% - triggers numeric range constraint max_val <= 100
+Missing SKU Automatic Recommendation Item,,Organic,290.00,210.00,5.0,jar,product,Blank SKU - triggers status 'warning' with auto-SKU recommendation
+Unrecognized Enum Type Item,VAL-WRN-108,Services,1200.00,400.00,18.0,hr,equipment_rental,Invalid enum type - triggers status 'warning' defaulting to 'product'

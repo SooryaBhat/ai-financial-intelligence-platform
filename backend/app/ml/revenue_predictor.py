@@ -17,10 +17,10 @@ from app.schemas.ml import (
 
 
 def _default_historical_revenue() -> List[float]:
-    """Default platform historical monthly revenue baseline (in INR/USD)."""
+    """Default platform historical monthly revenue baseline across Indian retail stores (~Rs. 250k-350k/mo)."""
     return [
-        17614888.57, 20425539.38, 17583044.84, 18827104.21, 25109568.59, 21361444.49,
-        22150000.00, 23400000.00, 21800000.00, 24500000.00, 26000000.00, 28500000.00,
+        253538.11, 225239.65, 255930.89, 254989.03, 264565.76, 264128.18,
+        254534.83, 261845.50, 256036.27, 388987.42, 312945.67, 337562.33,
     ]
 
 
@@ -38,7 +38,7 @@ def predict_revenue(
 
         # Ensure history has at least 12 months for full lag computation
         while len(history) < 12:
-            history.insert(0, history[0] if history else 15000000.0)
+            history.insert(0, history[0] if history else 250000.0)
 
         predictions: List[RevenueForecastItem] = []
         current_date = datetime.now()
@@ -70,12 +70,30 @@ def predict_revenue(
                 model_type = "xgboost"
 
         if model_type != "sarima":
-            xgb_obj = loader.get_model("revenue_xgboost")
-            if not xgb_obj or not isinstance(xgb_obj, dict):
-                raise ValueError("XGBoost revenue model artifact is not loaded correctly.")
+            # Resolve model artifact by algorithm or default to validation-selected
+            if model_type == "aagf":
+                model_obj = loader.get_model("revenue_aagf") or loader.get_model("revenue_selected")
+                model_name = "ALLADIN Adaptive Global Forecaster (AAGF)"
+            elif model_type in ["linear", "linear_regression"]:
+                model_obj = loader.get_model("revenue_linear_regression")
+                model_name = "Linear Regression Revenue Predictor"
+            elif model_type == "xgboost":
+                model_obj = loader.get_model("revenue_xgboost")
+                model_name = "XGBoost Revenue Predictor"
+            else:
+                model_obj = loader.get_model("revenue_selected") or loader.get_model("revenue_aagf") or loader.get_model("revenue_xgboost")
+                algo = model_obj.get("algorithm", "Selected") if model_obj else "Selected"
+                model_name = f"ALLADIN Selected Forecaster ({algo})"
 
-            xgb_model = xgb_obj["model"]
-            feat_cols = xgb_obj["feature_cols"]
+            if not model_obj or not isinstance(model_obj, dict):
+                model_obj = loader.get_model("revenue_xgboost")
+                model_name = "Revenue Predictor (Fallback)"
+
+            if not model_obj or not isinstance(model_obj, dict):
+                raise ValueError("Revenue model artifact is not loaded correctly.")
+
+            model = model_obj["model"]
+            feat_cols = model_obj["feature_cols"]
 
             curr_history = list(history)
             for i in range(months_ahead):
@@ -85,7 +103,7 @@ def predict_revenue(
                 target_date = f"{y_idx:04d}-{m_idx:02d}-28"
 
                 if request.custom_features:
-                    feat_dict = request.custom_features
+                    feat_dict = dict(request.custom_features)
                 else:
                     feat_dict = {
                         "lag_1": curr_history[-1],
@@ -99,8 +117,14 @@ def predict_revenue(
                         "quarter": float(quarter),
                     }
 
-                X = np.array([[feat_dict.get(col, 0.0) for col in feat_cols]], dtype=np.float32)
-                pred_val = float(xgb_model.predict(X)[0])
+                # Predict via DataFrame if AAGF/pipeline, or ndarray if sklearn/xgb
+                if hasattr(model, "weights") or hasattr(model, "trend_anchor"):
+                    feat_df = pd.DataFrame([feat_dict])
+                    pred_val = float(model.predict(feat_df)[0])
+                else:
+                    X = np.array([[feat_dict.get(col, 0.0) for col in feat_cols]], dtype=np.float32)
+                    pred_val = float(model.predict(X)[0])
+
                 pred_val = max(1000.0, pred_val)
 
                 predictions.append(
@@ -112,8 +136,6 @@ def predict_revenue(
                     )
                 )
                 curr_history.append(pred_val)
-
-            model_name = "XGBoost Revenue Regressor"
 
         total_rev = sum(p.predicted_revenue for p in predictions)
         avg_rev = total_rev / len(predictions) if predictions else 0.0

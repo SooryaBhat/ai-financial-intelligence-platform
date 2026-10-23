@@ -17,6 +17,7 @@ interface ProductRecord {
   id: string
   name: string
   sku?: string
+  selling_price?: number
   unit_price?: number
   cost_price?: number
   stock_quantity?: number
@@ -37,9 +38,8 @@ export const ProductsPage: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
-    unit_price: 0,
+    selling_price: 0,
     cost_price: 0,
-    reorder_level: 10,
   })
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -49,15 +49,24 @@ export const ProductsPage: React.FC = () => {
 
   const saveMutation = useMutation({
     mutationFn: (payload: typeof formData) => {
-      if (editingItem) return productService.update(editingItem.id, payload)
-      return productService.create(payload)
+      const body = {
+        name: payload.name,
+        sku: payload.sku,
+        selling_price: payload.selling_price,
+        cost_price: payload.cost_price,
+      }
+      if (editingItem) return productService.update(editingItem.id, body)
+      return productService.create(body)
     },
     onSuccess: () => {
       toast.success(editingItem ? 'Product updated' : 'Product created')
       queryClient.invalidateQueries({ queryKey: ['products'] })
       setIsModalOpen(false)
     },
-    onError: () => toast.error('Failed to save product'),
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.response?.data?.detail || 'Failed to save product'
+      toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg))
+    },
   })
 
   const deleteMutation = useMutation({
@@ -71,7 +80,7 @@ export const ProductsPage: React.FC = () => {
 
   const handleOpenCreate = () => {
     setEditingItem(null)
-    setFormData({ name: '', sku: '', unit_price: 0, cost_price: 0, reorder_level: 10 })
+    setFormData({ name: '', sku: '', selling_price: 0, cost_price: 0 })
     setIsModalOpen(true)
   }
 
@@ -80,9 +89,8 @@ export const ProductsPage: React.FC = () => {
     setFormData({
       name: item.name || '',
       sku: item.sku || '',
-      unit_price: item.unit_price || 0,
+      selling_price: item.selling_price ?? item.unit_price ?? 0,
       cost_price: item.cost_price || 0,
-      reorder_level: item.reorder_level || 10,
     })
     setIsModalOpen(true)
   }
@@ -104,9 +112,9 @@ export const ProductsPage: React.FC = () => {
       ),
     },
     {
-      key: 'unit_price',
+      key: 'selling_price',
       header: 'Selling Price',
-      render: (row) => formatCurrency(row.unit_price || 0),
+      render: (row) => formatCurrency(row.selling_price ?? row.unit_price ?? 0),
     },
     {
       key: 'cost_price',
@@ -182,10 +190,9 @@ export const ProductsPage: React.FC = () => {
           <Input label="Product Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
           <Input label="SKU / Item Code" value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} placeholder="SKU-1001" required />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Unit Selling Price ($)" type="number" step="0.01" value={formData.unit_price} onChange={(e) => setFormData({ ...formData, unit_price: Number(e.target.value) })} required />
-            <Input label="Unit Cost Price ($)" type="number" step="0.01" value={formData.cost_price} onChange={(e) => setFormData({ ...formData, cost_price: Number(e.target.value) })} required />
+            <Input label="Unit Selling Price" type="number" step="0.01" value={formData.selling_price} onChange={(e) => setFormData({ ...formData, selling_price: Number(e.target.value) })} required />
+            <Input label="Unit Cost Price" type="number" step="0.01" value={formData.cost_price} onChange={(e) => setFormData({ ...formData, cost_price: Number(e.target.value) })} required />
           </div>
-          <Input label="Reorder Alert Threshold" type="number" value={formData.reorder_level} onChange={(e) => setFormData({ ...formData, reorder_level: Number(e.target.value) })} />
           <div className="flex justify-end gap-3 pt-4 border-t border-surface-100 dark:border-surface-800">
             <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>Cancel</Button>
             <Button variant="primary" type="submit" isLoading={saveMutation.isPending}>Save Product</Button>

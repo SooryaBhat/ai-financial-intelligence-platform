@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Bot,
   X,
@@ -7,6 +7,7 @@ import {
   Trash2,
   RefreshCw,
   Info,
+  ExternalLink,
   ShoppingCart,
   Receipt,
   Boxes,
@@ -20,7 +21,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
-import { mlService, ToolCallExecution } from '@/services/erp.service'
+import { ToolCallExecution } from '@/services/erp.service'
+import { chatService } from '@/services/chat.service'
 import { useAuth } from '@/hooks/useAuth'
 
 interface ChatMessage {
@@ -44,16 +46,18 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
   onClose,
 }) => {
   const location = useLocation()
+  const navigate = useNavigate()
   const { activeCompany } = useAuth()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const [input, setInput] = useState('')
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [providerInfo, setProviderInfo] = useState<{ provider: string; model?: string }>({
-    provider: 'ollama',
-    model: 'qwen3:4b',
+    provider: 'gemini',
+    model: '2.5-flash',
   })
   const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>({})
 
@@ -160,11 +164,11 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
     setError(null)
 
     try {
-      const response = await mlService.chatAssistant(text, {
-        current_page: location.pathname,
-        company_id: activeCompany?.company_id || activeCompany?.id,
-      })
+      const response = await chatService.sendMessage(text, activeSessionId || undefined)
 
+      if (response?.session_id) {
+        setActiveSessionId(response.session_id)
+      }
       if (response?.provider) {
         setProviderInfo({ provider: response.provider, model: response.model })
       }
@@ -174,6 +178,7 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
         role: 'assistant',
         content:
           response?.message ||
+          response?.content ||
           'Analysis complete based on current ledger and model telemetry.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         tools_used: response?.tools_used,
@@ -267,6 +272,16 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
             </div>
 
             <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  onClose()
+                  navigate(activeSessionId ? `/ml/chat?session_id=${activeSessionId}` : '/ml/chat')
+                }}
+                title="Open full ChatGPT-style chat experience"
+                className="p-1.5 rounded-md text-slate-400 hover:text-teal-700 hover:bg-teal-50 transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
               <button
                 onClick={clearChat}
                 title="Clear conversation"

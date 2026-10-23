@@ -1,0 +1,14 @@
+{
+  "task": "revenue_forecasting",
+  "features": [
+    "lag_1",
+    "lag_2",
+    "lag_3",
+    "lag_6",
+    "lag_12",
+    "roll3_mean",
+    "roll6_mean",
+    "month_num",
+    "quarter"
+  ]
+}

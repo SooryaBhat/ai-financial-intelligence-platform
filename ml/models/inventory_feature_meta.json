@@ -1,5 +1,7 @@
 {
-  "task": "inventory_prediction",
+  "pipeline": "inventory_demand_prediction",
+  "target": "units_out",
+  "horizon": "1 month ahead (monthly replenishment cycle)",
   "features": [
     "lag_1",
     "lag_2",
@@ -12,5 +14,113 @@
     "year",
     "is_q4",
     "is_q1"
-  ]
+  ],
+  "selected_model": "LightGBM",
+  "selected_artifact": "inventory_demand_selected.pkl",
+  "training_companies": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
+  ],
+  "holdout_company": "00000000-0000-0000-0000-000000000003",
+  "demand_test_metrics": {
+    "rmse": 13.636079109850709,
+    "mae": 9.257264832772938,
+    "mape": 137.14939459433182,
+    "smape": 58.18084571615947,
+    "wape": 55.59300500108303,
+    "r2": -0.0183
+  },
+  "reorder_policy_evaluation_dev": {
+    "evaluation_type": "Multi-period chronological evaluation with boundary simulation and native baseline audit",
+    "test_period_total_observations": 945,
+    "unique_products_evaluated": 200,
+    "safety_stock_units": 10.32,
+    "lead_time_days": 7,
+    "boundary_simulation_metrics": {
+      "description": "Replenishment decision accuracy when stock varies around the reorder threshold (0.5x to 1.5x ROP)",
+      "sample_size": 945,
+      "true_positives": 413,
+      "false_positives": 60,
+      "false_negatives": 77,
+      "true_negatives": 395,
+      "precision": 0.8732,
+      "recall": 0.8429,
+      "f1_score": 0.8577,
+      "accuracy": 0.855,
+      "positive_support_count": 490,
+      "positive_support_pct": 51.85
+    },
+    "native_baseline_audit": {
+      "description": "Evaluation on native synthetic inventory where buffer stock was high (~1,200 units vs ~18 monthly sales)",
+      "sample_size": 200,
+      "true_positives": 0,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "true_negatives": 200,
+      "precision": null,
+      "recall": null,
+      "f1_score": null,
+      "service_level_pct": 100.0,
+      "limitation": "Native synthetic inventory generator maintained excess buffer stock; zero natural stockout events occurred. Claiming F1=1.0 on zero positive support is mathematically degenerate; boundary simulation provides the genuine predictive policy score."
+    }
+  },
+  "reorder_policy_evaluation_co3": {
+    "evaluation_type": "Multi-period chronological evaluation with boundary simulation and native baseline audit",
+    "test_period_total_observations": 534,
+    "unique_products_evaluated": 100,
+    "safety_stock_units": 10.32,
+    "lead_time_days": 7,
+    "boundary_simulation_metrics": {
+      "description": "Replenishment decision accuracy when stock varies around the reorder threshold (0.5x to 1.5x ROP)",
+      "sample_size": 534,
+      "true_positives": 232,
+      "false_positives": 21,
+      "false_negatives": 66,
+      "true_negatives": 215,
+      "precision": 0.917,
+      "recall": 0.7785,
+      "f1_score": 0.8421,
+      "accuracy": 0.8371,
+      "positive_support_count": 298,
+      "positive_support_pct": 55.81
+    },
+    "native_baseline_audit": {
+      "description": "Evaluation on native synthetic inventory where buffer stock was high (~1,200 units vs ~18 monthly sales)",
+      "sample_size": 100,
+      "true_positives": 0,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "true_negatives": 100,
+      "precision": null,
+      "recall": null,
+      "f1_score": null,
+      "service_level_pct": 100.0,
+      "limitation": "Native synthetic inventory generator maintained excess buffer stock; zero natural stockout events occurred. Claiming F1=1.0 on zero positive support is mathematically degenerate; boundary simulation provides the genuine predictive policy score."
+    }
+  },
+  "approach_c_holdout_co3_metrics": {
+    "rmse": 15.28797570055675,
+    "mae": 10.545407068428784,
+    "mape": 119.53463723688911,
+    "smape": 58.54329533009789,
+    "wape": 54.59132109122464,
+    "r2": -0.0816,
+    "baseline_lag1_metrics": {
+      "rmse": 20.68759371103615,
+      "mae": 15.073281185673116,
+      "mape": 161.65148741905895,
+      "smape": 78.55193179007645,
+      "wape": 78.03115875620725,
+      "r2": -0.9805
+    },
+    "baseline_ma_metrics": {
+      "rmse": 16.873520787455565,
+      "mae": 12.383696994648004,
+      "mape": 148.49555310167867,
+      "smape": 65.29111133867308,
+      "wape": 64.10775558918182,
+      "r2": -0.3176
+    },
+    "n_observations": 2429
+  }
 }

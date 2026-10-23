@@ -1,0 +1,16 @@
+{
+  "model_type": "LocalOutlierFactor",
+  "n_neighbors": 20,
+  "contamination": 0.01,
+  "feature_cols": [
+    "net_amount",
+    "day_of_week",
+    "is_weekend",
+    "month",
+    "discount_pct",
+    "status_enc",
+    "roll28_mean",
+    "roll28_std",
+    "amount_z_rolling"
+  ]
+}

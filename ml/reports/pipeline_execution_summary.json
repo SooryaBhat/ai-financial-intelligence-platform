@@ -1,52 +1,58 @@
-[
-  {
-    "notebook": "01_data_exploration.ipynb",
-    "status": "SUCCESS",
-    "error": ""
-  },
-  {
-    "notebook": "02_data_preprocessing.ipynb",
-    "status": "SUCCESS",
-    "error": ""
-  },
-  {
-    "notebook": "03_revenue_forecasting.ipynb",
-    "status": "SUCCESS",
-    "error": ""
-  },
-  {
-    "notebook": "04_sales_forecasting.ipynb",
-    "status": "SUCCESS",
-    "error": ""
-  },
-  {
-    "notebook": "05_inventory_prediction.ipynb",
-    "status": "SUCCESS",
-    "error": ""
-  },
-  {
-    "notebook": "06_profit_prediction.ipynb",
-    "status": "SUCCESS",
-    "error": ""
-  },
-  {
-    "notebook": "07_expense_prediction.ipynb",
-    "status": "SUCCESS",
-    "error": ""
-  },
-  {
-    "notebook": "08_business_health_score.ipynb",
-    "status": "SUCCESS",
-    "error": ""
-  },
-  {
-    "notebook": "09_anomaly_detection.ipynb",
-    "status": "SUCCESS",
-    "error": ""
-  },
-  {
-    "notebook": "10_model_comparison.ipynb",
-    "status": "SUCCESS",
-    "error": ""
-  }
-]
+{
+  "timestamp": "2026-10-21T12:44:54.659675",
+  "steps": [
+    {
+      "step": "Step 0: Validate Synthetic Dataset",
+      "command": "python ml/datasets/synthetic/validate_synthetic_data.py",
+      "passed": true
+    },
+    {
+      "step": "Step 1: Preprocess Raw Synthetic Data",
+      "command": "python ml/scripts/preprocess.py",
+      "passed": true
+    },
+    {
+      "step": "Step 2: Feature Engineering (All 6 Tables)",
+      "command": "python ml/scripts/feature_engineering.py",
+      "passed": true
+    },
+    {
+      "step": "Pipeline 1: Revenue Forecasting",
+      "command": "python ml/scripts/train_revenue.py",
+      "passed": true
+    },
+    {
+      "step": "Pipeline 2: Sales Forecasting (Product & Category)",
+      "command": "python ml/scripts/train_sales.py",
+      "passed": true
+    },
+    {
+      "step": "Pipeline 3: Inventory Demand & Reorders",
+      "command": "python ml/scripts/train_inventory.py",
+      "passed": true
+    },
+    {
+      "step": "Pipeline 4: Profit Prediction",
+      "command": "python ml/scripts/train_profit.py",
+      "passed": true
+    },
+    {
+      "step": "Pipeline 5: Operating Expense Forecasting",
+      "command": "python ml/scripts/train_expenses.py",
+      "passed": true
+    },
+    {
+      "step": "Pipeline 6: Business Health Scoring",
+      "command": "python ml/scripts/train_health_score.py",
+      "passed": true
+    },
+    {
+      "step": "Pipeline 7: Transaction Anomaly Detection",
+      "command": "python ml/scripts/train_anomaly.py",
+      "passed": true
+    }
+  ],
+  "overall_status": "PASSED",
+  "backend_model_loader_verified": true,
+  "total_runtime_seconds": 54.43
+}

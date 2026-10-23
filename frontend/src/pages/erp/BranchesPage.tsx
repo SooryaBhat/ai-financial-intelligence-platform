@@ -15,9 +15,11 @@ import { useToast } from '@/hooks/useToast'
 interface BranchRecord {
   id: string
   name: string
-  code?: string
+  city?: string
+  country?: string
   address?: string
   phone?: string
+  is_active?: boolean
   [key: string]: unknown
 }
 
@@ -31,7 +33,13 @@ export const BranchesPage: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<BranchRecord | null>(null)
-  const [formData, setFormData] = useState({ name: '', code: '', address: '', phone: '' })
+  const [formData, setFormData] = useState({
+    name: '',
+    city: '',
+    country: '',
+    address: '',
+    phone: '',
+  })
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['branches', page, pageSize, search],
@@ -40,15 +48,25 @@ export const BranchesPage: React.FC = () => {
 
   const saveMutation = useMutation({
     mutationFn: (payload: typeof formData) => {
-      if (editingItem) return branchService.update(editingItem.id, payload)
-      return branchService.create(payload)
+      const body = {
+        name: payload.name,
+        city: payload.city || undefined,
+        country: payload.country || undefined,
+        address: payload.address || undefined,
+        phone: payload.phone || undefined,
+      }
+      if (editingItem) return branchService.update(editingItem.id, body)
+      return branchService.create(body)
     },
     onSuccess: () => {
       toast.success(editingItem ? 'Branch updated' : 'Branch created')
       queryClient.invalidateQueries({ queryKey: ['branches'] })
       setIsModalOpen(false)
     },
-    onError: () => toast.error('Failed to save branch'),
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.response?.data?.detail || 'Failed to save branch'
+      toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg))
+    },
   })
 
   const deleteMutation = useMutation({
@@ -62,7 +80,7 @@ export const BranchesPage: React.FC = () => {
 
   const handleOpenCreate = () => {
     setEditingItem(null)
-    setFormData({ name: '', code: '', address: '', phone: '' })
+    setFormData({ name: '', city: '', country: '', address: '', phone: '' })
     setIsModalOpen(true)
   }
 
@@ -70,7 +88,8 @@ export const BranchesPage: React.FC = () => {
     setEditingItem(item)
     setFormData({
       name: item.name || '',
-      code: item.code || '',
+      city: item.city || '',
+      country: item.country || '',
       address: item.address || '',
       phone: item.phone || '',
     })
@@ -88,7 +107,11 @@ export const BranchesPage: React.FC = () => {
           </div>
           <div>
             <span className="font-semibold text-surface-900 dark:text-surface-100">{row.name}</span>
-            {row.code && <p className="text-[10px] text-surface-400 font-mono">Code: {row.code}</p>}
+            {(row.city || row.country) && (
+              <p className="text-[10px] text-surface-400">
+                {[row.city, row.country].filter(Boolean).join(', ')}
+              </p>
+            )}
           </div>
         </div>
       ),
@@ -128,11 +151,11 @@ export const BranchesPage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Branches & Regional Locations"
-        description="Regional offices, retail stores, distribution points, and operating division hierarchy"
+        description="Branch outlets, regional subsidiaries, and location-based business units"
         icon={<GitBranch className="w-5 h-5 text-teal-700" />}
         breadcrumbs={[
           { label: 'Apps', href: '/apps' },
-          { label: 'Administration' },
+          { label: 'Admin' },
           { label: 'Branches' },
         ]}
         actions={
@@ -142,19 +165,22 @@ export const BranchesPage: React.FC = () => {
         }
       />
 
-      <Search value={search} onChange={setSearch} placeholder="Search branches..." />
-      <Table columns={columns} data={items} isLoading={isLoading} emptyText="No branches found." />
+      <Search value={search} onChange={setSearch} placeholder="Search branches by location or name..." />
+      <Table columns={columns} data={items} isLoading={isLoading} emptyText="No branches registered." />
       <Pagination currentPage={page} totalItems={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'Edit Branch' : 'Add New Branch'}>
         <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(formData) }} className="space-y-4">
-          <Input label="Branch Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
-          <Input label="Branch Code" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} placeholder="BR-001" />
+          <Input label="Branch / Outlet Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="City" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
+            <Input label="Country" value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} />
+          </div>
           <Input label="Address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
-          <Input label="Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+          <Input label="Contact Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
           <div className="flex justify-end gap-3 pt-4 border-t border-surface-100 dark:border-surface-800">
             <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button variant="primary" type="submit" isLoading={saveMutation.isPending}>Save</Button>
+            <Button variant="primary" type="submit" isLoading={saveMutation.isPending}>Save Branch</Button>
           </div>
         </form>
       </Modal>

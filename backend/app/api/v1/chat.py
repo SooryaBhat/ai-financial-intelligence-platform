@@ -1,53 +1,70 @@
 """Chat router — /api/v1/chat"""
-from typing import Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.logging import logger
 from app.dependencies.auth import get_request_context
-from app.repositories.chat import ChatMessageRepository, ChatSessionRepository
+from app.repositories.chat import (
+    AIMemoryRepository,
+    ChatMessageRepository,
+    ChatSessionRepository,
+)
 from app.schemas.chat import (
+    AIMemoryCreate,
+    AIMemoryResponse,
+    AIMemoryUpdate,
     ChatMessageCreate,
+    ChatMessageResponse,
     ChatSessionCreate,
+    ChatSessionResponse,
     ChatSessionUpdate,
     SendMessageRequest,
 )
 from app.schemas.common import MessageResponse, SuccessResponse
 from app.services.ai_context_service import AIContextService
+from app.services.ai_memory_service import AIMemoryService
 from app.services.context import RequestContext
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
 
-def _get_or_create_active_session(
+def _get_or_create_session(
     session_repo: ChatSessionRepository,
     company_id: UUID,
     user_id: UUID,
     provided_session_id: Optional[str] = None,
-) -> str:
-    """Helper to obtain a valid session_id for persisting chat messages."""
+    initial_message: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Helper to obtain or create a valid session record for the user and company."""
     if provided_session_id:
         try:
-            return str(UUID(provided_session_id))
+            sid = UUID(provided_session_id)
+            existing = session_repo.get_user_session(sid, company_id, user_id)
+            if existing:
+                return existing
         except ValueError:
             pass
 
-    try:
-        active_sessions = session_repo.list_user_sessions(company_id, user_id)
-        if active_sessions:
-            return str(active_sessions[0]["id"])
+    # If active sessions exist and no session specified, return newest active
+    active_sessions = session_repo.list_user_sessions(company_id, user_id, limit=1)
+    if active_sessions and not initial_message:
+        return active_sessions[0]
 
-        # Create a default session
-        new_session = session_repo.create({
-            "company_id": str(company_id),
-            "user_id": str(user_id),
-            "title": "AI Financial Intelligence Chat",
-        })
-        return str(new_session["id"])
-    except Exception as e:
-        logger.warning("Error fetching or creating chat session: {}", e)
-        return ""
+    # Generate a professional title if initial message is provided
+    title = (
+        AIMemoryService.generate_conversation_title(initial_message)
+        if initial_message
+        else "AI Financial Intelligence Chat"
+    )
+
+    new_session = session_repo.create({
+        "company_id": str(company_id),
+        "user_id": str(user_id),
+        "title": title,
+    })
+    return new_session
 
 
 @router.post("", response_model=SuccessResponse, summary="Send message to AI assistant")
@@ -55,35 +72,88 @@ def _get_or_create_active_session(
 def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_context)):
     """
     Database-grounded AI assistant endpoint.
-    Retrieves real ERP context for the user's company and generates answers via Gemini.
+    Maintains persistent short-term conversational context, long-conversation summaries,
+    and cross-conversation long-term memory.
     """
-    msg = payload.get("message") or payload.get("content") or ""
-    if not msg.strip():
+    msg = (payload.get("message") or payload.get("content") or "").strip()
+    if not msg:
         return SuccessResponse(data={"message": "Please enter a valid question for the assistant.", "role": "assistant"})
 
-    # Session management for persistence
+    requested_provider = payload.get("provider")
+
     session_repo = ChatSessionRepository(ctx.user_client)
     msg_repo = ChatMessageRepository(ctx.user_client)
-    session_id_str = _get_or_create_active_session(
-        session_repo, ctx.company_id, ctx.user_id, payload.get("session_id")
+    memory_service = AIMemoryService(ctx.user_client, ctx.company_id, ctx.user_id)
+
+    # Resolve or create conversation session
+    session = _get_or_create_session(
+        session_repo,
+        ctx.company_id,
+        ctx.user_id,
+        payload.get("session_id"),
+        initial_message=msg,
     )
+    session_id_val = session.get("id") or "default"
+    session_id_str = str(session_id_val)
 
-    if session_id_str:
-        try:
-            msg_repo.create_message({
-                "session_id": session_id_str,
-                "role": "user",
-                "content": msg,
-            })
-        except Exception as err:
-            logger.warning("Failed to persist user chat message: {}", err)
+    # If existing session has a placeholder title and this is an early message, give it a smart title
+    current_title = session.get("title") or ""
+    if current_title in ("AI Financial Intelligence Chat", "New Conversation", ""):
+        smart_title = AIMemoryService.generate_conversation_title(msg)
+        session_repo.update_session(session_id_val, ctx.company_id, ctx.user_id, {"title": smart_title})
 
-    # Query AI assistant with grounded tool calling
+    # Save incoming user message to database
+    try:
+        msg_repo.create_message({
+            "session_id": session_id_str,
+            "role": "user",
+            "content": msg,
+        })
+    except Exception as err:
+        logger.warning("Failed to persist user chat message: {}", err)
+
+    # 1. Update/retrieve long-conversation summary if message count is high
+    summary = None
+    try:
+        summary = memory_service.summarize_if_needed(session_id_val)
+    except Exception as sum_err:
+        logger.warning("Error evaluating conversation summary: {}", sum_err)
+
+    # 2. Retrieve recent messages for short-term conversational memory
+    history: List[Dict[str, Any]] = []
+    try:
+        history = msg_repo.get_recent_messages(session_id_val, limit=12)
+        # Exclude the message we just saved so it's not duplicated in prompt
+        if history and history[-1].get("content") == msg:
+            history = history[:-1]
+    except Exception as hist_err:
+        logger.warning("Error fetching recent messages: {}", hist_err)
+
+    # 3. Retrieve relevant cross-conversation long-term memories
+    memories: List[Dict[str, Any]] = []
+    try:
+        memories = memory_service.get_relevant_memories(query=msg, limit=6)
+    except Exception as mem_err:
+        logger.warning("Error fetching memories: {}", mem_err)
+
+    # 4. Check if current user message expresses a durable memory to extract
+    try:
+        memory_service.extract_and_store_memory(msg, session_id=session_id_val)
+    except Exception as ext_err:
+        logger.warning("Error extracting memory: {}", ext_err)
+
+    # 5. Query AI assistant with grounded ERP tools, short-term history, summary & memories
     tools_used = []
     result = {}
     try:
         ai_service = AIContextService(ctx.user_client, ctx.company_id)
-        result = ai_service.answer_with_tools(msg)
+        result = ai_service.answer_with_tools(
+            msg,
+            history=history,
+            summary=summary,
+            memories=memories,
+            provider=requested_provider,
+        )
         reply = result.get("message") or "Analysis complete."
         tools_used = result.get("tools_used") or []
     except Exception as e:
@@ -102,25 +172,26 @@ def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_cont
     fallback_used = result.get("fallback_used", False)
     fallback_reason = result.get("fallback_reason")
 
-    if session_id_str:
-        try:
-            msg_repo.create_message({
-                "session_id": session_id_str,
-                "role": "assistant",
-                "content": reply,
-                "metadata": {
-                    "tools_used": tools_used,
-                    "provider": provider_used,
-                    "model": model_used,
-                    "fallback_used": fallback_used,
-                    "fallback_reason": fallback_reason,
-                },
-            })
-        except Exception as err:
-            logger.warning("Failed to persist assistant chat message: {}", err)
+    # Save assistant message to database with full tool/provider metadata
+    try:
+        msg_repo.create_message({
+            "session_id": session_id_str,
+            "role": "assistant",
+            "content": reply,
+            "metadata": {
+                "tools_used": tools_used,
+                "provider": provider_used,
+                "model": model_used,
+                "fallback_used": fallback_used,
+                "fallback_reason": fallback_reason,
+            },
+        })
+    except Exception as err:
+        logger.warning("Failed to persist assistant chat message: {}", err)
 
     return SuccessResponse(data={
         "message": reply,
+        "content": reply,
         "role": "assistant",
         "session_id": session_id_str,
         "tools_used": tools_used,
@@ -128,24 +199,39 @@ def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_cont
         "model": model_used,
         "fallback_used": fallback_used,
         "fallback_reason": fallback_reason,
+        "summary": summary,
+        "memories_count": len(memories),
     })
 
 
 # ── Sessions ──────────────────────────────────────────────────
 
 @router.get("/sessions", response_model=SuccessResponse, summary="List chat sessions")
-def list_sessions(ctx: RequestContext = Depends(get_request_context)):
+def list_sessions(
+    search: Optional[str] = Query(None, description="Search query for session title"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    ctx: RequestContext = Depends(get_request_context),
+):
     repo = ChatSessionRepository(ctx.user_client)
-    return SuccessResponse(data=repo.list_user_sessions(ctx.company_id, ctx.user_id))
+    sessions = repo.list_user_sessions(
+        ctx.company_id,
+        ctx.user_id,
+        search=search,
+        limit=limit,
+        offset=offset,
+    )
+    return SuccessResponse(data=sessions)
 
 
 @router.post("/sessions", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create chat session")
 def create_session(payload: ChatSessionCreate, ctx: RequestContext = Depends(get_request_context)):
     repo = ChatSessionRepository(ctx.user_client)
+    title = payload.title.strip() if payload.title and payload.title.strip() else "New Conversation"
     data = repo.create({
         "company_id": str(ctx.company_id),
         "user_id": str(ctx.user_id),
-        "title": payload.title or "AI Financial Intelligence Chat",
+        "title": title,
     })
     return SuccessResponse(data=data)
 
@@ -153,53 +239,132 @@ def create_session(payload: ChatSessionCreate, ctx: RequestContext = Depends(get
 @router.get("/sessions/{session_id}", response_model=SuccessResponse, summary="Get chat session")
 def get_session(session_id: UUID, ctx: RequestContext = Depends(get_request_context)):
     repo = ChatSessionRepository(ctx.user_client)
-    return SuccessResponse(data=repo.get_by_id(session_id))
+    session = repo.get_user_session(session_id, ctx.company_id, ctx.user_id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
+    return SuccessResponse(data=session)
 
 
 @router.patch("/sessions/{session_id}", response_model=SuccessResponse, summary="Update session title")
 def update_session(session_id: UUID, payload: ChatSessionUpdate, ctx: RequestContext = Depends(get_request_context)):
     repo = ChatSessionRepository(ctx.user_client)
-    return SuccessResponse(data=repo.update(session_id, payload.model_dump(exclude_none=True)))
+    session = repo.get_user_session(session_id, ctx.company_id, ctx.user_id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
+
+    update_data = payload.model_dump(exclude_none=True)
+    if not update_data:
+        return SuccessResponse(data=session)
+
+    updated = repo.update_session(session_id, ctx.company_id, ctx.user_id, update_data)
+    return SuccessResponse(data=updated or session)
 
 
 @router.delete("/sessions/{session_id}", response_model=MessageResponse, summary="Delete chat session")
 def delete_session(session_id: UUID, ctx: RequestContext = Depends(get_request_context)):
     repo = ChatSessionRepository(ctx.user_client)
-    repo.soft_delete(session_id)
+    session = repo.get_user_session(session_id, ctx.company_id, ctx.user_id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
+
+    repo.delete_session(session_id, ctx.company_id, ctx.user_id)
     return MessageResponse(message="Session deleted.")
 
 
 # ── Messages ──────────────────────────────────────────────────
 
 @router.get("/sessions/{session_id}/messages", response_model=SuccessResponse, summary="List messages in session")
-def list_messages(session_id: UUID, ctx: RequestContext = Depends(get_request_context)):
+def list_messages(
+    session_id: UUID,
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    ctx: RequestContext = Depends(get_request_context),
+):
+    session_repo = ChatSessionRepository(ctx.user_client)
+    session = session_repo.get_user_session(session_id, ctx.company_id, ctx.user_id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
+
     repo = ChatMessageRepository(ctx.user_client)
-    return SuccessResponse(data=repo.list_session_messages(session_id))
+    messages = repo.list_session_messages(session_id, limit=limit, offset=offset)
+    return SuccessResponse(data=messages)
 
 
-@router.post("/sessions/{session_id}/messages", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Send a message")
+@router.post("/sessions/{session_id}/messages", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Send message in session")
 def send_message(
     session_id: UUID,
     payload: SendMessageRequest,
     ctx: RequestContext = Depends(get_request_context),
 ):
-    repo = ChatMessageRepository(ctx.user_client)
+    content = (payload.content or payload.message or "").strip()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message content cannot be empty.")
+
+    session_repo = ChatSessionRepository(ctx.user_client)
+    session = session_repo.get_user_session(session_id, ctx.company_id, ctx.user_id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
+
+    msg_repo = ChatMessageRepository(ctx.user_client)
+    memory_service = AIMemoryService(ctx.user_client, ctx.company_id, ctx.user_id)
+
+    # If title is default, set a smart title from this message
+    current_title = session.get("title") or ""
+    if current_title in ("AI Financial Intelligence Chat", "New Conversation", ""):
+        smart_title = AIMemoryService.generate_conversation_title(content)
+        session_repo.update_session(session_id, ctx.company_id, ctx.user_id, {"title": smart_title})
+
     # Save user message
     try:
-        user_msg = repo.create_message({
+        msg_repo.create_message({
             "session_id": str(session_id),
             "role": "user",
-            "content": payload.content,
+            "content": content,
         })
     except Exception as e:
         logger.warning("Could not persist user message: {}", e)
 
-    # Generate grounded response with tool calling
+    # 1. Update/check running summary if conversation is long
+    summary = None
+    try:
+        summary = memory_service.summarize_if_needed(session_id)
+    except Exception as sum_err:
+        logger.warning("Error evaluating conversation summary: {}", sum_err)
+
+    # 2. Retrieve recent messages for short-term history
+    history: List[Dict[str, Any]] = []
+    try:
+        history = msg_repo.get_recent_messages(session_id, limit=12)
+        if history and history[-1].get("content") == content:
+            history = history[:-1]
+    except Exception as hist_err:
+        logger.warning("Error fetching recent messages: {}", hist_err)
+
+    # 3. Retrieve relevant long-term cross-conversation memories
+    memories: List[Dict[str, Any]] = []
+    try:
+        memories = memory_service.get_relevant_memories(query=content, limit=6)
+    except Exception as mem_err:
+        logger.warning("Error fetching memories: {}", mem_err)
+
+    # 4. Check for durable memory to extract
+    try:
+        memory_service.extract_and_store_memory(content, session_id=session_id)
+    except Exception as ext_err:
+        logger.warning("Error extracting memory: {}", ext_err)
+
+    # 5. Generate grounded response with tool calling
     tools_used = []
     result = {}
     try:
         ai_service = AIContextService(ctx.user_client, ctx.company_id)
-        result = ai_service.answer_with_tools(payload.content)
+        result = ai_service.answer_with_tools(
+            content,
+            history=history,
+            summary=summary,
+            memories=memories,
+            provider=payload.provider,
+        )
         reply = result.get("message") or "Analysis complete."
         tools_used = result.get("tools_used") or []
     except Exception as e:
@@ -221,7 +386,7 @@ def send_message(
     # Save assistant message
     assistant_msg = None
     try:
-        assistant_msg = repo.create_message({
+        assistant_msg = msg_repo.create_message({
             "session_id": str(session_id),
             "role": "assistant",
             "content": reply,
@@ -240,9 +405,84 @@ def send_message(
         "role": "assistant",
         "content": reply,
         "message": reply,
+        "session_id": str(session_id),
         "tools_used": tools_used,
         "provider": provider_used,
         "model": model_used,
         "fallback_used": fallback_used,
         "fallback_reason": fallback_reason,
+        "summary": summary,
+        "memories_count": len(memories),
     })
+
+
+# ── Long-Term Memory Controls ──────────────────────────────────
+
+@router.get("/memories", response_model=SuccessResponse, summary="List AI memories")
+def list_memories(
+    category: Optional[str] = Query(None, description="Filter by category"),
+    search: Optional[str] = Query(None, description="Search query"),
+    ctx: RequestContext = Depends(get_request_context),
+):
+    repo = AIMemoryRepository(ctx.user_client)
+    memories = repo.list_memories(
+        ctx.company_id,
+        ctx.user_id,
+        active_only=False,
+        category=category,
+        search=search,
+    )
+    return SuccessResponse(data=memories)
+
+
+@router.post("/memories", response_model=SuccessResponse, status_code=status.HTTP_201_CREATED, summary="Create AI memory")
+def create_memory(payload: AIMemoryCreate, ctx: RequestContext = Depends(get_request_context)):
+    repo = AIMemoryRepository(ctx.user_client)
+    data = repo.create_memory({
+        "company_id": str(ctx.company_id),
+        "user_id": str(ctx.user_id),
+        "session_id": str(payload.session_id) if payload.session_id else None,
+        "category": payload.category,
+        "memory_key": payload.memory_key,
+        "content": payload.content.strip(),
+        "confidence": payload.confidence or 1.0,
+        "is_active": True,
+    })
+    return SuccessResponse(data=data)
+
+
+@router.patch("/memories/{memory_id}", response_model=SuccessResponse, summary="Update AI memory")
+def update_memory(
+    memory_id: UUID,
+    payload: AIMemoryUpdate,
+    ctx: RequestContext = Depends(get_request_context),
+):
+    repo = AIMemoryRepository(ctx.user_client)
+    existing = repo.get_memory(memory_id, ctx.company_id, ctx.user_id)
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Memory not found")
+
+    update_data = payload.model_dump(exclude_none=True)
+    if not update_data:
+        return SuccessResponse(data=existing)
+
+    updated = repo.update_memory(memory_id, ctx.company_id, ctx.user_id, update_data)
+    return SuccessResponse(data=updated or existing)
+
+
+@router.delete("/memories/{memory_id}", response_model=MessageResponse, summary="Delete AI memory")
+def delete_memory(memory_id: UUID, ctx: RequestContext = Depends(get_request_context)):
+    repo = AIMemoryRepository(ctx.user_client)
+    existing = repo.get_memory(memory_id, ctx.company_id, ctx.user_id)
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Memory not found")
+
+    repo.delete_memory(memory_id, ctx.company_id, ctx.user_id)
+    return MessageResponse(message="Memory deleted.")
+
+
+@router.delete("/memories", response_model=MessageResponse, summary="Clear all AI memories for user")
+def clear_all_memories(ctx: RequestContext = Depends(get_request_context)):
+    repo = AIMemoryRepository(ctx.user_client)
+    count = repo.clear_all_memories(ctx.company_id, ctx.user_id)
+    return MessageResponse(message=f"Cleared {count} memories.")

@@ -1,0 +1,16 @@
+{
+  "task": "inventory_prediction",
+  "features": [
+    "lag_1",
+    "lag_2",
+    "lag_3",
+    "lag_6",
+    "roll3_mean",
+    "roll6_mean",
+    "month_num",
+    "quarter",
+    "year",
+    "is_q4",
+    "is_q1"
+  ]
+}

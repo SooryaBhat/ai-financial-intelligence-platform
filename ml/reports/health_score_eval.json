@@ -1,0 +1,134 @@
+{
+  "pipeline": "business_health_scoring_and_transition",
+  "scorecard_weights": {
+    "revenue_growth": 0.25,
+    "profit_margin": 0.25,
+    "expense_control": 0.2,
+    "inventory_turnover": 0.15,
+    "payment_collection": 0.15
+  },
+  "kpi_ranges": {
+    "revenue_growth": [
+      -0.5,
+      1.0
+    ],
+    "profit_margin": [
+      -0.2,
+      0.4
+    ],
+    "expense_control": [
+      0.0,
+      1.0
+    ],
+    "inventory_turnover": [
+      0.0,
+      10.0
+    ],
+    "payment_collection": [
+      0.0,
+      1.0
+    ]
+  },
+  "selected_transition_model": "Random_Forest",
+  "selection_metric": "val_mae",
+  "training_companies": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
+  ],
+  "holdout_company": "00000000-0000-0000-0000-000000000003",
+  "transition_candidates": {
+    "Persistence_Baseline": {
+      "val_metrics": {
+        "rmse": 5.151506252220477,
+        "mae": 4.6483333333333325,
+        "mape": 15.232599282694334,
+        "smape": 14.683847645186992,
+        "wape": 14.700224008433254,
+        "r2": -2.4249
+      },
+      "test_metrics": {
+        "rmse": 8.201176744833633,
+        "mae": 6.240000000000002,
+        "mape": 19.0886080809125,
+        "smape": 18.173755825638988,
+        "wape": 18.877628195431864,
+        "r2": -1.8503
+      }
+    },
+    "Linear_Regression": {
+      "val_metrics": {
+        "rmse": 2.6225079688083417,
+        "mae": 2.347420645316839,
+        "mape": 7.381259384314936,
+        "smape": 7.460982201948411,
+        "wape": 7.423652060561883,
+        "r2": 0.1124
+      },
+      "test_metrics": {
+        "rmse": 5.5466448648656135,
+        "mae": 4.142864710886276,
+        "mape": 11.77422081004462,
+        "smape": 12.67117363363493,
+        "wape": 12.533246742962568,
+        "r2": -0.3038
+      }
+    },
+    "Random_Forest": {
+      "val_metrics": {
+        "rmse": 2.1844365205555176,
+        "mae": 2.009985493941372,
+        "mape": 6.436989738142953,
+        "smape": 6.385714526963536,
+        "wape": 6.356522842876918,
+        "r2": 0.3842
+      },
+      "test_metrics": {
+        "rmse": 5.208078543746177,
+        "mae": 3.826838190449627,
+        "mape": 10.86969714197494,
+        "smape": 11.489097063023355,
+        "wape": 11.577184058235147,
+        "r2": -0.1495
+      }
+    },
+    "XGBoost": {
+      "val_metrics": {
+        "rmse": 2.4931674931651657,
+        "mae": 2.2147612317403165,
+        "mape": 7.147114095530334,
+        "smape": 7.033145723532351,
+        "wape": 7.004120379729555,
+        "r2": 0.1978
+      },
+      "test_metrics": {
+        "rmse": 5.119405031061988,
+        "mae": 3.8161842041015617,
+        "mape": 10.742517996731753,
+        "smape": 11.217671286676593,
+        "wape": 11.544952969600853,
+        "r2": -0.1107
+      }
+    }
+  },
+  "approach_c_holdout_co3": {
+    "business_id": "00000000-0000-0000-0000-000000000003",
+    "business_name": "Apna Kirana Store",
+    "metrics": {
+      "rmse": 3.5342017916053354,
+      "mae": 2.7688848395931585,
+      "mape": 8.654660587455663,
+      "smape": 8.851924263979361,
+      "wape": 8.689696333144486,
+      "r2": -0.2569,
+      "baseline_persistence_metrics": {
+        "rmse": 4.8787091384036065,
+        "mae": 4.034000000000001,
+        "mape": 13.067275787197415,
+        "smape": 12.912910455073042,
+        "wape": 12.66005523474768,
+        "r2": -1.3952
+      },
+      "n_observations": 35
+    }
+  }
+}

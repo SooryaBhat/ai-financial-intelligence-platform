@@ -1,340 +1,410 @@
-import React, { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import React, { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Send,
   Bot,
-  User,
-  ShoppingCart,
-  Receipt,
-  Boxes,
-  TrendingUp,
-  ShieldAlert,
-  HeartPulse,
-  Building2,
-  Wrench,
+  Brain,
+  Sparkles,
+  Menu,
+  RotateCcw,
+  AlertCircle,
+  FileText,
   ChevronDown,
-  ChevronRight,
+  ChevronUp,
 } from 'lucide-react'
-import { mlService, ToolCallExecution } from '@/services/erp.service'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
-import { Badge } from '@/components/ui/Badge'
-import { PageHeader } from '@/components/ui/PageHeader'
 import { useAuth } from '@/hooks/useAuth'
-
-interface ChatMessage {
-  sender: 'user' | 'assistant'
-  text: string
-  timestamp: string
-  tools_used?: ToolCallExecution[]
-  provider?: string
-  model?: string
-  fallback_used?: boolean
-  fallback_reason?: string
-}
+import {
+  chatService,
+} from '@/services/chat.service'
+import { ChatSidebar } from '@/components/chat/ChatSidebar'
+import { ChatMessageItemView } from '@/components/chat/ChatMessageItemView'
+import { MemorySettingsModal } from '@/components/chat/MemorySettingsModal'
 
 export const MlChatPage: React.FC = () => {
   const { activeCompany } = useAuth()
-  const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>({})
-  const [providerInfo, setProviderInfo] = useState<{ provider: string; model?: string }>({
-    provider: 'ollama',
-    model: 'qwen3:4b',
-  })
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      sender: 'assistant',
-      text: `Hello! I am your ALLADIN Decision Intelligence Copilot. How can I assist you with company profile queries, revenue forecasts, stock replenishment, or business health for ${
-        activeCompany?.company_name || 'your organization'
-      }?`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-  ])
+  const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
   const [inputMessage, setInputMessage] = useState('')
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isMemoryModalOpen, setIsMemoryModalOpen] = useState(false)
+  const [showSummaryDetails, setShowSummaryDetails] = useState(false)
+  const [providerInfo, setProviderInfo] = useState<{ provider: string; model?: string }>({
+    provider: 'gemini',
+    model: '2.5-flash',
+  })
 
-  const getToolMeta = (toolName: string) => {
-    switch (toolName) {
-      case 'get_company_profile':
-        return { label: 'Company Profile', icon: Building2, bg: 'bg-indigo-50 text-indigo-800 border-indigo-200' }
-      case 'get_sales_analysis':
-        return { label: 'Sales Analysis', icon: ShoppingCart, bg: 'bg-emerald-50 text-emerald-800 border-emerald-200' }
-      case 'get_expense_summary':
-        return { label: 'Expense Summary', icon: Receipt, bg: 'bg-amber-50 text-amber-800 border-amber-200' }
-      case 'get_inventory_status':
-        return { label: 'Inventory & Stock', icon: Boxes, bg: 'bg-blue-50 text-blue-800 border-blue-200' }
-      case 'forecast_revenue':
-        return { label: 'Revenue Forecast (ML)', icon: TrendingUp, bg: 'bg-purple-50 text-purple-800 border-purple-200' }
-      case 'detect_transaction_anomalies':
-        return { label: 'Anomaly Detection', icon: ShieldAlert, bg: 'bg-rose-50 text-rose-800 border-rose-200' }
-      case 'get_business_health_analysis':
-        return { label: 'Business Health', icon: HeartPulse, bg: 'bg-teal-50 text-teal-800 border-teal-200' }
-      default:
-        return { label: toolName.replace(/_/g, ' '), icon: Wrench, bg: 'bg-slate-50 text-slate-800 border-slate-200' }
+  // Selected session ID from URL or null
+  const selectedSessionId = searchParams.get('session_id')
+
+  // 1. Fetch user sessions
+  const {
+    data: sessions = [],
+    isLoading: isLoadingSessions,
+  } = useQuery({
+    queryKey: ['chat-sessions', activeCompany?.id || activeCompany?.company_id],
+    queryFn: () => chatService.listSessions(),
+    enabled: !!(activeCompany?.id || activeCompany?.company_id),
+  })
+
+  // 2. Fetch active memories count
+  const { data: activeMemories = [] } = useQuery({
+    queryKey: ['ai-memories-count', activeCompany?.id || activeCompany?.company_id],
+    queryFn: () => chatService.listMemories(),
+    enabled: !!(activeCompany?.id || activeCompany?.company_id),
+  })
+
+  // Resolve current active session object
+  const activeSession = sessions.find((s) => s.id === selectedSessionId) || null
+
+  // Auto-select latest session if available and none selected
+  useEffect(() => {
+    if (!selectedSessionId && sessions.length > 0) {
+      setSearchParams({ session_id: sessions[0].id }, { replace: true })
     }
-  }
+  }, [sessions, selectedSessionId, setSearchParams])
 
-  const chatMutation = useMutation({
-    mutationFn: (msg: string) =>
-      mlService.chatAssistant(msg, {
-        company_id: activeCompany?.company_id || activeCompany?.id,
-      }),
+  // 3. Fetch messages for active session
+  const {
+    data: messages = [],
+    isLoading: isLoadingMessages,
+  } = useQuery({
+    queryKey: ['chat-messages', selectedSessionId],
+    queryFn: () => (selectedSessionId ? chatService.listMessages(selectedSessionId) : Promise.resolve([])),
+    enabled: !!selectedSessionId,
+  })
+
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, isLoadingMessages])
+
+  // Focus input on session change
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [selectedSessionId])
+
+  // 4. Send Message Mutation
+  const sendMutation = useMutation({
+    mutationFn: (text: string) =>
+      chatService.sendMessage(text, selectedSessionId || undefined),
     onSuccess: (data) => {
       if (data?.provider) {
         setProviderInfo({ provider: data.provider, model: data.model })
       }
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'assistant',
-          text: data?.message || 'I have analyzed your query based on current ledger records and ML forecasts.',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          tools_used: data?.tools_used,
-          provider: data?.provider,
-          model: data?.model,
-          fallback_used: data?.fallback_used,
-          fallback_reason: data?.fallback_reason,
-        },
-      ])
-    },
-    onError: (err: any) => {
-      const errDetail =
-        err?.response?.data?.error?.message ||
-        err?.response?.data?.detail ||
-        err?.response?.data?.message ||
-        err?.message ||
-        'Unable to query the AI intelligence engine. Please check backend connection and retry.'
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'assistant',
-          text: `⚠️ Error: ${errDetail}`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ])
+      // If we didn't have a session, select the newly returned session
+      if (!selectedSessionId && data.session_id) {
+        setSearchParams({ session_id: data.session_id }, { replace: true })
+      }
+      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['chat-messages', data.session_id || selectedSessionId] })
+      queryClient.invalidateQueries({ queryKey: ['ai-memories-count'] })
     },
   })
 
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!inputMessage.trim()) return
+  // 5. Create Session Mutation
+  const createSessionMutation = useMutation({
+    mutationFn: (title?: string) => chatService.createSession(title),
+    onSuccess: (newSession) => {
+      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
+      setSearchParams({ session_id: newSession.id })
+    },
+  })
 
-    const userText = inputMessage.trim()
+  // 6. Rename Session Mutation
+  const renameMutation = useMutation({
+    mutationFn: ({ id, title }: { id: string; title: string }) =>
+      chatService.updateSession(id, { title }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
+    },
+  })
+
+  // 7. Delete Session Mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => chatService.deleteSession(id),
+    onSuccess: (_, deletedId) => {
+      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
+      if (selectedSessionId === deletedId) {
+        const remaining = sessions.filter((s) => s.id !== deletedId)
+        if (remaining.length > 0) {
+          setSearchParams({ session_id: remaining[0].id })
+        } else {
+          setSearchParams({})
+        }
+      }
+    },
+  })
+
+  const handleSend = (e?: React.FormEvent, directText?: string) => {
+    if (e) e.preventDefault()
+    const text = (directText || inputMessage).trim()
+    if (!text || sendMutation.isPending) return
+
     setInputMessage('')
-    setMessages((prev) => [
-      ...prev,
-      {
-        sender: 'user',
-        text: userText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      },
-    ])
+    sendMutation.mutate(text)
+  }
 
-    chatMutation.mutate(userText)
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
+  const handleNewChat = () => {
+    createSessionMutation.mutate('New Conversation')
   }
 
   const suggestedPrompts = [
-    'What is the name of our company and our business profile?',
-    "Summarize sales and revenue for December 2024.",
-    'Which products may need replenishment?',
+    'What is our company profile and active currency?',
+    'Summarize sales and revenue performance for December 2024.',
+    'Which products are below the reorder threshold?',
     'Explain the 6-month revenue forecast.',
-    'Show unusual expenses that need review.',
+    'Show unusual transactions that need review.',
     'What is affecting our business health score?',
   ]
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <PageHeader
-        title="AI Copilot & Business Assistant"
-        description="Ask natural language questions grounded in your company's live ledger records, warehouse stock levels, and predictive ML models"
-        icon={<Bot className="w-5 h-5 text-teal-700" />}
-        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-teal-50 text-teal-800 border border-teal-200">AI Copilot</span>}
-        breadcrumbs={[
-          { label: 'Apps', href: '/apps' },
-          { label: 'Intelligence' },
-          { label: 'AI Copilot' },
-        ]}
+    <div className="flex h-[calc(100vh-4.25rem)] bg-slate-50 overflow-hidden -m-4 sm:-m-6">
+      {/* ── Left Sidebar (ChatGPT-style) ───────────────────────── */}
+      <ChatSidebar
+        sessions={sessions}
+        activeSessionId={selectedSessionId}
+        isLoadingSessions={isLoadingSessions}
+        onSelectSession={(id) => setSearchParams({ session_id: id })}
+        onNewChat={handleNewChat}
+        onRenameSession={(id, title) => renameMutation.mutate({ id, title })}
+        onDeleteSession={(id) => deleteMutation.mutate(id)}
+        onOpenMemorySettings={() => setIsMemoryModalOpen(true)}
+        activeMemoriesCount={activeMemories.length}
+        providerInfo={providerInfo}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
       />
 
-      <Card className="h-[560px] flex flex-col justify-between overflow-hidden bg-white border-slate-200 shadow-sm">
-        <CardHeader className="border-b border-slate-100 py-3 flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-slate-900">
-              <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-              <span>ALLADIN Intelligence Copilot Active</span>
-            </CardTitle>
-            <CardDescription className="text-xs text-slate-500">
-              {activeCompany?.company_name || 'Active Workspace'} &bull; Database Grounded &bull; Multi-Tenant Isolated
-            </CardDescription>
+      {/* ── Main Chat Area ─────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col h-full bg-white min-w-0">
+        {/* Chat Header */}
+        <header className="h-14 border-b border-slate-200 px-4 flex items-center justify-between shrink-0 bg-white shadow-xs">
+          <div className="flex items-center space-x-3 min-w-0">
+            {isSidebarCollapsed && (
+              <button
+                onClick={() => setIsSidebarCollapsed(false)}
+                className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+                title="Open sidebar"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
+
+            <div className="min-w-0">
+              <h1 className="text-sm font-semibold text-slate-900 truncate">
+                {activeSession?.title || 'New AI Conversation'}
+              </h1>
+              <p className="text-[11px] text-slate-400 truncate">
+                {activeCompany?.company_name || 'Organization'} • Scoped to authenticated ERP records
+              </p>
+            </div>
           </div>
-          <Badge
-            variant="default"
-            className={
-              providerInfo.provider === 'ollama'
-                ? 'bg-blue-50 text-blue-800 border-blue-200'
-                : providerInfo.provider === 'gemini'
-                ? 'bg-teal-50 text-teal-800 border-teal-200'
-                : 'bg-amber-50 text-amber-800 border-amber-200'
-            }
-          >
-            {providerInfo.provider === 'ollama'
-              ? `FastAPI • Ollama (${providerInfo.model || 'qwen3:4b'})`
-              : providerInfo.provider === 'gemini'
-              ? 'FastAPI • Gemini Grounded'
-              : 'FastAPI • ERP Rule Engine'}
-          </Badge>
-        </CardHeader>
 
-        {/* Chat Messages Body */}
-        <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex items-start gap-3 ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+          <div className="flex items-center space-x-2">
+            {/* Memory indicator button */}
+            <button
+              onClick={() => setIsMemoryModalOpen(true)}
+              className="flex items-center space-x-1.5 px-2.5 py-1 text-xs text-slate-600 hover:text-teal-800 bg-slate-100 hover:bg-teal-50 border border-slate-200 hover:border-teal-200 rounded-full transition-colors"
+              title="View and configure persistent AI memories"
             >
-              <div
-                className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                  msg.sender === 'user'
-                    ? 'bg-teal-700 text-white shadow-sm'
-                    : 'bg-slate-100 text-teal-800 border border-slate-200'
-                }`}
-              >
-                {msg.sender === 'user' ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
+              <Brain className="w-3.5 h-3.5 text-teal-700" />
+              <span className="hidden sm:inline font-medium">Memory</span>
+              {activeMemories.length > 0 && (
+                <span className="px-1.5 py-0.2 bg-teal-700 text-white text-[10px] rounded-full font-bold">
+                  {activeMemories.length}
+                </span>
+              )}
+            </button>
+
+            {/* Provider pill */}
+            <div className="hidden md:flex items-center space-x-1 px-2.5 py-1 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="capitalize font-medium text-[11px]">
+                {providerInfo.provider === 'ollama'
+                  ? `Ollama (${providerInfo.model || 'qwen3:4b'})`
+                  : providerInfo.provider === 'gemini'
+                  ? `Gemini (${providerInfo.model || '2.5-flash'})`
+                  : 'Grounded ERP'}
+              </span>
+            </div>
+          </div>
+        </header>
+
+        {/* Running Conversation Summary Banner (if present) */}
+        {activeSession?.summary && (
+          <div className="bg-slate-50/90 border-b border-slate-200 px-4 py-2 text-xs text-slate-600 flex items-center justify-between transition-all">
+            <div className="flex items-center space-x-2 min-w-0 flex-1 mr-2">
+              <FileText className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+              <span className="font-semibold text-slate-700 shrink-0">Context Summary:</span>
+              <span className="truncate text-slate-500 text-[11px]">{activeSession.summary}</span>
+            </div>
+            <button
+              onClick={() => setShowSummaryDetails((prev) => !prev)}
+              className="text-[11px] text-teal-700 hover:text-teal-800 font-medium shrink-0 flex items-center"
+            >
+              {showSummaryDetails ? 'Hide' : 'View'}
+              {showSummaryDetails ? <ChevronUp className="w-3 h-3 ml-0.5" /> : <ChevronDown className="w-3 h-3 ml-0.5" />}
+            </button>
+          </div>
+        )}
+
+        {showSummaryDetails && activeSession?.summary && (
+          <div className="bg-teal-50/50 border-b border-teal-200/60 p-3 text-xs text-slate-700 leading-relaxed">
+            <div className="font-semibold text-teal-900 mb-1">Preserved Long-Conversation Summary</div>
+            <p className="text-slate-600 text-xs">{activeSession.summary}</p>
+          </div>
+        )}
+
+        {/* Messages Scroll Thread */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-3">
+          {isLoadingMessages ? (
+            <div className="py-16 flex flex-col items-center justify-center space-y-2 text-slate-400">
+              <Spinner size="lg" />
+              <p className="text-xs">Loading conversation history...</p>
+            </div>
+          ) : messages.length === 0 ? (
+            /* Empty State / Welcome Screen */
+            <div className="py-12 max-w-2xl mx-auto text-center space-y-6">
+              <div className="w-14 h-14 bg-teal-50 border border-teal-200 text-teal-700 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
+                <Bot className="w-8 h-8" />
               </div>
-              <div
-                className={`max-w-[82%] p-3.5 rounded-xl text-xs leading-relaxed space-y-1 ${
-                  msg.sender === 'user'
-                    ? 'bg-teal-700 text-white rounded-tr-none shadow-sm'
-                    : 'bg-slate-50 text-slate-800 border border-slate-200 rounded-tl-none whitespace-pre-wrap'
-                }`}
-              >
-                <div>{msg.text}</div>
 
-                {msg.tools_used && msg.tools_used.length > 0 && (
-                  <div className="mt-2.5 pt-2 border-t border-slate-200/80 space-y-1.5">
-                    <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                      <Wrench className="w-3 h-3 text-teal-600" />
-                      <span>Verified ERP Tools Executed</span>
+              <div className="space-y-2">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  ALLADIN AI Financial Copilot
+                </h2>
+                <p className="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
+                  Ask natural language questions grounded in live ledger records, inventory levels,
+                  and predictive machine learning models for{' '}
+                  <span className="font-semibold text-slate-700">
+                    {activeCompany?.company_name || 'your enterprise'}
+                  </span>
+                  .
+                </p>
+              </div>
+
+              {/* Suggested Questions */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pt-2">
+                {suggestedPrompts.map((prompt, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSend(undefined, prompt)}
+                    className="p-3 bg-white border border-slate-200 rounded-xl hover:border-teal-500 hover:shadow-xs transition-all text-xs text-slate-700 hover:text-teal-900 flex items-start space-x-2 text-left group"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-teal-600 mt-0.5 shrink-0 group-hover:scale-110 transition-transform" />
+                    <span>{prompt}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              {messages.map((msg) => (
+                <ChatMessageItemView key={msg.id} message={msg} />
+              ))}
+
+              {/* Pending Assistant Response Skeleton */}
+              {sendMutation.isPending && (
+                <div className="flex justify-start my-4">
+                  <div className="flex items-start max-w-2xl space-x-3 w-full">
+                    <div className="w-8 h-8 rounded-full bg-teal-700 text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse">
+                      <Bot className="w-4 h-4" />
                     </div>
-                    <div className="space-y-1">
-                      {msg.tools_used.map((toolCall, tIdx) => {
-                        const meta = getToolMeta(toolCall.tool)
-                        const IconComponent = meta.icon
-                        const toggleKey = `page-${i}-${tIdx}`
-                        const isExpanded = !!expandedTools[toggleKey]
-
-                        return (
-                          <div
-                            key={tIdx}
-                            className={`rounded-lg border text-[11px] overflow-hidden ${meta.bg}`}
-                          >
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setExpandedTools((prev) => ({
-                                  ...prev,
-                                  [toggleKey]: !prev[toggleKey],
-                                }))
-                              }
-                              className="w-full px-2.5 py-1.5 flex items-center justify-between font-medium text-left hover:opacity-90 transition-opacity"
-                            >
-                              <span className="flex items-center gap-1.5">
-                                <IconComponent className="w-3.5 h-3.5 shrink-0" />
-                                <span className="truncate">{meta.label}</span>
-                              </span>
-                              {isExpanded ? (
-                                <ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
-                              ) : (
-                                <ChevronRight className="w-3 h-3 opacity-60 shrink-0" />
-                              )}
-                            </button>
-                            {isExpanded && (
-                              <div className="px-2.5 pb-2 pt-1 border-t border-current/10 text-[10px] space-y-1 font-normal opacity-90">
-                                {toolCall.summary && (
-                                  <p className="font-medium">{toolCall.summary}</p>
-                                )}
-                                {toolCall.args && Object.keys(toolCall.args).length > 0 && (
-                                  <p className="font-mono text-[9px] opacity-75">
-                                    Args: {JSON.stringify(toolCall.args)}
-                                  </p>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center space-x-2 text-xs text-slate-400">
+                        <span className="font-semibold text-slate-800">ALLADIN Copilot</span>
+                        <span className="text-[10px] text-teal-700 font-medium animate-pulse">
+                          Querying live ERP records & ML models...
+                        </span>
+                      </div>
+                      <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm p-4 text-xs text-slate-500 shadow-sm flex items-center space-x-3">
+                        <Spinner size="sm" />
+                        <span>Analyzing verified business data and synthesizing response...</span>
+                      </div>
                     </div>
                   </div>
-                )}
-
-                <div className="flex items-center justify-between text-[9px] pt-1 gap-2">
-                  {msg.provider && msg.sender === 'assistant' ? (
-                    <span className="font-medium text-slate-500 truncate">
-                      {msg.provider === 'ollama'
-                        ? `Ollama (${msg.model || 'qwen3:4b'})`
-                        : msg.provider === 'gemini'
-                        ? 'Gemini Grounded'
-                        : 'ERP Rule Engine'}
-                      {msg.fallback_used ? ' • Fallback' : ''}
-                    </span>
-                  ) : <span />}
-                  <span className={`shrink-0 ${msg.sender === 'user' ? 'text-teal-200' : 'text-slate-400'}`}>
-                    {msg.timestamp}
-                  </span>
                 </div>
-              </div>
-            </div>
-          ))}
+              )}
 
-          {chatMutation.isPending && (
-            <div className="flex items-center gap-2 text-xs text-slate-500 p-2 bg-slate-50 rounded-lg w-fit border border-slate-200">
-              <Spinner size="sm" />
-              <span>Synthesizing answer from company records...</span>
-            </div>
+              {/* Error banner */}
+              {sendMutation.isError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex items-center justify-between my-2">
+                  <div className="flex items-center space-x-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>
+                      {(sendMutation.error as any)?.response?.data?.error?.message ||
+                        (sendMutation.error as any)?.message ||
+                        'Failed to receive AI response. Please retry.'}
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-rose-300 text-rose-800 hover:bg-rose-100"
+                    onClick={() => handleSend()}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                    Retry
+                  </Button>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </>
           )}
-        </CardContent>
-
-        {/* Suggested Prompts Strip */}
-        <div className="px-4 py-2 border-t border-slate-100 bg-slate-50/60">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-              Suggestions:
-            </span>
-            {suggestedPrompts.map((prompt, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => {
-                  setInputMessage(prompt)
-                }}
-                className="px-2.5 py-1 text-[11px] rounded-md border border-slate-200 bg-white text-slate-700 hover:border-teal-400 hover:text-teal-800 whitespace-nowrap transition-colors"
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Chat Input */}
-        <div className="p-3 border-t border-slate-200 bg-white">
-          <form onSubmit={handleSend} className="flex items-center gap-2">
-            <Input
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              placeholder="Ask e.g. 'Summarize this month's revenue and pending orders'..."
-              className="flex-1 text-xs"
-            />
-            <Button
-              variant="primary"
-              type="submit"
-              isLoading={chatMutation.isPending}
-              leftIcon={<Send className="w-3.5 h-3.5" />}
-            >
-              Send
-            </Button>
+        {/* Chat Input Bar */}
+        <div className="p-3 sm:p-4 border-t border-slate-200 bg-white shrink-0">
+          <form onSubmit={handleSend} className="max-w-4xl mx-auto space-y-1.5">
+            <div className="relative flex items-center rounded-xl border border-slate-300 focus-within:border-teal-600 focus-within:ring-1 focus-within:ring-teal-600 bg-white shadow-xs transition-all">
+              <textarea
+                ref={inputRef}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask about sales, revenue forecast, inventory, business health, or tell it to remember a preference..."
+                rows={1}
+                className="w-full resize-none py-3 pl-4 pr-12 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none max-h-32 bg-transparent"
+              />
+
+              <button
+                type="submit"
+                disabled={!inputMessage.trim() || sendMutation.isPending}
+                className="absolute right-2.5 p-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 disabled:opacity-40 disabled:hover:bg-teal-700 transition-colors shadow-xs"
+                title="Send message (Enter)"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
+              <span>Press Enter to send, Shift+Enter for new line</span>
+              <span>100% verified ledger truth • RLS isolated</span>
+            </div>
           </form>
         </div>
-      </Card>
+      </div>
+
+      {/* ── Persistent Memory Settings Modal ─────────────────── */}
+      <MemorySettingsModal
+        isOpen={isMemoryModalOpen}
+        onClose={() => setIsMemoryModalOpen(false)}
+      />
     </div>
   )
 }

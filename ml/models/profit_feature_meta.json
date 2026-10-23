@@ -1,5 +1,8 @@
 {
-  "task": "profit_prediction",
+  "pipeline": "profit_prediction",
+  "target": "net_profit",
+  "financial_definition": "Gross Revenue - COGS - Operating Expenses",
+  "horizon": "1 month ahead",
   "features": [
     "profit_lag1",
     "profit_lag2",
@@ -16,5 +19,50 @@
     "quarter",
     "year",
     "is_q4"
-  ]
+  ],
+  "selected_model": "LightGBM",
+  "selected_artifact": "profit_prediction_selected.pkl",
+  "training_companies": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
+  ],
+  "holdout_company": "00000000-0000-0000-0000-000000000003",
+  "algorithm_artifacts": {
+    "random_forest": "profit_prediction_random_forest.pkl",
+    "xgboost": "profit_prediction_xgboost.pkl",
+    "linear_regression": "profit_prediction_linear_regression.pkl"
+  },
+  "test_metrics": {
+    "rmse": 157208.0867046929,
+    "mae": 130314.97166666668,
+    "mape": 8.721157216586468,
+    "smape": 8.585122351953212,
+    "wape": 8.571515814629903,
+    "r2": -0.0021
+  },
+  "approach_c_holdout_co3_metrics": {
+    "rmse": 184638.8217258471,
+    "mae": 142095.1263333333,
+    "mape": 8.868259939847526,
+    "smape": 9.016712451611365,
+    "wape": 8.977734126751203,
+    "r2": -0.0984,
+    "baseline_lag1_metrics": {
+      "rmse": 253640.37854313303,
+      "mae": 200859.0439999999,
+      "mape": 13.225917449345317,
+      "smape": 12.685153453717954,
+      "wape": 12.69050628629762,
+      "r2": -1.0728
+    },
+    "baseline_mean_metrics": {
+      "rmse": 184638.8208111728,
+      "mae": 142095.12592592588,
+      "mape": 8.868259930915631,
+      "smape": 9.016712425157456,
+      "wape": 8.977734101010732,
+      "r2": -0.0984
+    },
+    "n_observations": 30
+  }
 }

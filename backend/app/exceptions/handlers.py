@@ -78,8 +78,37 @@ async def validation_exception_handler(
     )
 
 
+async def transport_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Handle transient network, DNS, and HTTP transport connection failures."""
+    err_msg = str(exc)
+    if "11001" in err_msg or "getaddrinfo" in err_msg:
+        clean_msg = "Database DNS lookup interrupted (temporary network/name resolution failure)."
+    elif "ConnectError" in type(exc).__name__:
+        clean_msg = "Unable to connect to database host (temporary network connection failure)."
+    else:
+        clean_msg = "Database network transport failure."
+
+    logger.warning(
+        "[DB Connectivity] {} {} -> 503 DATABASE_UNAVAILABLE | {}",
+        request.method,
+        request.url.path,
+        clean_msg,
+    )
+    return _error_response(
+        status_code=503,
+        error_code="DATABASE_UNAVAILABLE",
+        message="Database service is temporarily unreachable. Please check network connectivity or try again shortly.",
+        details={"path": request.url.path, "retry_after": 2},
+    )
+
+
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Catch-all for unexpected exceptions."""
+    err_str = str(exc)
+    # Check if a transport/connection error was wrapped in another exception
+    if any(k in err_str for k in ("ConnectError", "getaddrinfo failed", "11001", "RemoteProtocolError")):
+        return await transport_exception_handler(request, exc)
+
     logger.exception(
         "UnhandledException | {} {} | {}",
         request.method,
@@ -95,6 +124,8 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
 
 def register_exception_handlers(app: FastAPI) -> None:
     """Register all exception handlers on the FastAPI application."""
+    import httpx
     app.add_exception_handler(AppException, app_exception_handler)  # type: ignore[arg-type]
     app.add_exception_handler(RequestValidationError, validation_exception_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(httpx.TransportError, transport_exception_handler)
     app.add_exception_handler(Exception, generic_exception_handler)

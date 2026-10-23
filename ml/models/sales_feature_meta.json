@@ -1,6 +1,15 @@
 {
-  "task": "sales_forecasting",
-  "features": [
+  "pipeline": "sales_forecasting",
+  "strategy": "Global Models trained on Dev Companies 1 & 2 with zero-shot holdout evaluation on Company 3",
+  "training_companies": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
+  ],
+  "holdout_company": "00000000-0000-0000-0000-000000000003",
+  "target": "quantity",
+  "selected_product_model": "AAGF_Custom",
+  "selected_artifact": "sales_forecasting_selected.pkl",
+  "product_features": [
     "lag_1",
     "lag_2",
     "lag_3",
@@ -12,7 +21,39 @@
     "quarter",
     "year",
     "is_q4",
-    "is_jan"
+    "is_q1",
+    "is_festival_season",
+    "is_diwali_q4",
+    "is_q1_festive",
+    "momentum_3m"
   ],
-  "split_month": "2024-06-30 00:00:00"
+  "product_test_metrics": {
+    "rmse": 12.647178945812525,
+    "mae": 8.922728879361884,
+    "mape": 125.30389802667166,
+    "smape": 55.89185447095698,
+    "wape": 54.05953001828373,
+    "r2": -0.0091
+  },
+  "category_test_metrics": {
+    "rmse": 33.91118722813675,
+    "mae": 25.170495748519897,
+    "mape": 38.87464831096009,
+    "smape": 33.441203328341665,
+    "wape": 32.39706636443716,
+    "r2": 0.2083
+  },
+  "approach_c_holdout_co3_metrics": {
+    "rmse": 14.204078646910457,
+    "mae": 10.038958707810824,
+    "mape": 119.3948768010593,
+    "smape": 56.76734303837483,
+    "wape": 52.9744994149484,
+    "r2": -0.0273,
+    "naive_baseline_comparison": {
+      "wape": 74.05044940562482,
+      "r2": -0.8618
+    }
+  },
+  "synthetic_data_evaluation_only": true
 }

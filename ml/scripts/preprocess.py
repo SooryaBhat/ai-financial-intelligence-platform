@@ -1,22 +1,17 @@
+# -*- coding: utf-8 -*-
 """
 preprocess.py
 =============
-Data cleaning and preprocessing pipeline for the ML module.
+Data cleaning and preprocessing pipeline for the ALLADIN ML module.
 
-Reads raw/synthetic data, applies cleaning steps, and saves
-processed DataFrames to datasets/processed/.
+Reads synthetic retail datasets, validates schemas, handles missing values,
+and prepares cleaned data tables under ml/datasets/processed/.
 
 Usage:
-    python scripts/preprocess.py
-
-Output:
-    datasets/processed/sales_clean.csv
-    datasets/processed/expenses_clean.csv
-    datasets/processed/inventory_clean.csv
-    ...
+    python ml/scripts/preprocess.py
 """
 
-import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Dict, Optional
@@ -24,226 +19,112 @@ from typing import Dict, Optional
 import numpy as np
 import pandas as pd
 
-# Adjust import path when running as a script
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
-    get_logger, load_csv, save_csv, check_data_quality,
+    get_logger, load_csv, save_csv,
     SYNTHETIC_DIR, PROCESSED_DIR
 )
 
 logger = get_logger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Individual cleaning functions
-# ---------------------------------------------------------------------------
-
 def clean_sales(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Clean and validate the sales DataFrame.
-
-    Steps:
-    - Parse sale_date to datetime
-    - Remove cancelled sales if needed
-    - Drop duplicate rows
-    - Clip negative amounts to 0
-    - Enforce status enum values
-
-    Args:
-        df: Raw sales DataFrame.
-
-    Returns:
-        Cleaned sales DataFrame.
-    """
-    # TODO: Implement cleaning logic
+    """Clean and standardize sales transactions."""
     logger.info("Cleaning sales data...")
     df = df.copy()
+    df["sale_date"] = pd.to_datetime(df["sale_date"], errors="coerce")
+    df = df.dropna(subset=["id", "sale_date", "company_id", "net_amount"])
+    df["net_amount"] = df["net_amount"].clip(lower=0.0)
+    df["total_amount"] = df["total_amount"].clip(lower=0.0)
+    df = df.drop_duplicates(subset=["id"]).reset_index(drop=True)
+    return df
 
-    # TODO: df['sale_date'] = pd.to_datetime(df['sale_date'])
-    # TODO: df = df[df['status'] != 'cancelled']
-    # TODO: df['net_amount'] = df['net_amount'].clip(lower=0)
-    # TODO: df = df.drop_duplicates(subset=['id'])
 
+def clean_sale_items(df: pd.DataFrame) -> pd.DataFrame:
+    """Clean and validate sale line items."""
+    logger.info("Cleaning sale items data...")
+    df = df.copy()
+    df = df.dropna(subset=["id", "sale_id", "product_id"])
+    df["quantity"] = df["quantity"].clip(lower=0)
+    df["unit_price"] = df["unit_price"].clip(lower=0.0)
+    df["discount_pct"] = df["discount_pct"].clip(lower=0.0, upper=1.0)
+    df = df.drop_duplicates(subset=["id"]).reset_index(drop=True)
     return df
 
 
 def clean_expenses(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Clean and validate the expenses DataFrame.
-
-    Steps:
-    - Parse expense_date to datetime
-    - Filter only approved expenses
-    - Remove outlier amounts (> 99th percentile per category)
-
-    Args:
-        df: Raw expenses DataFrame.
-
-    Returns:
-        Cleaned expenses DataFrame.
-    """
-    # TODO: Implement cleaning logic
+    """Clean and standardize operational expenses."""
     logger.info("Cleaning expenses data...")
     df = df.copy()
-
-    # TODO: df['expense_date'] = pd.to_datetime(df['expense_date'])
-    # TODO: df = df[df['status'] == 'approved']
-    # TODO: Remove per-category outliers using IQR
-
+    df["expense_date"] = pd.to_datetime(df["expense_date"], errors="coerce")
+    df = df.dropna(subset=["id", "expense_date", "company_id", "amount"])
+    df["amount"] = df["amount"].clip(lower=0.0)
+    df = df.drop_duplicates(subset=["id"]).reset_index(drop=True)
     return df
 
 
 def clean_inventory(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Clean and validate the inventory DataFrame.
-
-    Steps:
-    - Ensure quantity_on_hand >= 0
-    - Fill missing reorder_level with median per product
-    - Deduplicate by (product_id, warehouse_id)
-
-    Args:
-        df: Raw inventory DataFrame.
-
-    Returns:
-        Cleaned inventory DataFrame.
-    """
-    # TODO: Implement cleaning logic
+    """Clean and validate inventory records."""
     logger.info("Cleaning inventory data...")
     df = df.copy()
-
-    # TODO: df['quantity_on_hand'] = df['quantity_on_hand'].clip(lower=0)
-    # TODO: Deduplicate
-
-    return df
-
-
-def clean_purchases(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Clean and validate the purchases DataFrame.
-
-    Args:
-        df: Raw purchases DataFrame.
-
-    Returns:
-        Cleaned purchases DataFrame.
-    """
-    # TODO: Implement cleaning logic
-    logger.info("Cleaning purchases data...")
-    df = df.copy()
-    return df
-
-
-def clean_payments(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Clean and validate the payments DataFrame.
-
-    Args:
-        df: Raw payments DataFrame.
-
-    Returns:
-        Cleaned payments DataFrame.
-    """
-    # TODO: Implement cleaning logic
-    logger.info("Cleaning payments data...")
-    df = df.copy()
+    df = df.dropna(subset=["id", "product_id", "warehouse_id"])
+    df["quantity_on_hand"] = df["quantity_on_hand"].clip(lower=0)
+    df["reorder_level"] = df["reorder_level"].clip(lower=0)
+    df["reorder_quantity"] = df["reorder_quantity"].clip(lower=0)
+    df = df.drop_duplicates(subset=["id"]).reset_index(drop=True)
     return df
 
 
 def clean_stock_movements(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Clean and validate the stock_movements DataFrame.
-
-    Steps:
-    - Validate movement_type ∈ {'in', 'out'}
-    - Ensure quantity > 0
-    - Parse moved_at to datetime
-
-    Args:
-        df: Raw stock_movements DataFrame.
-
-    Returns:
-        Cleaned stock_movements DataFrame.
-    """
-    # TODO: Implement cleaning logic
-    logger.info("Cleaning stock_movements data...")
+    """Clean and validate stock movements."""
+    logger.info("Cleaning stock movements...")
     df = df.copy()
+    df["moved_at"] = pd.to_datetime(df["moved_at"], errors="coerce")
+    df = df.dropna(subset=["id", "product_id", "warehouse_id", "moved_at"])
+    df["quantity"] = df["quantity"].clip(lower=0)
+    df = df.drop_duplicates(subset=["id"]).reset_index(drop=True)
     return df
 
 
-# ---------------------------------------------------------------------------
-# Master preprocessing pipeline
-# ---------------------------------------------------------------------------
-
-def run_preprocessing_pipeline(
-    source_dir: Optional[Path] = None,
-    output_dir: Optional[Path] = None,
-) -> Dict[str, pd.DataFrame]:
-    """
-    Run the full preprocessing pipeline across all datasets.
-
-    Args:
-        source_dir: Directory to load raw/synthetic CSVs from.
-        output_dir: Directory to save processed CSVs to.
-
-    Returns:
-        Dict mapping dataset names to cleaned DataFrames.
-    """
-    source_dir = source_dir or SYNTHETIC_DIR
-    output_dir = output_dir or PROCESSED_DIR
-
-    logger.info("=" * 60)
-    logger.info("Starting preprocessing pipeline...")
-    logger.info(f"Source: {source_dir}")
-    logger.info(f"Output: {output_dir}")
-    logger.info("=" * 60)
-
-    results: Dict[str, pd.DataFrame] = {}
-
-    # TODO: Load and clean each dataset
-    # datasets_to_clean = {
-    #     "sales":           clean_sales,
-    #     "expenses":        clean_expenses,
-    #     "inventory":       clean_inventory,
-    #     "purchases":       clean_purchases,
-    #     "payments":        clean_payments,
-    #     "stock_movements": clean_stock_movements,
-    # }
-
-    # TODO: Loop through, clean, validate, and save
-    # for name, clean_fn in datasets_to_clean.items():
-    #     raw_df      = load_csv(f"{name}.csv", directory=source_dir)
-    #     clean_df    = clean_fn(raw_df)
-    #     quality     = check_data_quality(clean_df, name)
-    #     logger.info(f"{name}: {quality['row_count']} rows, {quality['duplicate_count']} duplicates")
-    #     save_csv(clean_df, f"{name}_clean.csv", directory=output_dir)
-    #     results[name] = clean_df
-
-    logger.info("Preprocessing complete.")
-    return results
+def clean_daily_kpi(df: pd.DataFrame) -> pd.DataFrame:
+    """Clean daily KPI summary table."""
+    logger.info("Cleaning daily KPI summary...")
+    df = df.copy()
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = df.dropna(subset=["company_id", "date", "revenue"])
+    df = df.drop_duplicates(subset=["company_id", "date"]).sort_values(["company_id", "date"]).reset_index(drop=True)
+    return df
 
 
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
+def run_preprocessing() -> Dict[str, pd.DataFrame]:
+    """Execute complete data preprocessing and save artifacts to processed/."""
+    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    logger.info("Starting preprocessing pipeline from: %s", SYNTHETIC_DIR)
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Preprocess ERP datasets.")
-    parser.add_argument(
-        "--source", type=str, default=None,
-        help="Source directory (default: datasets/synthetic/)"
-    )
-    parser.add_argument(
-        "--output", type=str, default=None,
-        help="Output directory (default: datasets/processed/)"
-    )
-    args = parser.parse_args()
+    sales_df = clean_sales(load_csv("sales.csv"))
+    sale_items_df = clean_sale_items(load_csv("sale_items.csv"))
+    expenses_df = clean_expenses(load_csv("expenses.csv"))
+    inventory_df = clean_inventory(load_csv("inventory.csv"))
+    stock_movements_df = clean_stock_movements(load_csv("stock_movements.csv"))
+    daily_kpi_df = clean_daily_kpi(load_csv("daily_kpi_summary.csv"))
 
-    source = Path(args.source) if args.source else None
-    output = Path(args.output) if args.output else None
+    save_csv(sales_df, "sales_clean.csv", PROCESSED_DIR)
+    save_csv(sale_items_df, "sale_items_clean.csv", PROCESSED_DIR)
+    save_csv(expenses_df, "expenses_clean.csv", PROCESSED_DIR)
+    save_csv(inventory_df, "inventory_clean.csv", PROCESSED_DIR)
+    save_csv(stock_movements_df, "stock_movements_clean.csv", PROCESSED_DIR)
+    save_csv(daily_kpi_df, "daily_kpi_clean.csv", PROCESSED_DIR)
 
-    run_preprocessing_pipeline(source_dir=source, output_dir=output)
+    logger.info("Preprocessing complete. 6 clean tables saved to: %s", PROCESSED_DIR)
+    return {
+        "sales": sales_df,
+        "sale_items": sale_items_df,
+        "expenses": expenses_df,
+        "inventory": inventory_df,
+        "stock_movements": stock_movements_df,
+        "daily_kpi": daily_kpi_df,
+    }
 
 
 if __name__ == "__main__":
-    main()
+    run_preprocessing()

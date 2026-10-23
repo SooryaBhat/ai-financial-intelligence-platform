@@ -42,6 +42,7 @@ def get_request_context(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
     x_company_id: Optional[str] = Header(None, alias="X-Company-ID"),
+    x_branch_id: Optional[str] = Header(None, alias="X-Branch-ID"),
 ) -> RequestContext:
     """
     Full authenticated context with company scoping.
@@ -73,6 +74,13 @@ def get_request_context(
     except ValueError:
         raise UnauthorizedError("X-Company-ID must be a valid UUID.")
 
+    branch_uuid = None
+    if x_branch_id:
+        try:
+            branch_uuid = UUID(x_branch_id)
+        except ValueError:
+            pass
+
     # Verify membership via admin client (don't trust user RLS here)
     admin = get_admin_client()
     user_repo = UserRepository(admin)
@@ -98,5 +106,6 @@ def get_request_context(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
         role_id=UUID(membership["role_id"]) if membership.get("role_id") else None,
+        branch_id=branch_uuid,
         permissions=permission_keys,
     )

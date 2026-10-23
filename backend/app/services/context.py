@@ -26,4 +26,5 @@ class RequestContext:
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
     role_id: Optional[UUID] = None
+    branch_id: Optional[UUID] = None
     permissions: list = field(default_factory=list)

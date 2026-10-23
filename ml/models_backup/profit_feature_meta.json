@@ -1,0 +1,20 @@
+{
+  "task": "profit_prediction",
+  "features": [
+    "profit_lag1",
+    "profit_lag2",
+    "profit_lag3",
+    "profit_lag6",
+    "profit_roll3",
+    "profit_roll6",
+    "revenue_lag1",
+    "revenue_lag2",
+    "revenue_lag3",
+    "expense_ratio_lag1",
+    "expense_ratio_lag2",
+    "month_num",
+    "quarter",
+    "year",
+    "is_q4"
+  ]
+}

@@ -1,0 +1,51 @@
+sale_number,sale_date,customer_name,product_sku,quantity,unit_price,discount_pct,tax_rate,total,notes
+SO-2026-001,2026-01-14,Ramesh Bhat,PRD-CAS-001,10,540.00,5.0,5.0,5386.50,New Year retail stocking
+SO-2026-001,2026-01-14,Ramesh Bhat,PRD-COF-002,15,280.00,5.0,5.0,4189.50,New Year retail stocking
+SO-2026-001,2026-01-14,Ramesh Bhat,PRD-GHE-006,5,630.00,0.0,12.0,3528.00,New Year retail stocking
+SO-2026-002,2026-01-22,Priya Shenoy,PRD-RIC-004,4,1450.00,0.0,0.0,5800.00,Monthly organic store batch
+SO-2026-002,2026-01-22,Priya Shenoy,PRD-DAL-013,10,320.00,5.0,0.0,3040.00,Monthly organic store batch
+SO-2026-002,2026-01-22,Priya Shenoy,PRD-OIL-005,12,320.00,0.0,5.0,4032.00,Monthly organic store batch
+SO-2026-003,2026-02-05,Ananya Rao,PRD-COF-002,20,280.00,10.0,5.0,5292.00,Cafe weekly brew inventory
+SO-2026-003,2026-02-05,Ananya Rao,PRD-SWT-014,8,360.00,5.0,5.0,2872.80,Display sweet box counter
+SO-2026-004,2026-02-18,Rajesh Nayak,PRD-CHP-016,25,125.00,0.0,12.0,3500.00,Snack shelf replenishment
+SO-2026-004,2026-02-18,Rajesh Nayak,PRD-ROT-015,20,110.00,0.0,5.0,2310.00,Snack shelf replenishment
+SO-2026-004,2026-02-18,Rajesh Nayak,PRD-TUR-007,15,160.00,5.0,5.0,2394.00,Snack shelf replenishment
+SO-2026-005,2026-03-02,Deepa Hegde,PRD-CAS-001,12,540.00,0.0,5.0,6804.00,Spring festive hamper stock
+SO-2026-005,2026-03-02,Deepa Hegde,PRD-ALM-012,15,490.00,5.0,5.0,7331.62,Spring festive hamper stock
+SO-2026-005,2026-03-02,Deepa Hegde,PRD-SPI-003,10,340.00,0.0,5.0,3570.00,Spring festive hamper stock
+SO-2026-005,2026-03-02,Deepa Hegde,PRD-HNY-017,8,375.00,0.0,5.0,3150.00,Spring festive hamper stock
+SO-2026-006,2026-03-19,Vikram Prabhu,PRD-PEP-009,14,450.00,5.0,5.0,6284.25,Export grade spices consignment
+SO-2026-006,2026-03-19,Vikram Prabhu,PRD-CHL-008,12,480.00,5.0,5.0,5745.60,Export grade spices consignment
+SO-2026-007,2026-04-08,Karthik Pai,PRD-GHE-006,18,630.00,5.0,12.0,12065.76,Ugadi festive season demand
+SO-2026-007,2026-04-08,Karthik Pai,PRD-JAG-010,25,190.00,0.0,5.0,4987.50,Ugadi festive season demand
+SO-2026-007,2026-04-08,Karthik Pai,PRD-RIC-004,5,1450.00,0.0,0.0,7250.00,Ugadi festive season demand
+SO-2026-008,2026-04-24,Sneha Kamath,PRD-SWT-014,15,360.00,10.0,5.0,5103.00,Catering sweet box delivery
+SO-2026-008,2026-04-24,Sneha Kamath,PRD-JAM-011,12,145.00,0.0,12.0,1948.80,Bakery spread jars
+SO-2026-009,2026-05-11,Suresh Poojary,PRD-OIL-005,20,320.00,5.0,5.0,6384.00,Wholesale oil stock replenishment
+SO-2026-009,2026-05-11,Suresh Poojary,PRD-GND-022,15,240.00,0.0,5.0,3780.00,Wholesale oil stock replenishment
+SO-2026-009,2026-05-11,Suresh Poojary,PRD-MUS-018,10,210.00,0.0,5.0,2205.00,Wholesale oil stock replenishment
+SO-2026-010,2026-05-27,Mamatha Shetty,PRD-RIC-004,8,1450.00,5.0,0.0,11020.00,Cafeteria staples consignment
+SO-2026-010,2026-05-27,Mamatha Shetty,PRD-DAL-013,16,320.00,0.0,0.0,5120.00,Cafeteria staples consignment
+SO-2026-010,2026-05-27,Mamatha Shetty,PRD-COF-002,24,280.00,5.0,5.0,6703.20,Corporate lounge coffee inventory
+SO-2026-011,2026-06-12,Ganesh Acharya,PRD-TUR-007,20,160.00,0.0,5.0,3360.00,Monsoon grocery stocking
+SO-2026-011,2026-06-12,Ganesh Acharya,PRD-PEP-009,10,450.00,0.0,5.0,4725.00,Monsoon grocery stocking
+SO-2026-011,2026-06-12,Ganesh Acharya,PRD-INC-020,25,180.00,5.0,12.0,4788.00,Pooja section refill
+SO-2026-012,2026-06-25,Sunita Mallya,PRD-MAS-019,30,95.00,5.0,12.0,3032.40,Coastal fish curry masala push
+SO-2026-012,2026-06-25,Sunita Mallya,PRD-KOK-023,20,135.00,0.0,5.0,2835.00,Coastal cooking souring agent
+SO-2026-013,2026-07-07,Preethi Alva,PRD-CAS-001,15,540.00,5.0,5.0,8079.75,Gourmet snack pack selection
+SO-2026-013,2026-07-07,Preethi Alva,PRD-ALM-012,12,490.00,0.0,5.0,6174.00,Gourmet snack pack selection
+SO-2026-013,2026-07-07,Preethi Alva,PRD-HNY-017,10,375.00,5.0,5.0,3740.62,Organic honey counter
+SO-2026-014,2026-07-20,Rohan D'Souza,PRD-CHP-016,35,125.00,5.0,12.0,4655.00,Weekend fast moving stock
+SO-2026-014,2026-07-20,Rohan D'Souza,PRD-ROT-015,25,110.00,5.0,5.0,2743.12,Weekend fast moving stock
+SO-2026-015,2026-08-04,Ashwitha Rai,PRD-SES-021,18,140.00,0.0,5.0,2646.00,Traditional condiment seed stock
+SO-2026-015,2026-08-04,Ashwitha Rai,PRD-JAG-010,20,190.00,5.0,5.0,3790.50,Organic jaggery cubes refill
+SO-2026-016,2026-08-19,Harish Kunder,PRD-RIC-004,10,1450.00,5.0,0.0,13775.00,Grain store wholesale shipment
+SO-2026-016,2026-08-19,Harish Kunder,PRD-DAL-013,20,320.00,5.0,0.0,6080.00,Grain store wholesale shipment
+SO-2026-016,2026-08-19,Harish Kunder,PRD-GHE-006,12,630.00,0.0,12.0,8467.20,Ghee tins stock for Gokulashtami
+SO-2026-017,2026-09-03,Poornima Holla,PRD-COF-002,15,280.00,0.0,5.0,4410.00,Morning brew supplies
+SO-2026-017,2026-09-03,Poornima Holla,PRD-MLK-024,8,420.00,0.0,12.0,3763.20,Desi cow milk powder tin orders
+SO-2026-018,2026-09-17,Chethan Kumar,PRD-CAS-001,20,540.00,5.0,5.0,10773.00,Festival pre-orders for Diwali hampers
+SO-2026-018,2026-09-17,Chethan Kumar,PRD-SWT-014,25,360.00,5.0,5.0,8977.50,Festival pre-orders for Diwali hampers
+SO-2026-018,2026-09-17,Chethan Kumar,PRD-INC-020,30,180.00,5.0,12.0,5745.60,Festival pre-orders for Diwali hampers
+SO-2026-019,2026-09-24,Vidya Kamath,PRD-OIL-005,15,320.00,5.0,5.0,4788.00,Canteen festival preparation stock
+SO-2026-019,2026-09-24,Vidya Kamath,PRD-TUR-007,10,160.00,0.0,5.0,1680.00,Spices for commercial cooking

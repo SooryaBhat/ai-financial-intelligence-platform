@@ -136,7 +136,7 @@ export const PaymentsPage: React.FC = () => {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Record Payment Receipt">
         <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(formData) }} className="space-y-4">
           <Select label="Target Invoice" value={formData.invoice_id} onChange={(e) => setFormData({ ...formData, invoice_id: e.target.value })} options={invoiceOptions} required />
-          <Input label="Payment Amount ($)" type="number" step="0.01" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })} required />
+          <Input label="Payment Amount (₹)" type="number" step="0.01" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })} required />
           <Select
             label="Payment Gateway / Method"
             value={formData.payment_method}

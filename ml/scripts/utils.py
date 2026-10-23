@@ -141,29 +141,33 @@ def save_csv(df: pd.DataFrame, filename: str, directory: Optional[Path] = None,
 def save_model(model: Any, name: str, metadata: Optional[Dict] = None) -> Path:
     """
     Serialize a model artifact to the models/ directory using joblib.
+    Saves both a versioned copy and a canonical copy for seamless deployment.
 
     Args:
         model:    Trained model object.
-        name:     Model name (e.g., 'revenue_xgboost').
+        name:     Model name (e.g., 'revenue_xgboost' or 'revenue_forecasting_xgboost.pkl').
         metadata: Optional dict of metadata to save alongside model.
 
     Returns:
-        Path to saved model file.
+        Path to canonical saved model file.
     """
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
+    stem = name[:-4] if name.endswith(".pkl") else name
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    model_path = MODELS_DIR / f"{name}_{timestamp}.pkl"
+    versioned_path = MODELS_DIR / f"{stem}_{timestamp}.pkl"
+    canonical_path = MODELS_DIR / f"{stem}.pkl"
 
-    joblib.dump(model, model_path)
+    joblib.dump(model, versioned_path)
+    joblib.dump(model, canonical_path)
 
     if metadata:
-        meta_path = MODELS_DIR / f"{name}_{timestamp}_metadata.json"
-        with open(meta_path, "w") as f:
+        meta_path = MODELS_DIR / f"{stem}_{timestamp}_metadata.json"
+        with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2, default=str)
 
-    logger.info(f"Model saved: {model_path}")
-    return model_path
+    logger.info(f"Model saved: {canonical_path} (versioned: {versioned_path.name})")
+    return canonical_path
 
 
 def load_model(path: Union[str, Path]) -> Any:

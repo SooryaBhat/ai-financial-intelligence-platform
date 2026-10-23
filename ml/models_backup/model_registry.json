@@ -1,0 +1,84 @@
+{
+  "revenue_forecasting": {
+    "model_name": "XGBoost",
+    "artifact_file": "revenue_forecasting_xgboost.pkl",
+    "artifact_path": "C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\ml\\models\\revenue_forecasting_xgboost.pkl",
+    "artifact_exists": true,
+    "registered_at": "2026-07-25T17:52:22.096614",
+    "status": "production",
+    "metrics": {
+      "mape_pct": 14.39,
+      "weight": 0.3
+    }
+  },
+  "profit_prediction": {
+    "model_name": "XGBoost",
+    "artifact_file": "profit_prediction_xgboost.pkl",
+    "artifact_path": "C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\ml\\models\\profit_prediction_xgboost.pkl",
+    "artifact_exists": true,
+    "registered_at": "2026-07-25T17:52:22.097617",
+    "status": "production",
+    "metrics": {
+      "mape_pct": 96.88,
+      "weight": 0.25
+    }
+  },
+  "expense_prediction": {
+    "model_name": "XGBoost",
+    "artifact_file": "expense_prediction_xgboost.pkl",
+    "artifact_path": "C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\ml\\models\\expense_prediction_xgboost.pkl",
+    "artifact_exists": true,
+    "registered_at": "2026-07-25T17:52:22.097617",
+    "status": "production",
+    "metrics": {
+      "mape_pct": 4.688,
+      "weight": 0.2
+    }
+  },
+  "sales_forecasting": {
+    "model_name": "XGBoost",
+    "artifact_file": "sales_forecasting_xgb_product.pkl",
+    "artifact_path": "C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\ml\\models\\sales_forecasting_xgb_product.pkl",
+    "artifact_exists": true,
+    "registered_at": "2026-07-25T17:52:22.097617",
+    "status": "production",
+    "metrics": {
+      "mape_pct": 23.12,
+      "weight": 0.15
+    }
+  },
+  "inventory_prediction": {
+    "model_name": "XGBoost",
+    "artifact_file": "inventory_demand_xgboost.pkl",
+    "artifact_path": "C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\ml\\models\\inventory_demand_xgboost.pkl",
+    "artifact_exists": true,
+    "registered_at": "2026-07-25T17:52:22.097617",
+    "status": "production",
+    "metrics": {
+      "mape_pct": 134.546,
+      "weight": 0.1
+    }
+  },
+  "anomaly_detection": {
+    "model_name": "if_flag",
+    "artifact_file": "anomaly_detection_isolation_forest.pkl",
+    "artifact_path": "C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\ml\\models\\anomaly_detection_isolation_forest.pkl",
+    "artifact_exists": true,
+    "registered_at": "2026-07-25T17:52:22.097617",
+    "status": "production",
+    "metrics": {
+      "ensemble": "voting (IF + LOF + statistical baseline)"
+    }
+  },
+  "business_health_score": {
+    "model_name": "WeightedKPIScoring",
+    "artifact_file": "health_score_pipeline.pkl",
+    "artifact_path": "C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\ml\\models\\health_score_pipeline.pkl",
+    "artifact_exists": true,
+    "registered_at": "2026-07-25T17:52:22.097617",
+    "status": "production",
+    "metrics": {
+      "version": "1.0"
+    }
+  }
+}

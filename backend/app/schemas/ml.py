@@ -10,6 +10,7 @@ Provides structured request and response models with validation for:
   - Anomaly Detection
 """
 from typing import Any, Dict, List, Optional
+from uuid import UUID
 from pydantic import Field
 from app.schemas.common import AppBaseModel
 
@@ -17,6 +18,10 @@ from app.schemas.common import AppBaseModel
 # ── 1. Revenue Forecasting ────────────────────────────────────
 
 class RevenuePredictionRequest(AppBaseModel):
+    branch_id: Optional[UUID] = Field(
+        default=None,
+        description="Optional outlet / branch UUID for outlet-specific forecasting"
+    )
     months_ahead: int = Field(
         default=6,
         ge=1,
@@ -51,11 +56,17 @@ class RevenuePredictionResponse(AppBaseModel):
     total_projected_revenue: float = Field(..., description="Sum of forecasted revenues across period")
     average_monthly_revenue: float = Field(..., description="Average projected monthly revenue")
     growth_trend: str = Field(..., description="Trend indicator: 'UPWARD', 'STABLE', or 'DOWNWARD'")
+    is_fallback: bool = Field(default=False, description="True if safe fallback baseline was used due to insufficient data")
+    warning_message: Optional[str] = Field(default=None, description="Diagnostic warning message regarding historical data")
 
 
 # ── 2. Sales Forecasting ──────────────────────────────────────
 
 class SalesPredictionRequest(AppBaseModel):
+    branch_id: Optional[UUID] = Field(
+        default=None,
+        description="Optional outlet / branch UUID for outlet-specific forecasting"
+    )
     entity_type: str = Field(
         default="product",
         description="Forecast entity type: 'product' or 'category'"
@@ -89,14 +100,17 @@ class SalesPredictionResponse(AppBaseModel):
     predictions: List[SalesForecastItem]
     total_predicted_units: float
     total_predicted_amount: float
+    is_fallback: bool = Field(default=False, description="True if safe fallback was used due to insufficient data")
+    warning_message: Optional[str] = Field(default=None, description="Diagnostic warning message")
 
 
 # ── 3. Inventory Prediction ───────────────────────────────────
 
 class InventoryPredictionRequest(AppBaseModel):
+    branch_id: Optional[UUID] = Field(default=None, description="Optional outlet / branch UUID")
     product_id: Optional[str] = Field(default=None, description="Product UUID or SKU code")
     product_name: Optional[str] = Field(default=None, description="Product display name")
-    current_stock: float = Field(..., ge=0, description="Current warehouse stock quantity")
+    current_stock: Optional[float] = Field(default=None, ge=0, description="Current warehouse stock quantity (auto-fetched from DB if omitted)")
     unit_cost: float = Field(default=10.0, ge=0, description="Cost per unit")
     lead_time_days: int = Field(default=14, ge=1, le=90, description="Supplier lead time in days")
     historical_monthly_demand: Optional[List[float]] = Field(default=None)
@@ -113,11 +127,14 @@ class InventoryPredictionResponse(AppBaseModel):
     stockout_risk_level: str = Field(..., description="Risk category: 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'")
     days_of_supply_remaining: float
     reorder_recommended: bool
+    is_fallback: bool = Field(default=False, description="True if safe fallback was used due to insufficient data")
+    warning_message: Optional[str] = Field(default=None, description="Diagnostic warning message")
 
 
 # ── 4. Profit Prediction ──────────────────────────────────────
 
 class ProfitPredictionRequest(AppBaseModel):
+    branch_id: Optional[UUID] = Field(default=None, description="Optional outlet / branch UUID")
     historical_profits: Optional[List[float]] = Field(default=None, description="Recent monthly net profit values")
     historical_revenues: Optional[List[float]] = Field(default=None, description="Recent monthly revenue values")
     projected_revenue: Optional[float] = Field(default=None, description="Estimated upcoming monthly revenue")
@@ -130,11 +147,14 @@ class ProfitPredictionResponse(AppBaseModel):
     profitability_status: str = Field(..., description="'HIGHLY_PROFITABLE', 'MODERATELY_PROFITABLE', 'LOW_MARGIN', 'UNPROFITABLE'")
     confidence_score: float
     influencing_factors: Dict[str, Any]
+    is_fallback: bool = Field(default=False, description="True if safe fallback was used due to insufficient data")
+    warning_message: Optional[str] = Field(default=None, description="Diagnostic warning message")
 
 
 # ── 5. Expense Prediction ─────────────────────────────────────
 
 class ExpensePredictionRequest(AppBaseModel):
+    branch_id: Optional[UUID] = Field(default=None, description="Optional outlet / branch UUID")
     category: Optional[str] = Field(
         default=None,
         description="Expense category (e.g., Rent, Salaries, Utilities, Marketing, IT & Software, Travel)"
@@ -155,16 +175,19 @@ class ExpensePredictionResponse(AppBaseModel):
     predicted_transaction_count: int
     expense_risk_alert: str = Field(..., description="'NORMAL', 'ELEVATED', or 'HIGH_ANOMALOUS_EXPENSE'")
     category_breakdown: Optional[Dict[str, float]] = None
+    is_fallback: bool = Field(default=False, description="True if safe fallback was used due to insufficient data")
+    warning_message: Optional[str] = Field(default=None, description="Diagnostic warning message")
 
 
 # ── 6. Business Health Score ──────────────────────────────────
 
 class BusinessHealthRequest(AppBaseModel):
-    revenue_growth: float = Field(default=0.15, description="Revenue growth rate (e.g. 0.15 for +15%)")
-    profit_margin: float = Field(default=0.20, description="Net profit margin ratio (e.g. 0.20 for 20%)")
-    expense_control: float = Field(default=0.82, description="Expense efficiency index (0.0 to 1.0, e.g. 0.82)")
-    inventory_turnover: float = Field(default=4.5, description="Inventory turnover ratio (e.g. 4.5)")
-    payment_collection: float = Field(default=0.90, description="Payment collection efficiency (0.0 to 1.0, e.g. 0.90)")
+    branch_id: Optional[UUID] = Field(default=None, description="Optional outlet / branch UUID")
+    revenue_growth: Optional[float] = Field(default=None, description="Revenue growth rate (auto-computed from DB if omitted)")
+    profit_margin: Optional[float] = Field(default=None, description="Net profit margin ratio (auto-computed from DB if omitted)")
+    expense_control: Optional[float] = Field(default=None, description="Expense efficiency index (auto-computed from DB if omitted)")
+    inventory_turnover: Optional[float] = Field(default=None, description="Inventory turnover ratio (auto-computed from DB if omitted)")
+    payment_collection: Optional[float] = Field(default=None, description="Payment collection efficiency (auto-computed from DB if omitted)")
 
 
 class BusinessHealthResponse(AppBaseModel):
@@ -174,11 +197,14 @@ class BusinessHealthResponse(AppBaseModel):
     sub_scores: Dict[str, float] = Field(..., description="Component sub-scores (0-100 scale)")
     weights: Dict[str, float] = Field(..., description="KPI weighting configuration used")
     recommendations: List[str] = Field(..., description="Actionable insights to optimize financial health")
+    is_fallback: bool = Field(default=False, description="True if dynamic database KPIs were limited or baseline was used")
+    warning_message: Optional[str] = Field(default=None, description="Diagnostic warning message")
 
 
 # ── 7. Anomaly Detection ──────────────────────────────────────
 
 class AnomalyDetectionRequest(AppBaseModel):
+    branch_id: Optional[UUID] = Field(default=None, description="Optional outlet / branch UUID")
     net_amount: float = Field(..., description="Transaction net amount")
     discount_pct: float = Field(default=0.0, ge=0.0, le=100.0, description="Discount percentage applied")
     day_of_week: Optional[int] = Field(default=None, ge=0, le=6, description="Day of week (0=Monday, 6=Sunday)")
@@ -196,3 +222,5 @@ class AnomalyDetectionResponse(AppBaseModel):
     severity: str = Field(..., description="'NORMAL', 'LOW', 'MEDIUM', 'HIGH', or 'CRITICAL'")
     confidence: float = Field(..., description="Confidence percentage (0-100%)")
     reason: str = Field(..., description="Detailed diagnostic explanation")
+    is_fallback: bool = Field(default=False, description="True if default statistical baseline was used due to limited history")
+    warning_message: Optional[str] = Field(default=None, description="Diagnostic warning message")

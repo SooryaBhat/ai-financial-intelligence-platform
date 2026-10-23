@@ -139,7 +139,8 @@ def test_tool_declarations_registry():
     assert "detect_transaction_anomalies" in names
     assert "get_business_health_analysis" in names
     assert "search_business_knowledge_base" in names
-    assert len(TOOL_DECLARATIONS) == 8
+    assert "get_profit_analysis" in names
+    assert len(TOOL_DECLARATIONS) == 9
 
 
 def test_tool_sales_analysis(mock_supabase_client, sample_company_id):
@@ -310,5 +311,4 @@ def test_get_sales_analysis_future_empty_period(sample_company_id):
     assert res["total_revenue"] == 0.0
     assert res["total_sales_count"] == 0
     assert "No confirmed sales transactions found" in res["summary"]
-    assert "Note: Current recorded historical transactions exist up to December 2024" in res["summary"]
 

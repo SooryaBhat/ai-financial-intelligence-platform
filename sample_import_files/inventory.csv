@@ -1,0 +1,21 @@
+product_sku,warehouse_name,quantity_delta,reorder_level,notes
+PRD-CAS-001,Main Warehouse Mangaluru,+150.0,30.0,Direct procurement batch restock from Baikampady factory
+PRD-COF-002,Main Warehouse Mangaluru,+200.0,40.0,Initial quarterly stock batch consignment from Madikeri
+PRD-SPI-003,Main Warehouse Mangaluru,+85.0,20.0,Fresh season green cardamom arrival and sorting
+PRD-RIC-004,Bengaluru Central Godown,+80.0,25.0,Heavy wholesale truckload receipt of 25kg bags
+PRD-OIL-005,Main Warehouse Mangaluru,+160.0,35.0,Fresh cold pressed extraction run batch bottling
+PRD-GHE-006,Bengaluru Central Godown,+120.0,25.0,KMF Nandini direct depot delivery of 1L tins
+PRD-TUR-007,Mysuru Retail Hub,+100.0,20.0,Pantry replenishment for South Karnataka region
+PRD-CHL-008,Main Warehouse Mangaluru,+95.0,25.0,Byadgi chilli stemless lot arrival from Hubballi market
+PRD-PEP-009,Main Warehouse Mangaluru,+135.0,30.0,Export grade Malnad pepper stock transfer receipt
+PRD-JAG-010,Mysuru Retail Hub,+140.0,30.0,Traditional organic palm jaggery blocks shipment
+PRD-JAM-011,Bengaluru Central Godown,+90.0,15.0,Freshly produced Bangalore blue grape jam batch
+PRD-ALM-012,Main Warehouse Mangaluru,+80.0,20.0,Roasted almonds packaging line complete
+PRD-DAL-013,Bengaluru Central Godown,+160.0,40.0,Gulbarga unpolished toor dal bulk restocking
+PRD-SWT-014,Mysuru Retail Hub,+75.0,15.0,Fresh Mysore Pak daily sweets dispatch
+PRD-CHP-016,Main Warehouse Mangaluru,+220.0,50.0,Fresh coastal fried banana chips batch receipt
+PRD-HNY-017,Mysuru Retail Hub,+65.0,15.0,Western Ghats forest honey certified testing lot
+PRD-MUS-018,Bengaluru Central Godown,+75.0,20.0,Cold pressed mustard oil cartons restock
+PRD-MAS-019,Main Warehouse Mangaluru,+190.0,40.0,Coastal fish curry masala paste batch release
+PRD-INC-020,Mysuru Retail Hub,+130.0,30.0,Mysore Jasmine agarbatti boxes stock intake
+PRD-CAS-001,Main Warehouse Mangaluru,-4.0,30.0,Audit stock write-off due to moisture damaged vacuum seal

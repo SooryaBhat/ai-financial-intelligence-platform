@@ -3,6 +3,7 @@ from app.exceptions.base import AppException
 from app.exceptions.http_exceptions import (
     BadRequestError,
     ConflictError,
+    DatabaseConnectionError,
     DatabaseError,
     ExternalServiceError,
     ForbiddenError,
@@ -20,5 +21,6 @@ __all__ = [
     "ValidationError",
     "BadRequestError",
     "DatabaseError",
+    "DatabaseConnectionError",
     "ExternalServiceError",
 ]

@@ -29,6 +29,7 @@ import {
   HeartPulse,
   LayoutDashboard,
   Sparkles,
+  UploadCloud,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { reportService } from '@/services/erp.service'
@@ -60,6 +61,18 @@ const appModules: AppModule[] = [
     color: 'text-teal-700',
     bg: 'bg-teal-50',
     border: 'border-teal-200',
+    group: 'Operations',
+  },
+  {
+    id: 'imports',
+    label: 'Data Import Center',
+    description: 'Bulk CSV, Excel & PDF extraction with validation',
+    href: '/imports',
+    icon: UploadCloud,
+    color: 'text-indigo-700',
+    bg: 'bg-indigo-50',
+    border: 'border-indigo-200',
+    badge: 'Step 7',
     group: 'Operations',
   },
   {

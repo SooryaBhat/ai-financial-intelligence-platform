@@ -15,7 +15,8 @@ from app.schemas.ml import (
 
 
 def _default_expense_history() -> List[float]:
-    return [2200000.0, 2450000.0, 2300000.0, 2600000.0, 2800000.0, 2750000.0]
+    """Default historical monthly operating expenses aligned with simulated retail business scale (~Rs. 1.6M/mo)."""
+    return [1550000.0, 1620000.0, 1580000.0, 1710000.0, 1650000.0, 1680000.0]
 
 
 def predict_expense(
@@ -68,6 +69,8 @@ def predict_expense(
                 "roll3_std": float(np.std(history[-3:])),
                 "txn_count": 85.0,
                 "avg_expense": float(np.mean(history[-3:]) / 85.0),
+                "txn_count_lag1": 85.0,
+                "avg_expense_lag1": float(np.mean(history[-3:]) / 85.0),
                 "month_num": float(m_idx),
                 "quarter": float(quarter),
                 "year": float(y_idx),

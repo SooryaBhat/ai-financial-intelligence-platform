@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Edit2, Trash2, ShoppingCart } from 'lucide-react'
-import { salesService, customerService } from '@/services/erp.service'
+import { salesService, customerService, productService } from '@/services/erp.service'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
@@ -19,9 +19,11 @@ interface SaleRecord {
   id: string
   sale_number?: string
   total_amount?: number
+  subtotal?: number
   status?: string
   created_at?: string
   customer?: { name: string }
+  customer_id?: string
   [key: string]: unknown
 }
 
@@ -35,11 +37,14 @@ export const SalesPage: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<SaleRecord | null>(null)
-  const [formData, setFormData] = useState({
-    customer_id: '',
-    total_amount: 0,
-    status: 'completed',
-  })
+
+  // Creation form state
+  const [saleNumber, setSaleNumber] = useState('')
+  const [customerId, setCustomerId] = useState('')
+  const [selectedProductId, setSelectedProductId] = useState('')
+  const [quantity, setQuantity] = useState(1)
+  const [unitPrice, setUnitPrice] = useState(0)
+  const [status, setStatus] = useState('confirmed')
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['sales', page, pageSize, search],
@@ -51,17 +56,61 @@ export const SalesPage: React.FC = () => {
     queryFn: () => customerService.list({ page_size: 100 }),
   })
 
+  const { data: productsData } = useQuery({
+    queryKey: ['products-select-sales'],
+    queryFn: () => productService.list({ page_size: 100 }),
+  })
+
+  const products = productsData?.items || []
+  const customers = customersData?.items || []
+
+  const handleProductSelect = (prodId: string) => {
+    setSelectedProductId(prodId)
+    const found = products.find((p) => p.id === prodId)
+    if (found) {
+      setUnitPrice(Number(found.selling_price ?? found.unit_price ?? 0))
+    }
+  }
+
+  const calculatedTotal = quantity * unitPrice
+
   const saveMutation = useMutation({
-    mutationFn: (payload: typeof formData) => {
-      if (editingItem) return salesService.update(editingItem.id, payload)
+    mutationFn: async () => {
+      if (editingItem) {
+        return salesService.update(editingItem.id, {
+          status: status as any,
+        })
+      }
+      if (!selectedProductId && products.length > 0) {
+        throw new Error('Please select a product for the sale order line item')
+      }
+      const payload = {
+        sale_number: saleNumber || `SO-${Date.now().toString().slice(-6)}`,
+        customer_id: customerId || undefined,
+        subtotal: calculatedTotal,
+        total_amount: calculatedTotal,
+        status: status as any,
+        items: [
+          {
+            product_id: selectedProductId || products[0]?.id,
+            quantity: Math.max(1, quantity),
+            unit_price: unitPrice,
+            line_total: calculatedTotal,
+          },
+        ],
+      }
       return salesService.create(payload)
     },
     onSuccess: () => {
       toast.success(editingItem ? 'Sale updated' : 'Sale order created')
       queryClient.invalidateQueries({ queryKey: ['sales'] })
+      queryClient.invalidateQueries({ queryKey: ['reports-summary'] })
       setIsModalOpen(false)
     },
-    onError: () => toast.error('Failed to save sale'),
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.response?.data?.detail || err?.message || 'Failed to save sale'
+      toast.error(typeof msg === 'string' ? msg : JSON.stringify(msg))
+    },
   })
 
   const deleteMutation = useMutation({
@@ -69,27 +118,33 @@ export const SalesPage: React.FC = () => {
     onSuccess: () => {
       toast.success('Sale deleted')
       queryClient.invalidateQueries({ queryKey: ['sales'] })
+      queryClient.invalidateQueries({ queryKey: ['reports-summary'] })
     },
     onError: () => toast.error('Failed to delete sale'),
   })
 
   const handleOpenCreate = () => {
     setEditingItem(null)
-    setFormData({
-      customer_id: customersData?.items?.[0]?.id || '',
-      total_amount: 0,
-      status: 'completed',
-    })
+    setSaleNumber(`SO-${Date.now().toString().slice(-6)}`)
+    setCustomerId(customers[0]?.id || '')
+    const firstProd = products[0]
+    if (firstProd) {
+      setSelectedProductId(firstProd.id)
+      setUnitPrice(Number(firstProd.selling_price ?? firstProd.unit_price ?? 0))
+    } else {
+      setSelectedProductId('')
+      setUnitPrice(0)
+    }
+    setQuantity(1)
+    setStatus('confirmed')
     setIsModalOpen(true)
   }
 
   const handleOpenEdit = (item: SaleRecord) => {
     setEditingItem(item)
-    setFormData({
-      customer_id: (item.customer_id as string) || '',
-      total_amount: item.total_amount || 0,
-      status: item.status || 'completed',
-    })
+    setSaleNumber(item.sale_number || '')
+    setCustomerId(item.customer_id || '')
+    setStatus(item.status || 'confirmed')
     setIsModalOpen(true)
   }
 
@@ -120,8 +175,8 @@ export const SalesPage: React.FC = () => {
       key: 'status',
       header: 'Status',
       render: (row) => {
-        const isCompleted = row.status === 'completed'
-        return <Badge variant={isCompleted ? 'success' : 'warning'}>{row.status || 'Pending'}</Badge>
+        const isConfirmed = row.status === 'confirmed' || row.status === 'delivered'
+        return <Badge variant={isConfirmed ? 'success' : 'warning'}>{row.status || 'Draft'}</Badge>
       },
     },
     { key: 'created_at', header: 'Date', render: (row) => (row.created_at ? formatDate(row.created_at) : '-') },
@@ -139,7 +194,7 @@ export const SalesPage: React.FC = () => {
             size="sm"
             className="text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-950/40"
             onClick={() => {
-              if (confirm('Delete sale order?')) deleteMutation.mutate(row.id)
+              if (confirm(`Delete sale order "${row.sale_number || row.id}"?`)) deleteMutation.mutate(row.id)
             }}
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -153,7 +208,11 @@ export const SalesPage: React.FC = () => {
 
   const items = data?.items || []
   const total = data?.total || items.length
-  const customerOptions = (customersData?.items || []).map((c) => ({ label: c.name, value: c.id }))
+  const customerOptions = customers.map((c) => ({ label: c.name, value: c.id }))
+  const productOptions = products.map((p) => ({
+    label: `${p.name} (${formatCurrency(p.selling_price ?? p.unit_price ?? 0)})`,
+    value: p.id,
+  }))
 
   return (
     <div className="space-y-6">
@@ -178,16 +237,65 @@ export const SalesPage: React.FC = () => {
       <Pagination currentPage={page} totalItems={total} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'Edit Sale Order' : 'Create New Sale Order'}>
-        <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(formData) }} className="space-y-4">
-          <Select label="Customer" value={formData.customer_id} onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })} options={customerOptions} required />
-          <Input label="Total Amount ($)" type="number" step="0.01" value={formData.total_amount} onChange={(e) => setFormData({ ...formData, total_amount: Number(e.target.value) })} required />
+        <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate() }} className="space-y-4">
+          <Input label="Sale Order Number" value={saleNumber} onChange={(e) => setSaleNumber(e.target.value)} required />
+          {customers.length > 0 && (
+            <Select
+              label="Customer"
+              value={customerId}
+              onChange={(e) => setCustomerId(e.target.value)}
+              options={[{ label: '-- Walk-in / Direct Customer --', value: '' }, ...customerOptions]}
+            />
+          )}
+
+          {!editingItem && (
+            <>
+              {products.length > 0 ? (
+                <Select
+                  label="Product Item"
+                  value={selectedProductId}
+                  onChange={(e) => handleProductSelect(e.target.value)}
+                  options={productOptions}
+                  required
+                />
+              ) : (
+                <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
+                  No products in catalog yet. Please add a product first or seed catalog.
+                </p>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Quantity"
+                  type="number"
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
+                  required
+                />
+                <Input
+                  label="Unit Price"
+                  type="number"
+                  step="0.01"
+                  value={unitPrice}
+                  onChange={(e) => setUnitPrice(Math.max(0, Number(e.target.value)))}
+                  required
+                />
+              </div>
+              <div className="p-3 bg-surface-50 dark:bg-surface-800 rounded-lg flex justify-between items-center text-xs">
+                <span className="font-semibold text-surface-600">Computed Order Total:</span>
+                <span className="text-base font-extrabold text-emerald-600">{formatCurrency(calculatedTotal)}</span>
+              </div>
+            </>
+          )}
+
           <Select
             label="Order Status"
-            value={formData.status}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
             options={[
-              { label: 'Completed', value: 'completed' },
-              { label: 'Pending Fulfillment', value: 'pending' },
+              { label: 'Confirmed', value: 'confirmed' },
+              { label: 'Draft', value: 'draft' },
+              { label: 'Delivered', value: 'delivered' },
               { label: 'Cancelled', value: 'cancelled' },
             ]}
           />

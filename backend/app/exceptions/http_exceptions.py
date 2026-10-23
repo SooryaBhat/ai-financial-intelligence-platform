@@ -137,3 +137,20 @@ class ExternalServiceError(AppException):
             error_code="EXTERNAL_SERVICE_ERROR",
             details=details,
         )
+
+
+class DatabaseConnectionError(AppException):
+    """Database is unreachable due to network, DNS, or transport failure."""
+
+    def __init__(
+        self,
+        message: str = "Database service is temporarily unreachable.",
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            status_code=503,
+            error_code="DATABASE_UNAVAILABLE",
+            details=details,
+        )
+

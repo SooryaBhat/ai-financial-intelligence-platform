@@ -100,10 +100,13 @@ class ModelType(str, Enum):
 
 class PredictionType(str, Enum):
     REVENUE = "revenue"
-    EXPENSE = "expense"
-    CASH_FLOW = "cash_flow"
+    SALES = "sales"
     INVENTORY = "inventory"
     PROFIT = "profit"
+    EXPENSE = "expense"
+    BUSINESS_HEALTH = "business_health"
+    ANOMALY = "anomaly"
+    CASH_FLOW = "cash_flow"
     FRAUD_ALERT = "fraud_alert"
 
 

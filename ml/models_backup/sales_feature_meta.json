@@ -1,0 +1,18 @@
+{
+  "task": "sales_forecasting",
+  "features": [
+    "lag_1",
+    "lag_2",
+    "lag_3",
+    "lag_12",
+    "roll3_mean",
+    "roll6_mean",
+    "roll3_std",
+    "month_num",
+    "quarter",
+    "year",
+    "is_q4",
+    "is_jan"
+  ],
+  "split_month": "2024-06-30 00:00:00"
+}
