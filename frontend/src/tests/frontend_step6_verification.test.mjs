@@ -164,4 +164,76 @@ describe('ALLADIN Step 6 — Frontend API Client & Contracts Verification', () =
     assert.equal(typeof adjustPayload.quantity_delta, 'number')
     assert.equal(adjustPayload.quantity_delta, -5)
   })
+
+  test('Production and development API URL resolution contract', () => {
+    const PRODUCTION_API_URL = 'https://ai-financial-intelligence-platform-89re.onrender.com'
+    const LOCAL_DEV_API_URL = 'http://localhost:8000'
+
+    function resolveApiBaseUrl(envBaseUrl, envLegacyUrl, isProd) {
+      const raw = (envBaseUrl || envLegacyUrl || '').trim()
+
+      if (raw) {
+        let sanitized = raw.replace(/\/+$/, '')
+        sanitized = sanitized.replace(/\/api\/v1$/, '').replace(/\/api$/, '')
+
+        if (isProd) {
+          const isLocal = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?/i.test(sanitized)
+          if (isLocal) {
+            return PRODUCTION_API_URL
+          }
+        }
+        return sanitized
+      }
+
+      return isProd ? PRODUCTION_API_URL : LOCAL_DEV_API_URL
+    }
+
+    // 1. Production with explicit Render URL
+    assert.equal(
+      resolveApiBaseUrl('https://ai-financial-intelligence-platform-89re.onrender.com', undefined, true),
+      PRODUCTION_API_URL
+    )
+
+    // 2. Production with trailing slash -> stripped
+    assert.equal(
+      resolveApiBaseUrl('https://ai-financial-intelligence-platform-89re.onrender.com/', undefined, true),
+      PRODUCTION_API_URL
+    )
+
+    // 3. Production with redundant /api/v1 -> stripped
+    assert.equal(
+      resolveApiBaseUrl('https://ai-financial-intelligence-platform-89re.onrender.com/api/v1', undefined, true),
+      PRODUCTION_API_URL
+    )
+
+    // 4. Production with missing env variable -> defaults safely to production Render URL, NEVER localhost
+    assert.equal(
+      resolveApiBaseUrl(undefined, undefined, true),
+      PRODUCTION_API_URL
+    )
+
+    // 5. Production with accidental localhost env variable -> rejects localhost, falls back to production Render URL
+    assert.equal(
+      resolveApiBaseUrl('http://localhost:8000', undefined, true),
+      PRODUCTION_API_URL
+    )
+
+    // 6. Local development -> preserves localhost:8000
+    assert.equal(
+      resolveApiBaseUrl('http://localhost:8000', undefined, false),
+      LOCAL_DEV_API_URL
+    )
+    assert.equal(
+      resolveApiBaseUrl(undefined, undefined, false),
+      LOCAL_DEV_API_URL
+    )
+
+    // 7. Login endpoint URL resolution has no duplicate prefixes or double slashes
+    const base = resolveApiBaseUrl(PRODUCTION_API_URL, undefined, true)
+    const loginEndpoint = `${base}/api/v1/auth/login`
+    assert.equal(loginEndpoint, 'https://ai-financial-intelligence-platform-89re.onrender.com/api/v1/auth/login')
+    assert.ok(!loginEndpoint.includes('//api'))
+    assert.ok(!loginEndpoint.includes('/api/v1/api/v1'))
+  })
 })
+

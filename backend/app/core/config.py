@@ -77,7 +77,11 @@ class Settings(BaseSettings):
     port: int = 8000
 
     # ── CORS ──────────────────────────────────────────────────
-    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    cors_origins: str = (
+        "http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175,"
+        "http://127.0.0.1:3000,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:5175,"
+        "https://ai-financial-intelligence-platform-8gku08g6h.vercel.app"
+    )
 
     # ── Logging ───────────────────────────────────────────────
     log_level: str = "INFO"
@@ -86,8 +90,12 @@ class Settings(BaseSettings):
     # ── Derived helpers ───────────────────────────────────────
     @property
     def cors_origins_list(self) -> List[str]:
-        """Return CORS origins as a list."""
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        """Return CORS origins as a list, guaranteed to include the production Vercel frontend."""
+        origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        prod_origin = "https://ai-financial-intelligence-platform-8gku08g6h.vercel.app"
+        if prod_origin not in origins:
+            origins.append(prod_origin)
+        return origins
 
     @property
     def is_production(self) -> bool:

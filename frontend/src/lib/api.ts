@@ -1,6 +1,44 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+export const PRODUCTION_API_URL = 'https://ai-financial-intelligence-platform-89re.onrender.com'
+export const LOCAL_DEV_API_URL = 'http://localhost:8000'
+
+/**
+ * Resolves the API base URL:
+ * 1. Prioritizes VITE_API_BASE_URL, with fallback to legacy VITE_API_URL.
+ * 2. Trims whitespace and trailing slashes.
+ * 3. Strips trailing '/api/v1' or '/api' suffixes to prevent duplicated API prefixes.
+ * 4. In production mode (import.meta.env.PROD), never silently falls back to localhost:
+ *    if the resolved URL is empty or points to localhost/127.0.0.1, it defaults to PRODUCTION_API_URL.
+ * 5. In local development (import.meta.env.DEV), preserves localhost:8000.
+ */
+export function resolveApiBaseUrl(
+  envBaseUrl?: string,
+  envLegacyUrl?: string,
+  isProd: boolean = import.meta.env.PROD
+): string {
+  const raw = (envBaseUrl || envLegacyUrl || '').trim()
+
+  if (raw) {
+    let sanitized = raw.replace(/\/+$/, '')
+    sanitized = sanitized.replace(/\/api\/v1$/, '').replace(/\/api$/, '')
+
+    if (isProd) {
+      const isLocal = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?/i.test(sanitized)
+      if (isLocal) {
+        return PRODUCTION_API_URL
+      }
+    }
+    return sanitized
+  }
+
+  return isProd ? PRODUCTION_API_URL : LOCAL_DEV_API_URL
+}
+
+export const API_BASE_URL = resolveApiBaseUrl(
+  import.meta.env.VITE_API_BASE_URL,
+  import.meta.env.VITE_API_URL
+)
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

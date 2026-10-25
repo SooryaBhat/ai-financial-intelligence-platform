@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
+import axios from 'axios'
 
 const registerSchema = z.object({
   full_name: z.string().min(2, 'Full name must be at least 2 characters'),
@@ -44,9 +45,24 @@ export const RegisterPage: React.FC = () => {
       toast.success('Account created successfully!')
       navigate('/onboard')
     } catch (err: unknown) {
-      const errorMessage =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
-        'Registration failed. Email may already be in use.'
+      let errorMessage = 'Registration failed. Please try again.'
+
+      if (axios.isAxiosError(err)) {
+        if (!err.response) {
+          errorMessage = 'Unable to connect to the server. Please check your network or verify the backend service is running.'
+        } else if (err.response.status === 400 || err.response.status === 409 || err.response.status === 422) {
+          const detail = err.response.data?.detail || err.response.data?.message
+          errorMessage = typeof detail === 'string' ? detail : 'Registration failed. Email may already be in use.'
+        } else if (err.response.status >= 500) {
+          errorMessage = 'Registration service error. Please try again later.'
+        } else {
+          const detail = err.response.data?.detail || err.response.data?.message
+          errorMessage = typeof detail === 'string' ? detail : 'Registration failed. Please try again.'
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message
+      }
+
       toast.error(errorMessage)
     } finally {
       setIsLoading(false)

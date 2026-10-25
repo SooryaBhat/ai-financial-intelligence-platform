@@ -70,19 +70,29 @@ def create_app() -> FastAPI:
         debug=settings.debug,
     )
 
+    # ── Request logging ───────────────────────────────────────
+    app.add_middleware(LoggingMiddleware)
+
     # ── CORS ──────────────────────────────────────────────────
+    # CORSMiddleware is added after LoggingMiddleware so it is the outermost layer,
+    # ensuring all responses (including errors and OPTIONS preflights) have CORS headers.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,
         allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=[
+            "Content-Type",
+            "Authorization",
+            "X-Company-ID",
+            "X-Branch-ID",
+            "Accept",
+            "Origin",
+            "X-Requested-With",
+        ],
         expose_headers=["X-Request-ID", "X-Response-Time"],
     )
-
-    # ── Request logging ───────────────────────────────────────
-    app.add_middleware(LoggingMiddleware)
 
     # ── Exception handlers ────────────────────────────────────
     register_exception_handlers(app)

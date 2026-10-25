@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
+import axios from 'axios'
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid business email address'),
@@ -41,9 +42,33 @@ export const LoginPage: React.FC = () => {
       toast.success('Successfully authenticated')
       navigate(from, { replace: true })
     } catch (err: unknown) {
-      const errorMessage =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
-        'Invalid email or password'
+      let errorMessage = 'An unexpected error occurred during authentication.'
+
+      if (axios.isAxiosError(err)) {
+        if (!err.response) {
+          // Network error, CORS failure, or server unreachable
+          if (err.code === 'ECONNABORTED' || err.message?.toLowerCase().includes('timeout')) {
+            errorMessage = 'Authentication request timed out. Please try again.'
+          } else {
+            errorMessage = 'Unable to connect to the server. Please check your network or verify the backend service is running.'
+          }
+        } else if (err.response.status === 401 || err.response.status === 400) {
+          // Genuine authentication failure
+          const detail = err.response.data?.detail || err.response.data?.message
+          errorMessage = typeof detail === 'string' ? detail : 'Invalid email or password'
+        } else if (err.response.status === 429) {
+          errorMessage = 'Too many login attempts. Please wait a moment and try again.'
+        } else if (err.response.status >= 500) {
+          const detail = err.response.data?.detail
+          errorMessage = typeof detail === 'string' ? detail : 'Authentication service is temporarily unavailable. Please try again later.'
+        } else {
+          const detail = err.response.data?.detail || err.response.data?.message
+          errorMessage = typeof detail === 'string' ? detail : 'Authentication failed. Please verify your credentials.'
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message
+      }
+
       toast.error(errorMessage)
     } finally {
       setIsLoading(false)
