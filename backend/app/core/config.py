@@ -4,7 +4,7 @@ Reads from environment variables / .env file.
 """
 from functools import lru_cache
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from dotenv import load_dotenv
 from pydantic import field_validator
@@ -48,10 +48,16 @@ class Settings(BaseSettings):
 
     # ── AI Providers (Ollama & Gemini) ──────────────────────────
     ai_provider: str = "ollama"
+    llm_provider: Optional[str] = None
     gemini_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3:4b"
-    ollama_timeout_seconds: float = 180.0
+    ollama_timeout_seconds: float = 300.0
+
+    @property
+    def effective_ai_provider(self) -> str:
+        """Returns the default configured provider (ollama by default)."""
+        return (self.llm_provider or self.ai_provider or "ollama").strip().lower()
 
     # ── RAG / Knowledge Base ──────────────────────────────────
     rag_embedding_provider: str = "google"

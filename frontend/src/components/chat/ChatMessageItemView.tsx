@@ -33,6 +33,16 @@ interface ChatMessageItemViewProps {
       model?: string
       fallback_used?: boolean
       fallback_reason?: string
+      timing?: {
+        total_seconds?: number
+        prompt_eval_seconds?: number
+        eval_seconds?: number
+        tools_seconds?: number
+        eval_count?: number
+        tok_per_sec?: number
+        rounds?: number
+        fast_path?: boolean
+      }
     }
   }
 }
@@ -47,6 +57,7 @@ export const ChatMessageItemView: React.FC<ChatMessageItemViewProps> = ({ messag
   const model = message.metadata?.model
   const fallbackUsed = message.metadata?.fallback_used
   const fallbackReason = message.metadata?.fallback_reason
+  const timing = message.metadata?.timing
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content)
@@ -131,6 +142,28 @@ export const ChatMessageItemView: React.FC<ChatMessageItemViewProps> = ({ messag
                     : provider === 'gemini'
                     ? `Gemini (${model || 'flash'})`
                     : 'Grounded ERP Engine'}
+                </span>
+              )}
+              {timing?.total_seconds !== undefined && (
+                <span
+                  className="px-1.5 py-0.5 rounded text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 inline-flex items-center space-x-1"
+                  title={
+                    timing.tok_per_sec
+                      ? `${timing.eval_count || 0} tokens generated @ ${timing.tok_per_sec} tok/s (${timing.rounds || 1} round${(timing.rounds || 1) > 1 ? 's' : ''})`
+                      : timing.fast_path
+                      ? 'Instant verified fast-path'
+                      : undefined
+                  }
+                >
+                  <span>⚡</span>
+                  <span>{timing.total_seconds}s</span>
+                  {timing.tok_per_sec ? (
+                    <span className="text-[9px] text-emerald-600 font-sans">
+                      ({timing.tok_per_sec} t/s)
+                    </span>
+                  ) : timing.fast_path ? (
+                    <span className="text-[9px] text-emerald-600 font-sans">fast-path</span>
+                  ) : null}
                 </span>
               )}
               {formattedTime && <span className="text-[10px] text-slate-400">{formattedTime}</span>}

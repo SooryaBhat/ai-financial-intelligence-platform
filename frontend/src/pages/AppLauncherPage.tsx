@@ -297,14 +297,14 @@ const appModules: AppModule[] = [
   },
   {
     id: 'ml-chat',
-    label: 'AI Copilot',
-    description: 'Natural language ERP intelligence assistant',
+    label: 'AI Copilot & Voice',
+    description: 'Conversational voice & text ERP intelligence assistant',
     href: '/ml/chat',
     icon: Bot,
     color: 'text-teal-700',
     bg: 'bg-teal-50',
     border: 'border-teal-300',
-    badge: 'AI',
+    badge: 'Voice & AI',
     group: 'Intelligence',
   },
 

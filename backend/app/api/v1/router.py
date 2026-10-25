@@ -32,6 +32,7 @@ from app.api.v1 import (
     users,
     warehouses,
     imports,
+    voice,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -63,6 +64,7 @@ api_router.include_router(ml.router)
 api_router.include_router(ml_models.router)
 api_router.include_router(predictions.router)
 api_router.include_router(chat.router)
+api_router.include_router(voice.router)
 api_router.include_router(reports.router)
 
 # System

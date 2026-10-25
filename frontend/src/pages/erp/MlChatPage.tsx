@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -12,16 +12,20 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  Mic,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { useAuth } from '@/hooks/useAuth'
 import {
   chatService,
+  ChatMessageItem,
 } from '@/services/chat.service'
 import { ChatSidebar } from '@/components/chat/ChatSidebar'
 import { ChatMessageItemView } from '@/components/chat/ChatMessageItemView'
 import { MemorySettingsModal } from '@/components/chat/MemorySettingsModal'
+import { VoiceConversationModal } from '@/components/voice/VoiceConversationModal'
+import { ModelSelector } from '@/components/chat/ModelSelector'
 
 export const MlChatPage: React.FC = () => {
   const { activeCompany } = useAuth()
@@ -33,11 +37,28 @@ export const MlChatPage: React.FC = () => {
   const [inputMessage, setInputMessage] = useState('')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMemoryModalOpen, setIsMemoryModalOpen] = useState(false)
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false)
   const [showSummaryDetails, setShowSummaryDetails] = useState(false)
-  const [providerInfo, setProviderInfo] = useState<{ provider: string; model?: string }>({
-    provider: 'gemini',
-    model: '2.5-flash',
+
+  // Default provider: Ollama (Local qwen3:4b), with user preference persistence
+  const [selectedProvider, setSelectedProvider] = useState<'ollama' | 'gemini'>(() => {
+    const saved = localStorage.getItem('alladin_llm_provider')
+    return saved === 'gemini' ? 'gemini' : 'ollama'
   })
+
+  const [providerInfo, setProviderInfo] = useState<{ provider: string; model?: string }>({
+    provider: selectedProvider,
+    model: selectedProvider === 'ollama' ? 'qwen3:4b' : '2.5-flash',
+  })
+
+  const handleSelectProvider = (prov: 'ollama' | 'gemini') => {
+    setSelectedProvider(prov)
+    localStorage.setItem('alladin_llm_provider', prov)
+    setProviderInfo({
+      provider: prov,
+      model: prov === 'ollama' ? 'qwen3:4b' : '2.5-flash',
+    })
+  }
 
   // Selected session ID from URL or null
   const selectedSessionId = searchParams.get('session_id')
@@ -79,10 +100,26 @@ export const MlChatPage: React.FC = () => {
     enabled: !!selectedSessionId,
   })
 
-  // Scroll to bottom on new messages
+  // Optimistic pending user messages (displayed immediately on submit before server responds)
+  const [pendingMessages, setPendingMessages] = useState<ChatMessageItem[]>([])
+  // Store last submitted text to allow clean retry on failure
+  const [lastSubmittedText, setLastSubmittedText] = useState<string>('')
+
+  // Merge server messages with unconfirmed pending messages
+  const displayMessages = useMemo(() => {
+    if (!pendingMessages.length) return messages
+    // Filter out optimistic messages whose content has now appeared in server messages
+    const unconfirmed = pendingMessages.filter(
+      (pm) => !messages.some((sm) => sm.role === 'user' && sm.content.trim() === pm.content.trim())
+    )
+    return [...messages, ...unconfirmed]
+  }, [messages, pendingMessages])
+
+  // Reset pending state when active session changes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isLoadingMessages])
+    setPendingMessages([])
+    setLastSubmittedText('')
+  }, [selectedSessionId])
 
   // Focus input on session change
   useEffect(() => {
@@ -92,7 +129,7 @@ export const MlChatPage: React.FC = () => {
   // 4. Send Message Mutation
   const sendMutation = useMutation({
     mutationFn: (text: string) =>
-      chatService.sendMessage(text, selectedSessionId || undefined),
+      chatService.sendMessage(text, selectedSessionId || undefined, selectedProvider),
     onSuccess: (data) => {
       if (data?.provider) {
         setProviderInfo({ provider: data.provider, model: data.model })
@@ -106,6 +143,11 @@ export const MlChatPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['ai-memories-count'] })
     },
   })
+
+  // Scroll to bottom on new messages or optimistic submits
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [displayMessages, isLoadingMessages, sendMutation.isPending])
 
   // 5. Create Session Mutation
   const createSessionMutation = useMutation({
@@ -146,7 +188,20 @@ export const MlChatPage: React.FC = () => {
     const text = (directText || inputMessage).trim()
     if (!text || sendMutation.isPending) return
 
+    setLastSubmittedText(text)
+
+    // Capture text and immediately append optimistic user message
+    const tempId = `optimistic-${Date.now()}`
+    const optimisticMsg: ChatMessageItem = {
+      id: tempId,
+      session_id: selectedSessionId || 'pending',
+      role: 'user',
+      content: text,
+      created_at: new Date().toISOString(),
+    }
+    setPendingMessages((prev) => [...prev, optimisticMsg])
     setInputMessage('')
+
     sendMutation.mutate(text)
   }
 
@@ -214,6 +269,16 @@ export const MlChatPage: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* Voice Mode Button */}
+            <button
+              onClick={() => setIsVoiceModalOpen(true)}
+              className="flex items-center space-x-1.5 px-3 py-1 text-xs text-white bg-teal-700 hover:bg-teal-800 rounded-full font-medium shadow-xs transition-colors"
+              title="Start voice conversation with Alladin character"
+            >
+              <Mic className="w-3.5 h-3.5" />
+              <span>Voice Mode</span>
+            </button>
+
             {/* Memory indicator button */}
             <button
               onClick={() => setIsMemoryModalOpen(true)}
@@ -229,17 +294,11 @@ export const MlChatPage: React.FC = () => {
               )}
             </button>
 
-            {/* Provider pill */}
-            <div className="hidden md:flex items-center space-x-1 px-2.5 py-1 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-full">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="capitalize font-medium text-[11px]">
-                {providerInfo.provider === 'ollama'
-                  ? `Ollama (${providerInfo.model || 'qwen3:4b'})`
-                  : providerInfo.provider === 'gemini'
-                  ? `Gemini (${providerInfo.model || '2.5-flash'})`
-                  : 'Grounded ERP'}
-              </span>
-            </div>
+            {/* Interactive Model Selector (Ollama Default / Gemini Alternative) */}
+            <ModelSelector
+              selectedProvider={selectedProvider}
+              onSelectProvider={handleSelectProvider}
+            />
           </div>
         </header>
 
@@ -275,7 +334,7 @@ export const MlChatPage: React.FC = () => {
               <Spinner size="lg" />
               <p className="text-xs">Loading conversation history...</p>
             </div>
-          ) : messages.length === 0 ? (
+          ) : displayMessages.length === 0 ? (
             /* Empty State / Welcome Screen */
             <div className="py-12 max-w-2xl mx-auto text-center space-y-6">
               <div className="w-14 h-14 bg-teal-50 border border-teal-200 text-teal-700 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
@@ -313,7 +372,7 @@ export const MlChatPage: React.FC = () => {
             </div>
           ) : (
             <>
-              {messages.map((msg) => (
+              {displayMessages.map((msg) => (
                 <ChatMessageItemView key={msg.id} message={msg} />
               ))}
 
@@ -342,24 +401,45 @@ export const MlChatPage: React.FC = () => {
 
               {/* Error banner */}
               {sendMutation.isError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex items-center justify-between my-2">
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 my-2">
                   <div className="flex items-center space-x-2">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                     <span>
                       {(sendMutation.error as any)?.response?.data?.error?.message ||
                         (sendMutation.error as any)?.message ||
                         'Failed to receive AI response. Please retry.'}
                     </span>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-rose-300 text-rose-800 hover:bg-rose-100"
-                    onClick={() => handleSend()}
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                    Retry
-                  </Button>
+                  <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+                    {selectedProvider === 'ollama' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-teal-300 text-teal-800 hover:bg-teal-50 text-[11px]"
+                        onClick={() => {
+                          handleSelectProvider('gemini')
+                          if (lastSubmittedText) {
+                            handleSend(undefined, lastSubmittedText)
+                          }
+                        }}
+                      >
+                        Switch to Gemini (Cloud)
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-rose-300 text-rose-800 hover:bg-rose-100 text-[11px]"
+                      onClick={() => {
+                        if (lastSubmittedText) {
+                          handleSend(undefined, lastSubmittedText)
+                        }
+                      }}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                      Retry
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -379,17 +459,28 @@ export const MlChatPage: React.FC = () => {
                 onKeyDown={handleKeyDown}
                 placeholder="Ask about sales, revenue forecast, inventory, business health, or tell it to remember a preference..."
                 rows={1}
-                className="w-full resize-none py-3 pl-4 pr-12 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none max-h-32 bg-transparent"
+                className="w-full resize-none py-3 pl-4 pr-20 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none max-h-32 bg-transparent"
               />
 
-              <button
-                type="submit"
-                disabled={!inputMessage.trim() || sendMutation.isPending}
-                className="absolute right-2.5 p-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 disabled:opacity-40 disabled:hover:bg-teal-700 transition-colors shadow-xs"
-                title="Send message (Enter)"
-              >
-                <Send className="w-4 h-4" />
-              </button>
+              <div className="absolute right-2.5 flex items-center space-x-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsVoiceModalOpen(true)}
+                  className="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-colors"
+                  title="Open Voice Mode with Alladin character"
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={!inputMessage.trim() || sendMutation.isPending}
+                  className="p-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 disabled:opacity-40 disabled:hover:bg-teal-700 transition-colors shadow-xs"
+                  title="Send message (Enter)"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
@@ -399,6 +490,26 @@ export const MlChatPage: React.FC = () => {
           </form>
         </div>
       </div>
+
+      {/* ── Voice Assistant Conversation Modal ───────────────── */}
+      {isVoiceModalOpen && (
+        <VoiceConversationModal
+          isOpen={isVoiceModalOpen}
+          onClose={() => {
+            setIsVoiceModalOpen(false)
+            // Invalidate messages so returning from voice immediately loads turns
+            if (selectedSessionId) {
+              queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedSessionId] })
+            }
+            queryClient.invalidateQueries({ queryKey: ['chat-sessions'] })
+          }}
+          activeSessionId={selectedSessionId}
+          onSessionUpdated={(newSid) => {
+            setSearchParams({ session_id: newSid })
+          }}
+          companyName={activeCompany?.company_name}
+        />
+      )}
 
       {/* ── Persistent Memory Settings Modal ─────────────────── */}
       <MemorySettingsModal

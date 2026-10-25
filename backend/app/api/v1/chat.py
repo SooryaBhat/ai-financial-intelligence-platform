@@ -1,4 +1,5 @@
 """Chat router — /api/v1/chat"""
+import os
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -65,6 +66,84 @@ def _get_or_create_session(
         "title": title,
     })
     return new_session
+
+
+@router.get("/providers", response_model=SuccessResponse, summary="Get available AI LLM providers and connection status")
+def get_providers(ctx: RequestContext = Depends(get_request_context)):
+    """
+    Returns available LLM providers (Local Ollama, Cloud Gemini), configured models,
+    live probe status, and the current default provider.
+    """
+    import httpx
+    from app.core.config import settings
+
+    default_provider = getattr(settings, "effective_ai_provider", "ollama") or "ollama"
+    ollama_base_url = (getattr(settings, "ollama_base_url", "http://localhost:11434") or "http://localhost:11434").rstrip("/")
+    ollama_model = getattr(settings, "ollama_model", "qwen3:4b") or "qwen3:4b"
+
+    # Fast probe for Ollama
+    ollama_available = False
+    ollama_status = "offline"
+    ollama_installed_models: List[str] = []
+    try:
+        with httpx.Client(timeout=1.0) as client:
+            resp = client.get(f"{ollama_base_url}/api/tags")
+            if resp.status_code == 200:
+                models_data = resp.json().get("models", [])
+                ollama_installed_models = [m.get("name", "") for m in models_data if m.get("name")]
+                # Match full tag (e.g. "qwen3:4b") or prefix
+                model_found = any(
+                    ollama_model == m or m.startswith(f"{ollama_model}:") or ollama_model.startswith(f"{m}:")
+                    for m in ollama_installed_models
+                )
+                if model_found:
+                    ollama_available = True
+                    ollama_status = "connected"
+                else:
+                    ollama_status = "model_missing"
+    except Exception as e:
+        ollama_status = "offline"
+        logger.debug("Ollama probe failed: {}", e)
+
+    # Gemini probe
+    gemini_key = (
+        getattr(settings, "gemini_api_key", "")
+        or os.getenv("GEMINI_API_KEY", "")
+        or os.getenv("GOOGLE_API_KEY", "")
+    )
+    gemini_available = bool(gemini_key and gemini_key.strip())
+    gemini_status = "configured" if gemini_available else "missing_key"
+
+    providers_data = [
+        {
+            "id": "ollama",
+            "name": "Ollama — Local",
+            "model": ollama_model,
+            "badge": "Local / Private",
+            "is_default": default_provider == "ollama",
+            "available": ollama_available,
+            "status": ollama_status,
+            "installed_models": ollama_installed_models,
+            "base_url": ollama_base_url,
+            "description": f"Runs locally on your machine via Ollama ({ollama_model}) with 100% data locality.",
+        },
+        {
+            "id": "gemini",
+            "name": "Gemini — Cloud",
+            "model": "gemini-2.5-flash",
+            "badge": "Cloud / High Accuracy",
+            "is_default": default_provider == "gemini",
+            "available": gemini_available,
+            "status": gemini_status,
+            "description": "Google Gemini 2.5 Flash cloud model for advanced reasoning and financial synthesis.",
+        },
+    ]
+
+    return SuccessResponse(data={
+        "default_provider": default_provider,
+        "active_provider": default_provider,
+        "providers": providers_data,
+    })
 
 
 @router.post("", response_model=SuccessResponse, summary="Send message to AI assistant")
@@ -171,6 +250,7 @@ def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_cont
     model_used = result.get("model", "unknown")
     fallback_used = result.get("fallback_used", False)
     fallback_reason = result.get("fallback_reason")
+    timing = result.get("timing")
 
     # Save assistant message to database with full tool/provider metadata
     try:
@@ -184,6 +264,7 @@ def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_cont
                 "model": model_used,
                 "fallback_used": fallback_used,
                 "fallback_reason": fallback_reason,
+                "timing": timing,
             },
         })
     except Exception as err:
@@ -199,6 +280,7 @@ def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_cont
         "model": model_used,
         "fallback_used": fallback_used,
         "fallback_reason": fallback_reason,
+        "timing": timing,
         "summary": summary,
         "memories_count": len(memories),
     })
@@ -382,6 +464,7 @@ def send_message(
     model_used = result.get("model", "unknown")
     fallback_used = result.get("fallback_used", False)
     fallback_reason = result.get("fallback_reason")
+    timing = result.get("timing")
 
     # Save assistant message
     assistant_msg = None
@@ -396,6 +479,7 @@ def send_message(
                 "model": model_used,
                 "fallback_used": fallback_used,
                 "fallback_reason": fallback_reason,
+                "timing": timing,
             },
         })
     except Exception as e:
@@ -411,6 +495,7 @@ def send_message(
         "model": model_used,
         "fallback_used": fallback_used,
         "fallback_reason": fallback_reason,
+        "timing": timing,
         "summary": summary,
         "memories_count": len(memories),
     })

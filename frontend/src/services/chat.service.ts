@@ -14,6 +14,17 @@ export interface ChatSessionItem {
   updated_at: string
 }
 
+export interface ExecutionTiming {
+  total_seconds?: number
+  prompt_eval_seconds?: number
+  eval_seconds?: number
+  tools_seconds?: number
+  eval_count?: number
+  tok_per_sec?: number
+  rounds?: number
+  fast_path?: boolean
+}
+
 export interface ChatMessageItem {
   id: string
   session_id: string
@@ -26,6 +37,7 @@ export interface ChatMessageItem {
     model?: string
     fallback_used?: boolean
     fallback_reason?: string
+    timing?: ExecutionTiming
   }
   created_at: string
 }
@@ -45,6 +57,25 @@ export interface AIMemoryItem {
   updated_at: string
 }
 
+export interface LLMProviderInfo {
+  id: string
+  name: string
+  model: string
+  badge: string
+  is_default: boolean
+  available: boolean
+  status: 'connected' | 'configured' | 'offline' | 'model_missing' | 'missing_key' | string
+  installed_models?: string[]
+  base_url?: string
+  description: string
+}
+
+export interface GetProvidersResponse {
+  default_provider: string
+  active_provider: string
+  providers: LLMProviderInfo[]
+}
+
 export interface SendMessageResponse {
   message: string
   content?: string
@@ -55,11 +86,18 @@ export interface SendMessageResponse {
   model: string
   fallback_used?: boolean
   fallback_reason?: string
+  timing?: ExecutionTiming
   summary?: string
   memories_count?: number
 }
 
 export const chatService = {
+  // ── LLM Providers ───────────────────────────────────────────
+  async getProviders(): Promise<GetProvidersResponse> {
+    const response = await api.get<ApiSuccessResponse<GetProvidersResponse>>('/api/v1/chat/providers')
+    return response.data.data
+  },
+
   // ── Sessions ────────────────────────────────────────────────
   async listSessions(search?: string, limit = 50, offset = 0): Promise<ChatSessionItem[]> {
     const params: Record<string, unknown> = { limit, offset }
@@ -118,10 +156,20 @@ export const chatService = {
     if (sessionId) payload.session_id = sessionId
     if (provider) payload.provider = provider
 
-    const response = await api.post<ApiSuccessResponse<SendMessageResponse>>(url, payload, {
-      timeout: 240000,
-    })
-    return response.data.data
+    const startTime = performance.now()
+    console.log(`[ChatService] Sending message to provider='${provider || 'default'}' (session: ${sessionId || 'new'})...`)
+    try {
+      const response = await api.post<ApiSuccessResponse<SendMessageResponse>>(url, payload, {
+        timeout: 300000, // 300s (5 min) aligned with backend timeout
+      })
+      const elapsed = ((performance.now() - startTime) / 1000).toFixed(2)
+      console.log(`[ChatService] Response received in ${elapsed}s:`, response.data.data)
+      return response.data.data
+    } catch (err: unknown) {
+      const elapsed = ((performance.now() - startTime) / 1000).toFixed(2)
+      console.error(`[ChatService] Message failed after ${elapsed}s:`, err)
+      throw err
+    }
   },
 
   // ── AI Memories ─────────────────────────────────────────────

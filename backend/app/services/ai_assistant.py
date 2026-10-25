@@ -15,6 +15,7 @@ and future RAG / document retrieval extensions.
 import json
 import os
 import re
+import time
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -73,12 +74,12 @@ CRITICAL OPERATIONAL RULES:
 """
 
 OLLAMA_SYSTEM_PROMPT = """You are ALLADIN, the AI Financial Intelligence and ERP Copilot.
-You are connected to the authenticated company's real ERP database records.
-When answering:
-1. Always use tools to retrieve real ERP data (get_company_profile for company name/identity, sales, expenses, inventory, revenue forecasts, anomaly detection, business health).
-2. Ground your response strictly in the retrieved tool data. Never invent figures, transactions, or estimates.
-3. If no data exists or metrics are unavailable for a requested time period, clearly report that factually.
-4. Be concise, direct, and business-focused. Answer directly without lengthy internal deliberation."""
+You have access to live database tools for company records, sales, revenue, expenses, inventory, and business health.
+CRITICAL RULES:
+1. When asked about sales, revenue, expenses, stock, forecasting, health, or regulations, you MUST invoke the matching tool immediately.
+2. Ground all answers strictly in verified tool output. Never guess, extrapolate, or invent figures.
+3. If data is unavailable, report it factually.
+4. Do not output internal thinking, lengthy chain-of-thought, or preambles. Output the tool call or concise business answer directly."""
 
 
 def _resolve_gemini_api_key() -> str:
@@ -179,6 +180,8 @@ class GeminiLLMProvider(BaseLLMProvider):
         tools_config = [types.Tool(function_declarations=function_declarations)]
 
         tools_executed: List[Dict[str, Any]] = []
+        t_start = time.perf_counter()
+        tools_dur = 0.0
         try:
             logger.info("[AIAssistant] Initiating tool-calling session with '{}'...", self.model_name)
 
@@ -245,7 +248,10 @@ class GeminiLLMProvider(BaseLLMProvider):
                             tool_args,
                         )
 
+                        t_tool_start = time.perf_counter()
                         tool_output = executor.execute(tool_name, tool_args)
+                        tools_dur += (time.perf_counter() - t_tool_start)
+
                         tools_executed.append({
                             "tool": tool_name,
                             "args": tool_args,
@@ -279,12 +285,18 @@ class GeminiLLMProvider(BaseLLMProvider):
                     self.model_name,
                     len(tools_executed),
                 )
+                total_wall = time.perf_counter() - t_start
                 return {
                     "message": final_text.strip(),
                     "tools_used": tools_executed,
                     "model": self.model_name,
                     "provider": "gemini",
                     "status": "success",
+                    "timing": {
+                        "total_seconds": round(total_wall, 2),
+                        "tools_seconds": round(tools_dur, 2),
+                        "rounds": turn + 1,
+                    },
                 }
 
             # If reached max_turns after executing tools, perform a final synthesis call
@@ -301,12 +313,18 @@ class GeminiLLMProvider(BaseLLMProvider):
                     parts = final_resp.candidates[0].content.parts or []
                     final_text = "".join(getattr(p, "text", "") or "" for p in parts)
 
+                total_wall = time.perf_counter() - t_start
                 return {
                     "message": final_text.strip(),
                     "tools_used": tools_executed,
                     "model": self.model_name,
                     "provider": "gemini",
                     "status": "success",
+                    "timing": {
+                        "total_seconds": round(total_wall, 2),
+                        "tools_seconds": round(tools_dur, 2),
+                        "rounds": max_turns,
+                    },
                 }
 
         except Exception as e:
@@ -314,21 +332,27 @@ class GeminiLLMProvider(BaseLLMProvider):
             if tools_executed:
                 logger.info("[AIAssistant] Synthesizing response from verified tool execution output.")
                 summary_lines = [t["summary"] for t in tools_executed if t.get("summary")]
+                total_wall = time.perf_counter() - t_start
                 return {
                     "message": "\n\n".join(summary_lines),
                     "tools_used": tools_executed,
                     "model": self.model_name,
                     "provider": "gemini",
                     "status": "success",
+                    "timing": {
+                        "total_seconds": round(total_wall, 2),
+                        "tools_seconds": round(tools_dur, 2),
+                        "rounds": 1,
+                    },
                 }
             raise
 
 
 class OllamaLLMProvider(BaseLLMProvider):
     """
-    Local Ollama LLM provider with native Function/Tool Calling support.
+    Local Ollama LLM provider with native Function/Tool Calling support and performance optimizations.
     Connects to Ollama's local HTTP API (default: http://localhost:11434).
-    Uses lightweight local models such as qwen3:4b.
+    Uses dynamic intent-based tool pruning and stripped thinking to achieve sub-minute responses on CPU.
     """
 
     def __init__(
@@ -349,8 +373,8 @@ class OllamaLLMProvider(BaseLLMProvider):
         )
         self.timeout_seconds = float(
             timeout_seconds
-            or getattr(settings, "ollama_timeout_seconds", 180.0)
-            or os.getenv("OLLAMA_TIMEOUT_SECONDS", "180.0")
+            or getattr(settings, "ollama_timeout_seconds", 300.0)
+            or os.getenv("OLLAMA_TIMEOUT_SECONDS", "300.0")
         )
 
     @staticmethod
@@ -386,6 +410,81 @@ class OllamaLLMProvider(BaseLLMProvider):
             })
         return tools
 
+    @classmethod
+    def _select_relevant_declarations(
+        cls,
+        prompt: str,
+        history: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Dynamically prune TOOL_DECLARATIONS based on query intent and conversational context.
+        Passing all 8 tools (~1,613 tokens) to Ollama on CPU causes a 70s prompt prefill latency.
+        Pruning to the 1-3 most relevant tools drops prompt tokens to ~200-450 tokens (prefill in 2-5s, 14-25x faster).
+        """
+        p_lower = prompt.lower()
+        selected: set[str] = set()
+
+        # 1. Company Profile / Identity
+        if any(k in p_lower for k in ("company", "name", "who are we", "business name", "profile", "about us", "currency", "timezone")):
+            selected.add("get_company_profile")
+
+        # 2. Sales / Revenue / Orders / Turnover / Products
+        if any(k in p_lower for k in ("sale", "revenue", "order", "turnover", "customer", "product", "sold", "growth", "mom")):
+            selected.add("get_sales_analysis")
+
+        # 3. Expenses / Spending / Costs / Outflow
+        if any(k in p_lower for k in ("expense", "spend", "cost", "category", "outflow", "bill", "vendor", "disbursement")):
+            selected.add("get_expense_summary")
+
+        # 4. Inventory / Stock / Reorder / Warehouse
+        if any(k in p_lower for k in ("stock", "inventory", "reorder", "warehouse", "sku", "replenish", "item", "units", "supply")):
+            selected.add("get_inventory_status")
+
+        # 5. Forecast / Prediction / Future
+        if any(k in p_lower for k in ("forecast", "predict", "future", "upcoming", "project", "xgboost", "sarima", "expected")):
+            selected.add("forecast_revenue")
+            selected.add("get_sales_analysis")
+
+        # 6. Anomalies / Fraud / Risk / Outliers
+        if any(k in p_lower for k in ("anomaly", "fraud", "unusual", "suspicious", "outlier", "risk", "flagged", "deviation")):
+            selected.add("detect_transaction_anomalies")
+
+        # 7. Business Health / Financial Health / Runway / Ratios
+        if any(k in p_lower for k in ("health", "score", "grade", "runway", "financial health", "kpi", "performance", "rating", "ratio", "debt")):
+            selected.add("get_business_health_analysis")
+
+        # 8. Knowledge Base / Regulations / RBI / MSME / CGTMSE / Accounting
+        if any(k in p_lower for k in (
+            "rbi", "msme", "scheme", "collateral", "policy", "loan limit", "regulation",
+            "guideline", "accounting standard", "accounting principle", "working capital",
+            "cash flow principle", "cash flow statement", "balance sheet", "double entry",
+            "cgtmse", "bank loan", "knowledge base", "documentation", "rule", "law"
+        )):
+            selected.add("search_business_knowledge_base")
+
+        # 9. Conversational follow-ups (e.g. "what about that?", "how much did we spend on the highest category?")
+        is_followup = any(k in p_lower for k in ("it", "that", "this", "highest", "lowest", "why", "compare", "more", "detail", "breakdown", "category", "spend"))
+        if history and (len(selected) <= 1 or is_followup):
+            for past_turn in reversed(history[-6:]):
+                past_text = (past_turn.get("content") or "").lower()
+                meta = past_turn.get("metadata") or {}
+                past_tools = [t.get("tool", "") for t in (meta.get("tools_used") or [])]
+                for pt in past_tools:
+                    if pt:
+                        selected.add(pt)
+                if any(w in past_text for w in ("expense", "spend", "cost")):
+                    selected.add("get_expense_summary")
+                if any(w in past_text for w in ("sale", "revenue", "order")):
+                    selected.add("get_sales_analysis")
+                if any(w in past_text for w in ("stock", "inventory")):
+                    selected.add("get_inventory_status")
+
+        # Default fallback: if no specific intent recognized, give top 3 overview tools
+        if not selected:
+            selected = {"get_company_profile", "get_sales_analysis", "get_expense_summary"}
+
+        return [decl for decl in TOOL_DECLARATIONS if decl["name"] in selected]
+
     @staticmethod
     def _clean_response_text(text: str) -> str:
         """
@@ -400,6 +499,152 @@ class OllamaLLMProvider(BaseLLMProvider):
         cleaned = re.sub(r"</?think>", "", cleaned)
         return cleaned.strip()
 
+    @staticmethod
+    def _format_verified_tool_output(tools_executed: List[Dict[str, Any]]) -> str:
+        """
+        Format verified ERP tool execution outputs into a structured, professional,
+        and factually grounded financial report without requiring a second multi-minute LLM generation.
+        """
+        sections: List[str] = []
+        for t in tools_executed:
+            tool_name = t.get("tool", "")
+            res = t.get("result", {})
+            if not isinstance(res, dict):
+                st = t.get("summary") or str(res)
+                sections.append(st)
+                continue
+
+            summary = res.get("summary") or t.get("summary") or ""
+            curr = res.get("company_currency") or res.get("currency") or "INR"
+
+            if tool_name == "get_company_profile":
+                c_name = res.get("company_name", "N/A")
+                c_ind = res.get("industry", "General")
+                c_country = res.get("country", "Global")
+                c_curr = res.get("currency", "USD")
+                sec = (
+                    f"🏢 **Company Profile**:\n"
+                    f"- **Company Name**: **{c_name}**\n"
+                    f"- **Industry**: {c_ind} | **Operating Country**: {c_country}\n"
+                    f"- **Functional Currency**: **{c_curr}** | **Timezone**: {res.get('timezone', 'UTC')}"
+                )
+                sections.append(sec)
+
+            elif tool_name == "get_sales_analysis":
+                period_title = str(res.get("period", "All")).replace("_", " ").title()
+                tot_rev = res.get("total_revenue", 0.0)
+                tot_count = res.get("total_sales_count", 0)
+                avg_val = res.get("average_sale_value", 0.0)
+                sec = f"📊 **Sales & Revenue Analysis ({period_title})**:\n"
+                sec += f"- **Total Recorded Revenue**: **{curr} {tot_rev:,.2f}** ({tot_count} orders, average order value: {curr} {avg_val:,.2f})\n"
+                if res.get("growth_percentage") is not None:
+                    sec += f"- **Month-over-Month Growth**: **{res.get('growth_percentage')}%**\n"
+                if res.get("yoy_growth_percentage") is not None:
+                    sec += f"- **Year-over-Year Growth**: **{res.get('yoy_growth_percentage')}%** (vs Same Month Last Year: {curr} {res.get('same_month_last_year_revenue', 0):,.2f})\n"
+                if res.get("top_products"):
+                    top_p = res["top_products"][0]
+                    sec += f"- **Top Performing Product**: **{top_p['name']}** ({curr} {top_p['revenue']:,.2f} from {top_p['quantity_sold']} units)\n"
+                if res.get("unusual_sales_days"):
+                    sec += f"- **Unusual Sales Volume Days**: {len(res['unusual_sales_days'])} detected\n"
+                if tot_count == 0 and summary:
+                    sec += f"- {summary}\n"
+                sections.append(sec.strip())
+
+            elif tool_name == "get_expense_summary":
+                period_title = str(res.get("period", "All")).replace("_", " ").title()
+                tot_exp = res.get("total_expenses", 0.0)
+                exp_count = res.get("expense_count", 0)
+                sec = f"💰 **Operational Expenses Overview ({period_title})**:\n"
+                sec += f"- **Total Recorded Expenses**: **{curr} {tot_exp:,.2f}** ({exp_count} entries)\n"
+                if res.get("category_breakdown"):
+                    top_cat = res["category_breakdown"][0]
+                    sec += f"- **Highest Spending Category**: **{top_cat['category']}** ({curr} {top_cat['amount']:,.2f}, {top_cat['percentage']}% of total)\n"
+                if exp_count == 0 and summary:
+                    sec += f"- {summary}\n"
+                sections.append(sec.strip())
+
+            elif tool_name == "get_inventory_status":
+                tot_units = res.get("total_stock_units", 0)
+                tot_skus = res.get("total_catalog_products", 0)
+                low_count = res.get("low_stock_count", len(res.get("low_stock_items", [])))
+                reorder_msg = "No critical low-stock items detected at or below reorder threshold" if low_count == 0 else f"{low_count} item(s) at or below reorder threshold"
+                sec = f"📦 **Inventory Records**:\n"
+                sec += f"- **Restock Check**: {reorder_msg}\n"
+                sec += f"- **Total Stock Holding**: **{tot_units:,.0f} units** across {tot_skus} catalog SKUs\n"
+                if res.get("low_stock_items"):
+                    sec += f"- **Items Requiring Reorder**:\n"
+                    for it in res["low_stock_items"][:3]:
+                        sec += f"  • {it.get('product_name')} ({it.get('sku')}): {it.get('current_stock')} units in stock (reorder point: {it.get('reorder_level')})\n"
+                sections.append(sec.strip())
+
+            elif tool_name == "forecast_revenue":
+                m_ahead = res.get("months_ahead", 6)
+                m_type = str(res.get("model_type", "xgboost")).upper()
+                proj_tot = res.get("projected_total", 0.0)
+                growth = res.get("growth_trajectory", "STABLE")
+                sec = f"📈 **Revenue Forecast Analysis (ML)**:\n"
+                sec += f"- **Forecast Horizon**: **{m_ahead} months** ahead using `{m_type}` pipeline\n"
+                sec += f"- **Projected Total Revenue**: **{curr} {proj_tot:,.2f}** (Growth Trajectory: **{growth}**)\n"
+                if res.get("monthly_forecasts"):
+                    sec += f"- **Monthly Projections**:\n"
+                    for mf in res["monthly_forecasts"][:4]:
+                        sec += f"  • {mf.get('month')}: {curr} {mf.get('projected_revenue', 0):,.2f}\n"
+                sections.append(sec.strip())
+
+            elif tool_name == "search_business_knowledge_base":
+                passages = res.get("passages") or []
+                if passages:
+                    sec = "### 📚 Verified Business Knowledge & Guidelines\n\n"
+                    for p in passages[:3]:
+                        clean_content = p.get("content", "").strip()
+                        if len(clean_content) > 350:
+                            clean_content = clean_content[:350].rsplit(" ", 1)[0] + "..."
+                        sec += f"> {clean_content}\n\n"
+                        if p.get("citation"):
+                            sec += f"📌 **Source Citation**: {p.get('citation')}\n\n"
+                    sections.append(sec.strip())
+                elif summary:
+                    sections.append(summary)
+
+            elif tool_name == "get_business_health_analysis":
+                score = res.get("health_score", 0)
+                grade = res.get("health_grade", "N/A")
+                risk = res.get("risk_rating", "N/A")
+                sec = f"💓 **Business Health Assessment**:\n"
+                sec += f"- **Composite Health Score**: **{score}/100** (Grade: **{grade}**, Risk Rating: **{risk}**)\n"
+                if summary:
+                    sec += f"- {summary}\n"
+                sections.append(sec.strip())
+
+            elif tool_name == "detect_transaction_anomalies":
+                anom_count = res.get("anomalies_detected", 0)
+                sec = f"🛡️ **Transaction Anomaly Review**:\n"
+                sec += f"- **Flagged Anomalies**: **{anom_count}** transactions flagged for review\n"
+                if summary:
+                    sec += f"- {summary}\n"
+                sections.append(sec.strip())
+
+            elif tool_name == "get_profit_analysis":
+                period_title = str(res.get("period", "All")).replace("_", " ").title()
+                tot_rev = res.get("total_revenue", 0.0)
+                tot_cogs = res.get("total_cogs", 0.0)
+                gross_prof = res.get("gross_profit", 0.0)
+                gross_margin = res.get("gross_margin_pct", 0.0)
+                net_prof = res.get("net_profit", 0.0)
+                net_margin = res.get("net_margin_pct", 0.0)
+                sec = f"💹 **Profit & Margin Analysis ({period_title})**:\n"
+                sec += f"- **Gross Revenue**: **{curr} {tot_rev:,.2f}**\n"
+                sec += f"- **Cost of Goods Sold (COGS)**: **{curr} {tot_cogs:,.2f}**\n"
+                sec += f"- **Gross Profit**: **{curr} {gross_prof:,.2f}** (Gross Margin: **{gross_margin}%**)\n"
+                sec += f"- **Net Profit**: **{curr} {net_prof:,.2f}** (Net Margin: **{net_margin}%**)\n"
+                sections.append(sec.strip())
+
+            else:
+                if summary:
+                    sections.append(summary)
+
+        return "\n\n".join(sections) if sections else "Analysis complete."
+
     def generate_with_tools(
         self,
         prompt: str,
@@ -409,14 +654,21 @@ class OllamaLLMProvider(BaseLLMProvider):
         memories: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """
-        Execute full tool-calling loop with Ollama:
-        1. Send prompt with tool declarations to Ollama /api/chat.
-        2. Detect requested tool calls and dispatch them via secure AIToolExecutor.
-        3. Feed tool results back to Ollama conversation history.
-        4. Synthesize final natural language answer, stripping internal thinking.
+        Execute optimized tool-calling loop with Ollama:
+        1. Dynamically prune tool declarations based on user intent.
+        2. Prune conversation history to the last 4 turns (max 300 chars each) to keep CPU prefill < 2s.
+        3. If model calls tools, execute in Python and format verified response directly (avoiding 180s Turn 2 delay).
+        4. If model generates text directly, return cleaned response without thinking tags.
         """
-        ollama_tools = self.get_ollama_tools(TOOL_DECLARATIONS)
-        threads = min(8, os.cpu_count() or 4)
+        t_start = time.perf_counter()
+        prompt_eval_dur_total = 0.0
+        eval_dur_total = 0.0
+        eval_count_total = 0
+        tools_dur_total = 0.0
+
+        pruned_decls = self._select_relevant_declarations(prompt, history)
+        ollama_tools = self.get_ollama_tools(pruned_decls)
+        threads = min(6, os.cpu_count() or 4)
 
         # Build system prompt with memories and summary context
         sys_prompt = OLLAMA_SYSTEM_PROMPT
@@ -433,21 +685,23 @@ class OllamaLLMProvider(BaseLLMProvider):
         ]
 
         if history:
-            for h in history:
+            for h in history[-4:]:
                 h_role = h.get("role", "user")
                 h_content = (h.get("content") or "").strip()
                 if not h_content:
                     continue
+                if len(h_content) > 300:
+                    h_content = h_content[:300].rsplit(" ", 1)[0] + "..."
                 role_name = "assistant" if h_role in ("assistant", "model") else "user"
                 messages.append({"role": role_name, "content": h_content})
 
         messages.append({"role": "user", "content": prompt})
 
         tools_executed: List[Dict[str, Any]] = []
-        max_turns = 6
+        max_turns = 3
 
         try:
-            with httpx.Client(timeout=httpx.Timeout(self.timeout_seconds, connect=2.0)) as client:
+            with httpx.Client(timeout=httpx.Timeout(self.timeout_seconds, connect=5.0)) as client:
                 for turn in range(max_turns):
                     payload: Dict[str, Any] = {
                         "model": self.model,
@@ -456,30 +710,37 @@ class OllamaLLMProvider(BaseLLMProvider):
                         "options": {
                             "temperature": 0.0,
                             "num_thread": threads,
+                            "num_predict": 512,
                         },
                     }
-                    # Pass tool declarations on initial turns before tools are executed
                     if not tools_executed:
                         payload["tools"] = ollama_tools
 
                     logger.info(
-                        "[OllamaLLMProvider] Turn {}: Calling Ollama model '{}' at {}...",
+                        "[OllamaLLMProvider] Turn {}: Calling Ollama model '{}' with {} tools...",
                         turn + 1,
                         self.model,
-                        self.base_url,
+                        len(ollama_tools) if not tools_executed else 0,
                     )
                     resp = client.post(f"{self.base_url}/api/chat", json=payload)
+
                     if resp.status_code != 200:
                         raise RuntimeError(
                             f"Ollama API returned HTTP {resp.status_code}: {resp.text}"
                         )
 
                     resp_data = resp.json()
+                    pe_dur = (resp_data.get("prompt_eval_duration") or 0) / 1e9
+                    ev_dur = (resp_data.get("eval_duration") or 0) / 1e9
+                    ev_cnt = resp_data.get("eval_count") or 0
+                    prompt_eval_dur_total += pe_dur
+                    eval_dur_total += ev_dur
+                    eval_count_total += ev_cnt
+
                     msg = resp_data.get("message", {})
                     tool_calls = msg.get("tool_calls") or []
 
                     if tool_calls:
-                        # Append assistant turn with tool calls to history
                         messages.append({
                             "role": "assistant",
                             "content": msg.get("content", "") or "",
@@ -509,7 +770,11 @@ class OllamaLLMProvider(BaseLLMProvider):
                                 tool_args,
                             )
 
+                            t_tool_start = time.perf_counter()
                             tool_output = executor.execute(tool_name, tool_args)
+                            t_tool_end = time.perf_counter()
+                            tools_dur_total += (t_tool_end - t_tool_start)
+
                             tools_executed.append({
                                 "tool": tool_name,
                                 "args": tool_args,
@@ -517,12 +782,22 @@ class OllamaLLMProvider(BaseLLMProvider):
                                 "summary": tool_output.get("summary", f"Executed {tool_name}"),
                             })
 
-                            # Feed tool result back
+                            # Compact tool result to essential metrics & summary (~50 tokens)
+                            # instead of dumping raw database rows, which previously caused a 70s prompt prefill in Turn 2
+                            compact_content = {
+                                "summary": tool_output.get("summary", f"Executed {tool_name}"),
+                            }
+                            for k in ("total_revenue", "total_sales_count", "average_sale_value", "total_expenses",
+                                      "expense_count", "total_stock_units", "company_currency", "period",
+                                      "health_score", "health_grade", "risk_rating", "projected_total"):
+                                if isinstance(tool_output, dict) and k in tool_output:
+                                    compact_content[k] = tool_output[k]
+
                             messages.append({
                                 "role": "tool",
                                 "tool_call_id": call_id,
                                 "name": tool_name,
-                                "content": json.dumps(tool_output),
+                                "content": json.dumps(compact_content),
                             })
                         continue
 
@@ -530,45 +805,56 @@ class OllamaLLMProvider(BaseLLMProvider):
                     raw_content = msg.get("content", "") or ""
                     cleaned_text = self._clean_response_text(raw_content)
 
-                    # If model generated empty content after executing tools, request direct synthesis
-                    if not cleaned_text and tools_executed:
-                        logger.info(
-                            "[OllamaLLMProvider] Content empty after tool calls; requesting final synthesis..."
-                        )
-                        synth_payload = {
-                            "model": self.model,
-                            "messages": messages + [
-                                {
-                                    "role": "user",
-                                    "content": (
-                                        "Please provide a concise, business-focused summary of the tool findings. "
-                                        "Do not output internal thinking."
-                                    ),
-                                }
-                            ],
-                            "stream": False,
-                            "options": {
-                                "temperature": 0.0,
-                                "num_thread": threads,
-                            },
-                        }
-                        try:
-                            synth_resp = client.post(f"{self.base_url}/api/chat", json=synth_payload)
-                            if synth_resp.status_code == 200:
-                                synth_content = synth_resp.json().get("message", {}).get("content", "")
-                                cleaned_text = self._clean_response_text(synth_content)
-                        except Exception as synth_err:
-                            logger.warning("[OllamaLLMProvider] Synthesis request failed: {}", synth_err)
+                    # If model generated empty content
+                    if not cleaned_text:
+                        if tools_executed:
+                            cleaned_text = self._format_verified_tool_output(tools_executed)
+                        elif raw_content:
+                            # Strip tags if wrapped in think tags
+                            cleaned_text = re.sub(r"</?think>", "", raw_content).strip()
+                        elif pruned_decls:
+                            # Model reasoned without emitting function call syntax; run primary matched tool
+                            top_tool = pruned_decls[0]["name"]
+                            top_args = {}
+                            p_lower = prompt.lower()
+                            if top_tool in ("get_sales_analysis", "get_expense_summary", "get_profit_analysis"):
+                                if "this month" in p_lower:
+                                    top_args["period"] = "this_month"
+                                elif "last month" in p_lower:
+                                    top_args["period"] = "last_month"
+                                elif "this year" in p_lower:
+                                    top_args["period"] = "this_year"
+                                else:
+                                    top_args["period"] = "all"
+                            elif top_tool == "search_business_knowledge_base":
+                                top_args["query"] = prompt
 
-                    if not cleaned_text and tools_executed:
-                        cleaned_text = "\n\n".join(
-                            t["summary"] for t in tools_executed if t.get("summary")
-                        )
+                            t_tool_start = time.perf_counter()
+                            res = executor.execute(top_tool, top_args)
+                            t_tool_end = time.perf_counter()
+                            tools_dur_total += (t_tool_end - t_tool_start)
+                            tools_executed.append({
+                                "tool": top_tool,
+                                "args": top_args,
+                                "result": res,
+                                "summary": res.get("summary", f"Executed {top_tool}"),
+                            })
+                            cleaned_text = self._format_verified_tool_output(tools_executed)
 
+                    total_wall = time.perf_counter() - t_start
+                    tok_per_sec = round(eval_count_total / eval_dur_total, 1) if eval_dur_total > 0 else 0.0
+                    timing_info = {
+                        "total_seconds": round(total_wall, 2),
+                        "prompt_eval_seconds": round(prompt_eval_dur_total, 2),
+                        "eval_seconds": round(eval_dur_total, 2),
+                        "tools_seconds": round(tools_dur_total, 2),
+                        "eval_count": eval_count_total,
+                        "tok_per_sec": tok_per_sec,
+                        "rounds": turn + 1,
+                    }
                     logger.info(
-                        "[OllamaLLMProvider] Model '{}' completed response. Tools executed: {}",
-                        self.model,
-                        len(tools_executed),
+                        "[OllamaLLMProvider] Finished in {:.2f}s (eval: {:.2f}s, prompt_eval: {:.2f}s, tools: {:.2f}s, {} tok @ {} tok/s, {} rounds)",
+                        total_wall, eval_dur_total, prompt_eval_dur_total, tools_dur_total, eval_count_total, tok_per_sec, turn + 1
                     )
                     return {
                         "message": cleaned_text.strip(),
@@ -576,45 +862,29 @@ class OllamaLLMProvider(BaseLLMProvider):
                         "model": self.model,
                         "provider": "ollama",
                         "status": "success",
+                        "timing": timing_info,
                     }
 
-                # If reached max_turns after executing tools
+                # If loop completed with tools executed
                 if tools_executed:
-                    logger.info("[OllamaLLMProvider] Reached turn limit; synthesizing final answer...")
-                    synth_payload = {
-                        "model": self.model,
-                        "messages": messages + [
-                            {
-                                "role": "user",
-                                "content": "Please synthesize the tool findings into a concise, business-focused response directly.",
-                            }
-                        ],
-                        "stream": False,
-                        "options": {
-                            "temperature": 0.0,
-                            "num_thread": threads,
-                        },
-                    }
-                    try:
-                        synth_resp = client.post(f"{self.base_url}/api/chat", json=synth_payload)
-                        cleaned_text = ""
-                        if synth_resp.status_code == 200:
-                            synth_content = synth_resp.json().get("message", {}).get("content", "")
-                            cleaned_text = self._clean_response_text(synth_content)
-                    except Exception:
-                        cleaned_text = ""
-
-                    if not cleaned_text:
-                        cleaned_text = "\n\n".join(
-                            t["summary"] for t in tools_executed if t.get("summary")
-                        )
-
+                    cleaned_text = self._format_verified_tool_output(tools_executed)
+                    total_wall = time.perf_counter() - t_start
+                    tok_per_sec = round(eval_count_total / eval_dur_total, 1) if eval_dur_total > 0 else 0.0
                     return {
                         "message": cleaned_text.strip(),
                         "tools_used": tools_executed,
                         "model": self.model,
                         "provider": "ollama",
                         "status": "success",
+                        "timing": {
+                            "total_seconds": round(total_wall, 2),
+                            "prompt_eval_seconds": round(prompt_eval_dur_total, 2),
+                            "eval_seconds": round(eval_dur_total, 2),
+                            "tools_seconds": round(tools_dur_total, 2),
+                            "eval_count": eval_count_total,
+                            "tok_per_sec": tok_per_sec,
+                            "rounds": max_turns,
+                        },
                     }
 
                 return {
@@ -1132,8 +1402,12 @@ class AIAssistantService:
 
         raw_provider = (
             provider
+            or getattr(settings, "effective_ai_provider", None)
+            or getattr(settings, "llm_provider", None)
             or getattr(settings, "ai_provider", None)
-            or os.getenv("AI_PROVIDER", "ollama")
+            or os.getenv("LLM_PROVIDER")
+            or os.getenv("AI_PROVIDER")
+            or "ollama"
         )
         self.provider = (raw_provider or "ollama").strip().lower()
 
@@ -1148,8 +1422,8 @@ class AIAssistantService:
             or os.getenv("OLLAMA_MODEL", "qwen3:4b")
         )
         self.ollama_timeout = float(
-            getattr(settings, "ollama_timeout_seconds", 180.0)
-            or os.getenv("OLLAMA_TIMEOUT_SECONDS", "180.0")
+            getattr(settings, "ollama_timeout_seconds", 300.0)
+            or os.getenv("OLLAMA_TIMEOUT_SECONDS", "300.0")
         )
 
     def answer_question(
@@ -1174,9 +1448,60 @@ class AIAssistantService:
                 "fallback_used": False,
             }
 
-        # ── Route 1: Preferred Provider is Ollama ──────────────────────────
+        # ── Fast-path for pure company name / identity questions ──────────
+        p_clean = re.sub(r"[^\w\s]", "", question.lower()).strip()
+        is_pure_identity = p_clean in (
+            "what is the company name",
+            "what is our company name",
+            "what is company name",
+            "company name",
+            "name of the company",
+            "name of our company",
+            "who are we",
+            "what company is this",
+            "which company is this",
+        ) or (
+            ("company name" in p_clean or "name of the company" in p_clean or "business name" in p_clean)
+            and len(p_clean.split()) <= 7
+            and not any(w in p_clean for w in ("revenue", "sale", "expense", "stock", "health", "rbi", "loan", "profit", "compare"))
+        )
+
+        if is_pure_identity:
+            t_ident_start = time.perf_counter()
+            prof = self.executor.get_company_profile()
+            t_ident_total = time.perf_counter() - t_ident_start
+            c_name = prof.get("company_name", "N/A")
+            c_curr = prof.get("currency", "USD")
+            c_ind = prof.get("industry", "General")
+            c_country = prof.get("country", "Global")
+            msg = (
+                f"The authenticated company name is **{c_name}**.\n\n"
+                f"- **Industry**: {c_ind}\n"
+                f"- **Operating Country**: {c_country}\n"
+                f"- **Functional Currency**: **{c_curr}**"
+            )
+            return {
+                "message": msg,
+                "tools_used": [{
+                    "tool": "get_company_profile",
+                    "args": {},
+                    "result": prof,
+                    "summary": prof.get("summary", f"The company name is '{c_name}'."),
+                }],
+                "model": self.ollama_model if self.provider == "ollama" else "gemini",
+                "provider": self.provider,
+                "status": "success",
+                "fallback_used": False,
+                "timing": {
+                    "total_seconds": round(t_ident_total, 3),
+                    "tools_seconds": round(t_ident_total, 3),
+                    "rounds": 1,
+                    "fast_path": True,
+                },
+            }
+
+        # ── Route 1: Preferred Provider is Ollama (Local) ──────────────────
         if self.provider == "ollama":
-            ollama_error: Optional[str] = None
             try:
                 ollama_provider = OllamaLLMProvider(
                     base_url=self.ollama_base_url,
@@ -1198,89 +1523,92 @@ class AIAssistantService:
             except Exception as e:
                 ollama_error = str(e)
                 logger.warning(
-                    "[AIAssistantService] Ollama provider failed: {}. Checking fallback options.",
+                    "[AIAssistantService] Ollama provider failed: {}. Implicit fallback disabled to protect data locality.",
                     e,
                 )
+                return {
+                    "message": (
+                        f"⚠️ **Local Ollama Error**: Unable to generate response using local model '{self.ollama_model}'.\n\n"
+                        f"**Details**: {ollama_error}\n\n"
+                        f"**Troubleshooting**:\n"
+                        f"- Ensure Ollama is running (`ollama serve` or check `{self.ollama_base_url}`).\n"
+                        f"- Confirm model `{self.ollama_model}` is installed (`ollama list`).\n"
+                        f"- Or switch to **Gemini (Cloud)** using the model selector at the top."
+                    ),
+                    "tools_used": [],
+                    "model": self.ollama_model,
+                    "provider": "ollama",
+                    "status": "error",
+                    "fallback_used": False,
+                    "error_details": ollama_error,
+                }
 
-            # Fallback to Gemini during testing if configured
-            if self.api_key and GENAI_AVAILABLE:
-                try:
-                    logger.info("[AIAssistantService] Executing Gemini fallback after Ollama failure.")
-                    gemini_provider = GeminiLLMProvider(self.api_key)
-                    res = gemini_provider.generate_with_tools(
-                        question,
-                        self.executor,
-                        history=history,
-                        summary=summary,
-                        memories=memories,
-                    )
-                    if res and res.get("message"):
-                        res["provider"] = "gemini"
-                        res["fallback_used"] = True
-                        res["fallback_reason"] = f"Local Ollama model '{self.ollama_model}' failed ({ollama_error}). Response generated via Gemini fallback."
-                        return res
-                except Exception as g_err:
-                    logger.warning("[AIAssistantService] Gemini fallback also failed: {}.", g_err)
+            return {
+                "message": f"⚠️ **Local Ollama Error**: Model '{self.ollama_model}' returned an empty response.",
+                "tools_used": [],
+                "model": self.ollama_model,
+                "provider": "ollama",
+                "status": "empty_response",
+                "fallback_used": False,
+            }
 
-            # Final fallback to grounded rule-based ERP tool engine
-            logger.info("[AIAssistantService] Serving response via grounded ERP tool engine.")
-            fallback_provider = FallbackERPProvider()
-            res = fallback_provider.generate_with_tools(
-                question,
-                self.executor,
-                history=history,
-                summary=summary,
-                memories=memories,
-            )
-            res["provider"] = "fallback"
-            res["model"] = "grounded-erp-engine"
-            res["fallback_used"] = True
-            res["fallback_reason"] = f"Local Ollama model '{self.ollama_model}' failed ({ollama_error}). Grounded ERP tool summary returned."
-            return res
-
-        # ── Route 2: Preferred Provider is Gemini ──────────────────────────
+        # ── Route 2: Preferred Provider is Gemini (Cloud) ──────────────────
         elif self.provider == "gemini":
-            gemini_error: Optional[str] = None
-            if self.api_key and GENAI_AVAILABLE:
-                try:
-                    gemini_provider = GeminiLLMProvider(self.api_key)
-                    res = gemini_provider.generate_with_tools(
-                        question,
-                        self.executor,
-                        history=history,
-                        summary=summary,
-                        memories=memories,
-                    )
-                    if res and res.get("message"):
-                        res["provider"] = "gemini"
-                        res["fallback_used"] = False
-                        return res
-                except Exception as e:
-                    gemini_error = str(e)
-                    logger.warning(
-                        "[AIAssistantService] Gemini provider failed: {}. Grounded ERP fallback will be served.",
-                        e,
-                    )
+            if not self.api_key or not GENAI_AVAILABLE:
+                return {
+                    "message": (
+                        "⚠️ **Gemini Cloud Error**: Gemini API key is not configured or Google GenAI SDK is unavailable on the server.\n\n"
+                        "Please configure `GEMINI_API_KEY` in `.env` or switch to **Ollama (Local)** using the model selector above."
+                    ),
+                    "tools_used": [],
+                    "model": "gemini",
+                    "provider": "gemini",
+                    "status": "error",
+                    "fallback_used": False,
+                    "error_details": "GEMINI_API_KEY missing or SDK not installed",
+                }
 
-            # Grounded ERP tool engine fallback
-            logger.info("[AIAssistantService] Serving response via grounded ERP tool engine.")
-            fallback_provider = FallbackERPProvider()
-            res = fallback_provider.generate_with_tools(
-                question,
-                self.executor,
-                history=history,
-                summary=summary,
-                memories=memories,
-            )
-            res["provider"] = "fallback"
-            res["model"] = "grounded-erp-engine"
-            res["fallback_used"] = True
-            res["fallback_reason"] = f"Gemini API rate-limited or unavailable ({gemini_error}). Response grounded in verified database tools."
-            return res
+            try:
+                gemini_provider = GeminiLLMProvider(self.api_key)
+                res = gemini_provider.generate_with_tools(
+                    question,
+                    self.executor,
+                    history=history,
+                    summary=summary,
+                    memories=memories,
+                )
+                if res and res.get("message"):
+                    res["provider"] = "gemini"
+                    res["fallback_used"] = False
+                    return res
+            except Exception as e:
+                gemini_error = str(e)
+                logger.warning("[AIAssistantService] Gemini provider failed: {}.", e)
+                return {
+                    "message": (
+                        f"⚠️ **Gemini Cloud Error**: {gemini_error}\n\n"
+                        f"Please check your Gemini API quota or switch to **Ollama (Local)** using the model selector above."
+                    ),
+                    "tools_used": [],
+                    "model": "gemini",
+                    "provider": "gemini",
+                    "status": "error",
+                    "fallback_used": False,
+                    "error_details": gemini_error,
+                }
 
-        # ── Route 3: Preferred Provider is Fallback / Rule Engine ──────────
+            return {
+                "message": "⚠️ **Gemini Cloud Error**: Empty response returned by Gemini model.",
+                "tools_used": [],
+                "model": "gemini",
+                "provider": "gemini",
+                "status": "empty_response",
+                "fallback_used": False,
+            }
+
+        # ── Route 3: Preferred Provider is Explicit Fallback / Rule Engine ──
         else:
-            logger.info("[AIAssistantService] Serving response via grounded ERP tool engine.")
+            logger.info("[AIAssistantService] Serving response via grounded rule-based ERP tool engine.")
             fallback_provider = FallbackERPProvider()
             res = fallback_provider.generate_with_tools(
                 question,

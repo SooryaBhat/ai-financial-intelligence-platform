@@ -18,12 +18,15 @@ import {
   Wrench,
   ChevronDown,
   ChevronRight,
+  Mic,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { ToolCallExecution } from '@/services/erp.service'
 import { chatService } from '@/services/chat.service'
 import { useAuth } from '@/hooks/useAuth'
+import { VoiceConversationModal } from '@/components/voice/VoiceConversationModal'
+import { ModelSelector } from '@/components/chat/ModelSelector'
 
 interface ChatMessage {
   id: string
@@ -54,11 +57,29 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
   const [input, setInput] = useState('')
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [providerInfo, setProviderInfo] = useState<{ provider: string; model?: string }>({
-    provider: 'gemini',
-    model: '2.5-flash',
+
+  // Default provider: Ollama (Local qwen3:4b), with user preference persistence
+  const [selectedProvider, setSelectedProvider] = useState<'ollama' | 'gemini'>(() => {
+    const saved = localStorage.getItem('alladin_llm_provider')
+    return saved === 'gemini' ? 'gemini' : 'ollama'
   })
+
+  const [_providerInfo, setProviderInfo] = useState<{ provider: string; model?: string }>({
+    provider: selectedProvider,
+    model: selectedProvider === 'ollama' ? 'qwen3:4b' : '2.5-flash',
+  })
+
+  const handleSelectProvider = (prov: 'ollama' | 'gemini') => {
+    setSelectedProvider(prov)
+    localStorage.setItem('alladin_llm_provider', prov)
+    setProviderInfo({
+      provider: prov,
+      model: prov === 'ollama' ? 'qwen3:4b' : '2.5-flash',
+    })
+  }
+
   const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>({})
 
 
@@ -164,7 +185,7 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
     setError(null)
 
     try {
-      const response = await chatService.sendMessage(text, activeSessionId || undefined)
+      const response = await chatService.sendMessage(text, activeSessionId || undefined, selectedProvider)
 
       if (response?.session_id) {
         setActiveSessionId(response.session_id)
@@ -273,6 +294,14 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
 
             <div className="flex items-center gap-1">
               <button
+                onClick={() => setIsVoiceModalOpen(true)}
+                title="Start Voice Mode with Alladin"
+                className="px-2 py-1 rounded-md text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors flex items-center gap-1"
+              >
+                <Mic className="w-3.5 h-3.5" />
+                <span>Voice</span>
+              </button>
+              <button
                 onClick={() => {
                   onClose()
                   navigate(activeSessionId ? `/ml/chat?session_id=${activeSessionId}` : '/ml/chat')
@@ -299,19 +328,17 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
             </div>
           </div>
 
-          {/* Context Notice Banner */}
-          <div className="px-4 py-2 bg-teal-50/70 border-b border-teal-100/60 flex items-center justify-between text-[11px] text-teal-800">
-            <span className="flex items-center gap-1.5 truncate">
+          {/* Context Notice Banner with Model Selector */}
+          <div className="px-3 py-1.5 bg-teal-50/70 border-b border-teal-100/60 flex items-center justify-between text-[11px] text-teal-800">
+            <span className="flex items-center gap-1.5 truncate mr-2">
               <Info className="w-3.5 h-3.5 shrink-0 text-teal-600" />
               <span className="truncate">Context active: {location.pathname}</span>
             </span>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-teal-700 bg-white/70 px-1.5 py-0.5 rounded border border-teal-200/50">
-              {providerInfo.provider === 'ollama'
-                ? `Ollama (${providerInfo.model || 'qwen3:4b'})`
-                : providerInfo.provider === 'gemini'
-                ? 'Gemini Grounded'
-                : 'ERP Grounded'}
-            </span>
+            <ModelSelector
+              compact
+              selectedProvider={selectedProvider}
+              onSelectProvider={handleSelectProvider}
+            />
           </div>
 
           {/* Messages Container */}
@@ -409,14 +436,30 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
             {error && (
               <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 space-y-2">
                 <p>{error}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleSend(messages[messages.length - 1]?.content)}
-                  leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
-                >
-                  Retry Query
-                </Button>
+                <div className="flex items-center gap-2">
+                  {selectedProvider === 'ollama' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-teal-300 text-teal-800 hover:bg-teal-50 text-[11px]"
+                      onClick={() => {
+                        handleSelectProvider('gemini')
+                        handleSend(messages[messages.length - 1]?.content)
+                      }}
+                    >
+                      Switch to Gemini & Retry
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-rose-300 text-rose-800 hover:bg-rose-100 text-[11px]"
+                    onClick={() => handleSend(messages[messages.length - 1]?.content)}
+                    leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+                  >
+                    Retry Query
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -460,16 +503,26 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
                   placeholder="Ask a question about your sales, forecasts, or inventory (Enter to send)..."
                   rows={2}
                   disabled={isLoading}
-                  className="w-full text-xs p-2.5 pr-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 focus:border-teal-600 resize-none bg-slate-50 placeholder:text-slate-400"
+                  className="w-full text-xs p-2.5 pr-16 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-600 focus:border-teal-600 resize-none bg-slate-50 placeholder:text-slate-400"
                 />
-                <button
-                  type="submit"
-                  disabled={!input.trim() || isLoading}
-                  className="absolute right-2.5 bottom-3 p-1.5 rounded-md bg-teal-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-teal-700 transition-colors shadow-sm"
-                  title="Send message"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                </button>
+                <div className="absolute right-2 bottom-2.5 flex items-center space-x-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsVoiceModalOpen(true)}
+                    className="p-1.5 rounded-md text-slate-400 hover:text-teal-700 hover:bg-teal-50 transition-colors"
+                    title="Open Voice Mode with Alladin"
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!input.trim() || isLoading}
+                    className="p-1.5 rounded-md bg-teal-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-teal-700 transition-colors shadow-sm"
+                    title="Send message"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
@@ -480,6 +533,17 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Voice Assistant Conversation Modal */}
+      {isVoiceModalOpen && (
+        <VoiceConversationModal
+          isOpen={isVoiceModalOpen}
+          onClose={() => setIsVoiceModalOpen(false)}
+          activeSessionId={activeSessionId}
+          onSessionUpdated={(newSid) => setActiveSessionId(newSid)}
+          companyName={activeCompany?.company_name}
+        />
+      )}
     </div>
   )
 }
