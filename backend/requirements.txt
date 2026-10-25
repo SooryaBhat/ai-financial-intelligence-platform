@@ -8,7 +8,7 @@ fastapi==0.115.5
 uvicorn[standard]==0.32.1
 
 # Supabase SDK (gotrue is bundled — do NOT pin separately)
-supabase==2.10.0
+supabase==2.13.0
 
 # Data validation
 pydantic[email]==2.10.3
@@ -19,7 +19,7 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 
 # HTTP client (used by supabase SDK internally)
-httpx==0.27.2
+httpx==0.28.1
 
 # Environment variables
 python-dotenv==1.0.1
@@ -34,7 +34,7 @@ python-multipart==0.0.12
 python-dateutil==2.9.0.post0
 
 # Gemini AI SDK
-google-genai>=2.0.0
+google-genai==2.8.0
 
 # ──────────────────────────────────────────────────────────────
 # Dev / Testing
