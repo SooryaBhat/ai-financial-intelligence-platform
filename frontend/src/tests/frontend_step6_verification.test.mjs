@@ -169,14 +169,28 @@ describe('ALLADIN Step 6 — Frontend API Client & Contracts Verification', () =
     const PRODUCTION_API_URL = 'https://ai-financial-intelligence-platform-89re.onrender.com'
     const LOCAL_DEV_API_URL = 'http://localhost:8000'
 
-    function resolveApiBaseUrl(envBaseUrl, envLegacyUrl, isProd) {
+    function isProductionEnvironment(explicitProd, mockHostname) {
+      if (typeof explicitProd === 'boolean') {
+        return explicitProd
+      }
+      if (mockHostname) {
+        const host = mockHostname.toLowerCase()
+        if (host !== 'localhost' && host !== '127.0.0.1' && !host.endsWith('.local')) {
+          return true
+        }
+      }
+      return false
+    }
+
+    function resolveApiBaseUrl(envBaseUrl, envLegacyUrl, isProd, mockHostname) {
+      const prod = isProductionEnvironment(isProd, mockHostname)
       const raw = (envBaseUrl || envLegacyUrl || '').trim()
 
       if (raw) {
         let sanitized = raw.replace(/\/+$/, '')
         sanitized = sanitized.replace(/\/api\/v1$/, '').replace(/\/api$/, '')
 
-        if (isProd) {
+        if (prod) {
           const isLocal = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?/i.test(sanitized)
           if (isLocal) {
             return PRODUCTION_API_URL
@@ -185,7 +199,7 @@ describe('ALLADIN Step 6 — Frontend API Client & Contracts Verification', () =
         return sanitized
       }
 
-      return isProd ? PRODUCTION_API_URL : LOCAL_DEV_API_URL
+      return prod ? PRODUCTION_API_URL : LOCAL_DEV_API_URL
     }
 
     // 1. Production with explicit Render URL
@@ -218,17 +232,27 @@ describe('ALLADIN Step 6 — Frontend API Client & Contracts Verification', () =
       PRODUCTION_API_URL
     )
 
-    // 6. Local development -> preserves localhost:8000
+    // 6. Deployed Vercel host detection -> even if env variable is undefined, resolves to Render URL
     assert.equal(
-      resolveApiBaseUrl('http://localhost:8000', undefined, false),
+      resolveApiBaseUrl(undefined, undefined, undefined, 'ai-financial-intelligence-platform-8gku08g6h.vercel.app'),
+      PRODUCTION_API_URL
+    )
+    assert.equal(
+      resolveApiBaseUrl('http://localhost:8000', undefined, undefined, 'ai-financial-intelligence-platform.vercel.app'),
+      PRODUCTION_API_URL
+    )
+
+    // 7. Local development -> preserves localhost:8000
+    assert.equal(
+      resolveApiBaseUrl('http://localhost:8000', undefined, false, 'localhost'),
       LOCAL_DEV_API_URL
     )
     assert.equal(
-      resolveApiBaseUrl(undefined, undefined, false),
+      resolveApiBaseUrl(undefined, undefined, false, 'localhost'),
       LOCAL_DEV_API_URL
     )
 
-    // 7. Login endpoint URL resolution has no duplicate prefixes or double slashes
+    // 8. Login endpoint URL resolution has no duplicate prefixes or double slashes
     const base = resolveApiBaseUrl(PRODUCTION_API_URL, undefined, true)
     const loginEndpoint = `${base}/api/v1/auth/login`
     assert.equal(loginEndpoint, 'https://ai-financial-intelligence-platform-89re.onrender.com/api/v1/auth/login')

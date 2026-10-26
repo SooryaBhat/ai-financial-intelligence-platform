@@ -84,3 +84,24 @@ def test_cors_no_wildcard_with_credentials(client: TestClient):
         )
         assert response.headers.get("access-control-allow-origin") != "*"
         assert response.headers.get("access-control-allow-credentials") == "true"
+
+
+def test_cors_vercel_preview_subdomains_allowed(client: TestClient):
+    """Vercel production and preview subdomains for ALLADIN are permitted."""
+    vercel_origins = [
+        "https://ai-financial-intelligence-platform.vercel.app",
+        "https://ai-financial-intelligence-platform-8gku08g6h.vercel.app",
+        "https://ai-financial-intelligence-platform-git-main.vercel.app",
+    ]
+    for origin in vercel_origins:
+        response = client.options(
+            "/api/v1/auth/login",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type,authorization",
+            },
+        )
+        assert response.status_code == 200, f"Expected 200 for {origin}, got {response.status_code}"
+        assert response.headers.get("access-control-allow-origin") == origin
+

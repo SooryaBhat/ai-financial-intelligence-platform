@@ -4,26 +4,45 @@ export const PRODUCTION_API_URL = 'https://ai-financial-intelligence-platform-89
 export const LOCAL_DEV_API_URL = 'http://localhost:8000'
 
 /**
+ * Determines whether the code is running in a production environment:
+ * 1. If running in a browser, checks if window.location.hostname is NOT localhost/127.0.0.1.
+ * 2. Falls back to Vite's import.meta.env.PROD.
+ */
+export function isProductionEnvironment(explicitProd?: boolean): boolean {
+  if (typeof explicitProd === 'boolean') {
+    return explicitProd
+  }
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const host = window.location.hostname.toLowerCase()
+    if (host !== 'localhost' && host !== '127.0.0.1' && !host.endsWith('.local')) {
+      return true
+    }
+  }
+  return Boolean(import.meta.env.PROD)
+}
+
+/**
  * Resolves the API base URL:
  * 1. Prioritizes VITE_API_BASE_URL, with fallback to legacy VITE_API_URL.
  * 2. Trims whitespace and trailing slashes.
  * 3. Strips trailing '/api/v1' or '/api' suffixes to prevent duplicated API prefixes.
- * 4. In production mode (import.meta.env.PROD), never silently falls back to localhost:
+ * 4. In production mode (or on deployed host), never silently falls back to localhost:
  *    if the resolved URL is empty or points to localhost/127.0.0.1, it defaults to PRODUCTION_API_URL.
  * 5. In local development (import.meta.env.DEV), preserves localhost:8000.
  */
 export function resolveApiBaseUrl(
   envBaseUrl?: string,
   envLegacyUrl?: string,
-  isProd: boolean = import.meta.env.PROD
+  isProd?: boolean
 ): string {
+  const prod = isProductionEnvironment(isProd)
   const raw = (envBaseUrl || envLegacyUrl || '').trim()
 
   if (raw) {
     let sanitized = raw.replace(/\/+$/, '')
     sanitized = sanitized.replace(/\/api\/v1$/, '').replace(/\/api$/, '')
 
-    if (isProd) {
+    if (prod) {
       const isLocal = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?/i.test(sanitized)
       if (isLocal) {
         return PRODUCTION_API_URL
@@ -32,7 +51,7 @@ export function resolveApiBaseUrl(
     return sanitized
   }
 
-  return isProd ? PRODUCTION_API_URL : LOCAL_DEV_API_URL
+  return prod ? PRODUCTION_API_URL : LOCAL_DEV_API_URL
 }
 
 export const API_BASE_URL = resolveApiBaseUrl(
@@ -45,7 +64,7 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 60000,
 })
 
 // Request Interceptor: Attach JWT & X-Company-ID

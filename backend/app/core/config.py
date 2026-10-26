@@ -92,9 +92,12 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         """Return CORS origins as a list, guaranteed to include the production Vercel frontend."""
         origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
-        prod_origin = "https://ai-financial-intelligence-platform-8gku08g6h.vercel.app"
-        if prod_origin not in origins:
-            origins.append(prod_origin)
+        for prod_origin in [
+            "https://ai-financial-intelligence-platform-8gku08g6h.vercel.app",
+            "https://ai-financial-intelligence-platform.vercel.app",
+        ]:
+            if prod_origin not in origins:
+                origins.append(prod_origin)
         return origins
 
     @property

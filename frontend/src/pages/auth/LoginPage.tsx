@@ -33,6 +33,10 @@ export const LoginPage: React.FC = () => {
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: 'supermarket.demo@alladin.ai',
+      password: 'Password123!',
+    },
   })
 
   const onSubmit = async (data: LoginFormData) => {
@@ -48,21 +52,27 @@ export const LoginPage: React.FC = () => {
         if (!err.response) {
           // Network error, CORS failure, or server unreachable
           if (err.code === 'ECONNABORTED' || err.message?.toLowerCase().includes('timeout')) {
-            errorMessage = 'Authentication request timed out. Please try again.'
+            errorMessage = 'Authentication request timed out. The backend service may be waking up from cold sleep; please retry.'
           } else {
-            errorMessage = 'Unable to connect to the server. Please check your network or verify the backend service is running.'
+            errorMessage = 'Unable to connect to the backend server. Please verify network connectivity or check if the backend service is waking up.'
           }
         } else if (err.response.status === 401 || err.response.status === 400) {
           // Genuine authentication failure
-          const detail = err.response.data?.detail || err.response.data?.message
+          const detail =
+            err.response.data?.error?.message ||
+            err.response.data?.detail ||
+            err.response.data?.message
           errorMessage = typeof detail === 'string' ? detail : 'Invalid email or password'
         } else if (err.response.status === 429) {
           errorMessage = 'Too many login attempts. Please wait a moment and try again.'
         } else if (err.response.status >= 500) {
-          const detail = err.response.data?.detail
+          const detail = err.response.data?.error?.message || err.response.data?.detail
           errorMessage = typeof detail === 'string' ? detail : 'Authentication service is temporarily unavailable. Please try again later.'
         } else {
-          const detail = err.response.data?.detail || err.response.data?.message
+          const detail =
+            err.response.data?.error?.message ||
+            err.response.data?.detail ||
+            err.response.data?.message
           errorMessage = typeof detail === 'string' ? detail : 'Authentication failed. Please verify your credentials.'
         }
       } else if (err instanceof Error) {
@@ -133,6 +143,18 @@ export const LoginPage: React.FC = () => {
           Sign in to Workspace
         </Button>
       </form>
+
+      {/* Verified Demo Account Helper */}
+      <div className="rounded-xl bg-teal-50/80 border border-teal-200/70 p-3 text-xs text-teal-900 space-y-1">
+        <div className="font-semibold flex items-center justify-between">
+          <span>Verified Demo Credentials</span>
+          <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 bg-teal-200/60 rounded text-teal-800">Production</span>
+        </div>
+        <div className="text-[11px] text-teal-700 flex flex-col gap-0.5 font-mono">
+          <div>Email: <strong className="font-semibold text-teal-900">supermarket.demo@alladin.ai</strong></div>
+          <div>Password: <strong className="font-semibold text-teal-900">Password123!</strong></div>
+        </div>
+      </div>
 
       <div className="text-center text-xs text-slate-500 pt-3 border-t border-slate-100">
         New to ALLADIN?{' '}
