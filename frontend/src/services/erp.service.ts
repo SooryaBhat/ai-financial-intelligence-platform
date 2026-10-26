@@ -144,6 +144,11 @@ export interface ChatAssistantResponse {
 }
 
 export const mlService = {
+  async getModelRegistry(): Promise<Record<string, any>> {
+    const response = await api.get<ApiSuccessResponse<Record<string, any>>>('/api/v1/ml/models/registry')
+    return response.data.data || {}
+  },
+
   async predictRevenue(params?: {
     monthsAhead?: number
     modelType?: string
@@ -152,7 +157,7 @@ export const mlService = {
   }): Promise<RevenuePredictionResponse> {
     const response = await api.post<ApiSuccessResponse<RevenuePredictionResponse>>('/api/v1/ml/revenue/predict', {
       months_ahead: params?.monthsAhead ?? 6,
-      model_type: params?.modelType ?? 'xgboost',
+      model_type: params?.modelType ?? 'aagf',
       branch_id: params?.branchId,
       historical_revenue: params?.historicalRevenue,
     })
@@ -169,7 +174,7 @@ export const mlService = {
   }): Promise<SalesPredictionResponse> {
     const response = await api.post<ApiSuccessResponse<SalesPredictionResponse>>('/api/v1/ml/sales/predict', {
       entity_type: params?.entityType ?? 'product',
-      model_type: params?.modelType ?? 'xgboost',
+      model_type: params?.modelType ?? 'product_profile',
       months_ahead: params?.monthsAhead ?? 3,
       entity_id: params?.entityId,
       branch_id: params?.branchId,
@@ -181,6 +186,7 @@ export const mlService = {
   async predictInventory(params?: {
     productId?: string
     productName?: string
+    modelType?: string
     currentStock?: number
     unitCost?: number
     leadTimeDays?: number
@@ -190,6 +196,7 @@ export const mlService = {
     const response = await api.post<ApiSuccessResponse<InventoryPredictionResponse>>('/api/v1/ml/inventory/predict', {
       product_id: params?.productId,
       product_name: params?.productName,
+      model_type: params?.modelType ?? 'lightgbm',
       current_stock: params?.currentStock,
       unit_cost: params?.unitCost ?? 10.0,
       lead_time_days: params?.leadTimeDays ?? 14,
@@ -200,12 +207,14 @@ export const mlService = {
   },
 
   async predictProfit(params?: {
+    modelType?: string
     projectedRevenue?: number
     branchId?: string
     historicalProfits?: number[]
     historicalRevenues?: number[]
   }): Promise<ProfitPredictionResponse> {
     const response = await api.post<ApiSuccessResponse<ProfitPredictionResponse>>('/api/v1/ml/profit/predict', {
+      model_type: params?.modelType ?? 'lightgbm',
       projected_revenue: params?.projectedRevenue,
       branch_id: params?.branchId,
       historical_profits: params?.historicalProfits,
@@ -223,7 +232,7 @@ export const mlService = {
   }): Promise<ExpensePredictionResponse> {
     const response = await api.post<ApiSuccessResponse<ExpensePredictionResponse>>('/api/v1/ml/expense/predict', {
       category: params?.category,
-      model_type: params?.modelType ?? 'xgboost',
+      model_type: params?.modelType ?? 'random_forest',
       months_ahead: params?.monthsAhead ?? 1,
       branch_id: params?.branchId,
       historical_expenses: params?.historicalExpenses,
@@ -232,6 +241,7 @@ export const mlService = {
   },
 
   async predictBusinessHealth(params?: {
+    modelType?: string
     revenueGrowth?: number
     profitMargin?: number
     expenseControl?: number
@@ -240,6 +250,7 @@ export const mlService = {
     branchId?: string
   }): Promise<BusinessHealthResponse> {
     const response = await api.post<ApiSuccessResponse<BusinessHealthResponse>>('/api/v1/ml/business-health/predict', {
+      model_type: params?.modelType ?? 'linear_regression',
       revenue_growth: params?.revenueGrowth,
       profit_margin: params?.profitMargin,
       expense_control: params?.expenseControl,
@@ -253,11 +264,13 @@ export const mlService = {
   async predictAnomaly(params: {
     netAmount: number
     discountPct?: number
+    modelType?: string
     branchId?: string
   }): Promise<AnomalyDetectionResponse> {
     const response = await api.post<ApiSuccessResponse<AnomalyDetectionResponse>>('/api/v1/ml/anomaly/predict', {
       net_amount: params.netAmount,
       discount_pct: params.discountPct ?? 0,
+      model_type: params?.modelType ?? 'rule_based',
       branch_id: params.branchId,
     })
     return response.data.data

@@ -14,6 +14,7 @@ export interface TableProps<T> {
   data: T[]
   isLoading?: boolean
   emptyText?: string
+  emptyMessage?: string
   onRowClick?: (row: T) => void
   keyExtractor?: (row: T, index: number) => string | number
 }
@@ -22,10 +23,13 @@ export function Table<T>({
   columns,
   data,
   isLoading = false,
-  emptyText = 'No data available',
+  emptyText,
+  emptyMessage,
   onRowClick,
   keyExtractor,
 }: TableProps<T>) {
+  const displayEmpty = emptyMessage || emptyText || 'No data available'
+
   return (
     <div className="w-full overflow-x-auto rounded-xl border border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900 shadow-card">
       <table className="w-full text-left text-sm border-collapse">
@@ -52,7 +56,7 @@ export function Table<T>({
           ) : data.length === 0 ? (
             <tr>
               <td colSpan={columns.length} className="px-4 py-12 text-center text-surface-400">
-                {emptyText}
+                {displayEmpty}
               </td>
             </tr>
           ) : (

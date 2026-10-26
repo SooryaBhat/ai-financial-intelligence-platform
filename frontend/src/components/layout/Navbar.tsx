@@ -130,13 +130,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isLauncherActive = location.pathname === '/apps'
 
   return (
-    <header className="sticky top-0 z-30 h-14 bg-white border-b border-slate-200 transition-colors flex items-center justify-between px-3 sm:px-6 select-none shadow-xs">
+    <header className="sticky top-0 z-30 h-14 bg-white border-b border-slate-200 transition-colors flex items-center justify-between px-3 sm:px-5 select-none shadow-xs w-full max-w-full">
       {/* ── Left section: Odoo App Launcher Button, Brand Logo, Modular Top Nav ── */}
-      <div className="flex items-center gap-2 sm:gap-4" ref={navRef}>
+      <div className="flex items-center gap-1.5 sm:gap-3 min-w-0" ref={navRef}>
         {/* Mobile Menu Toggle Button */}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="lg:hidden p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+          className="lg:hidden p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
           title="Toggle Navigation Menu"
         >
           {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -146,7 +146,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <Link
           to="/apps"
           className={cn(
-            'flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg transition-all duration-150',
+            'flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg transition-all duration-150 shrink-0',
             isLauncherActive
               ? 'bg-teal-50 text-teal-800 ring-1 ring-teal-200'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -158,12 +158,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         </Link>
 
         {/* ALLADIN Logo */}
-        <AlladinLogo size="sm" showFullName={false} to="/apps" />
+        <div className="shrink-0">
+          <AlladinLogo size="sm" showFullName={false} to="/apps" />
+        </div>
 
-        <div className="h-4 w-px bg-slate-200 hidden lg:block" />
+        <div className="h-4 w-px bg-slate-200 hidden lg:block shrink-0" />
 
         {/* ── Primary Modular Dropdowns (Odoo enterprise pattern) ── */}
-        <nav className="hidden lg:flex items-center gap-1 text-xs">
+        <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 text-xs shrink min-w-0">
           {/* 1. Commercial & Sales */}
           <div className="relative">
             <button
@@ -418,8 +420,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             >
               <TrendingUp className="w-3.5 h-3.5 text-teal-700" />
-              <span>Forecasts & AI</span>
-              <span className="px-1.5 py-0.2 text-[9px] font-bold rounded bg-purple-50 text-purple-700 border border-purple-200/60">
+              <span>Forecasts</span>
+              <span className="hidden 2xl:inline-block px-1.5 py-0.2 text-[9px] font-bold rounded bg-purple-50 text-purple-700 border border-purple-200/60">
                 ML
               </span>
               <ChevronDown className="w-3 h-3 text-slate-400" />
@@ -609,7 +611,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Direct link to Import Center */}
           <Link
             to="/imports"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-slate-700 hover:text-teal-800 hover:bg-slate-100 transition-colors font-semibold"
+            className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-slate-700 hover:text-teal-800 hover:bg-slate-100 transition-colors font-semibold"
             title="Import CSV, Excel, or PDF Data"
           >
             <ModuleIcon name="data-import" size="xs" className="w-3.5 h-3.5 shrink-0" />
@@ -619,7 +621,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Direct link to AI Assistant Drawer */}
           <button
             onClick={onToggleAIAssistant}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-teal-800 bg-teal-50/70 hover:bg-teal-100/80 transition-colors font-bold border border-teal-200/60"
+            className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-teal-800 bg-teal-50/70 hover:bg-teal-100/80 transition-colors font-bold border border-teal-200/60"
             title="Open AI Decision Assistant Drawer"
           >
             <ModuleIcon name="ai-copilot-voice" size="xs" className="w-3.5 h-3.5 shrink-0" />
@@ -629,16 +631,16 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* ── Right section: Global Search, Company Switcher, Notifications, Profile ── */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         {/* Global Search Button (Ctrl+K) */}
         <button
           onClick={onOpenSearch}
-          className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-500 hover:border-slate-300 hover:bg-white hover:text-slate-700 transition-all shadow-2xs"
+          className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-500 hover:border-slate-300 hover:bg-white hover:text-slate-700 transition-all shadow-2xs"
           title="Search commands, modules, records (Ctrl+K)"
         >
-          <SearchIcon className="w-3.5 h-3.5 text-slate-400" />
-          <span className="hidden md:inline">Search...</span>
-          <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-200 text-slate-600 border border-slate-300">
+          <SearchIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="hidden xl:inline">Search...</span>
+          <kbd className="hidden sm:inline-block ml-0.5 px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-200 text-slate-600 border border-slate-300">
             ⌘K
           </kbd>
         </button>
@@ -647,11 +649,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="relative hidden md:block" ref={companyRef}>
           <button
             onClick={() => setIsCompanyMenuOpen(!isCompanyMenuOpen)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-800 transition-colors shadow-2xs"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-800 transition-colors shadow-2xs"
             title="Current Organization Workspace"
           >
             <Building2 className="w-3.5 h-3.5 text-teal-700 shrink-0" />
-            <span className="max-w-[120px] truncate">
+            <span className="max-w-[85px] xl:max-w-[120px] truncate">
               {activeCompany?.company_name || 'Organization'}
             </span>
             <ChevronDown className="w-3 h-3 text-slate-400" />
@@ -700,14 +702,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Branch / Outlet Switcher Dropdown */}
-        <div className="relative hidden lg:block" ref={branchRef}>
+        <div className="relative hidden xl:block" ref={branchRef}>
           <button
             onClick={() => setIsBranchMenuOpen(!isBranchMenuOpen)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-800 transition-colors shadow-2xs"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-800 transition-colors shadow-2xs"
             title="Active Branch Outlet"
           >
             <GitBranch className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-            <span className="max-w-[110px] truncate">
+            <span className="max-w-[85px] xl:max-w-[110px] truncate">
               {activeBranch?.name || 'All Outlets'}
             </span>
             <ChevronDown className="w-3 h-3 text-slate-400" />

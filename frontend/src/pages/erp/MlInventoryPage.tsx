@@ -12,12 +12,14 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Table, Column } from '@/components/ui/Table'
 import { useToast } from '@/hooks/useToast'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { ModelIntelligenceBanner } from '@/components/ml/ModelIntelligenceBanner'
 import type { PredictionHistoryItem } from '@/types/ml.types'
 
 export const MlInventoryPage: React.FC = () => {
   const toast = useToast()
   const [selectedProductId, setSelectedProductId] = useState<string>('')
   const [productName, setProductName] = useState('Standard Product SKU')
+  const [modelType, setModelType] = useState('lightgbm')
   const [currentStock, setCurrentStock] = useState(25)
   const [unitCost, setUnitCost] = useState(450)
   const [leadTimeDays, setLeadTimeDays] = useState(14)
@@ -53,11 +55,12 @@ export const MlInventoryPage: React.FC = () => {
   }, [productsData?.items, selectedProductId])
 
   const { data: invData, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['ml-inventory-predict', selectedProductId, productName, currentStock, unitCost, leadTimeDays],
+    queryKey: ['ml-inventory-predict', selectedProductId, productName, modelType, currentStock, unitCost, leadTimeDays],
     queryFn: () =>
       mlService.predictInventory({
         productId: selectedProductId || undefined,
         productName,
+        modelType,
         currentStock,
         unitCost,
         leadTimeDays,
@@ -89,7 +92,7 @@ export const MlInventoryPage: React.FC = () => {
     {
       key: 'model_version',
       header: 'Model / Algorithm',
-      render: (r) => <span className="font-mono text-xs">{r.model_used || r.model_version || 'Inventory ML'}</span>,
+      render: (r) => <span className="font-mono text-xs">{r.model_used || r.model_version || 'LightGBM'}</span>,
     },
     {
       key: 'predicted_value',
@@ -111,14 +114,14 @@ export const MlInventoryPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Inventory Reorder & Replenishment Intelligence"
-        description="Predict monthly SKU demand velocity, automated safety stock levels, and stockout risk evaluation"
+        title="Inventory Optimization & Reorder Predictor"
+        description="Predict monthly SKU inventory demand, optimize dynamic reorder points, and protect supply chain continuity"
         icon={<PackageCheck className="w-5 h-5 text-teal-700" />}
-        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Engine</span>}
+        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Pipeline 3</span>}
         breadcrumbs={[
           { label: 'Apps', href: '/apps' },
           { label: 'Intelligence' },
-          { label: 'Inventory Reorder' },
+          { label: 'Inventory Demand' },
         ]}
         actions={
           <div className="flex items-center gap-2">
@@ -138,140 +141,178 @@ export const MlInventoryPage: React.FC = () => {
         }
       />
 
-      {/* Fallback Warning Banner */}
-      {invData?.is_fallback && (
-        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-lg p-4 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-          <div className="text-xs text-amber-900 dark:text-amber-200">
-            <span className="font-bold">Using Statistical Baseline Estimate: </span>
-            {invData.warning_message || 'Insufficient historical stock movement records. Safety stock and reorder point computed using deterministic lead-time formulas.'}
-          </div>
-        </div>
-      )}
+      {/* Model Governance Banner */}
+      <ModelIntelligenceBanner
+        pipelineTitle="Pipeline 3: Inventory Demand & Reorder Trigger Policy"
+        selectedAlgorithm={invData?.model_name || invData?.model_used || 'LightGBM Inventory Forecaster'}
+        modelVersion={invData?.model_version || 'inventory_demand_selected.pkl'}
+        valMetricLabel="Val WAPE (57.82%)"
+        valMetricValue={invData?.metrics?.val_wape_pct ? `${invData.metrics.val_wape_pct}%` : '56.88%'}
+        testMetricLabel="Test Set WAPE"
+        testMetricValue={invData?.metrics?.test_wape_pct ? `${invData.metrics.test_wape_pct}%` : '58.19%'}
+        holdoutMetricLabel="WAPE"
+        holdoutMetricValue="53.70%"
+        baselineComparison="58.19% vs 79.36% (Demand History Lag 1)"
+        isFallback={invData?.is_fallback}
+        warningMessage={invData?.warning_message}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Form Inputs Card */}
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>SKU Inventory Parameters</CardTitle>
-            <CardDescription>Select product or configure stock level & lead time inputs</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {products.length > 0 && (
-              <div>
-                <label className="text-xs font-semibold text-surface-700 dark:text-surface-300 mb-1 block">
-                  Select Product from Catalog
-                </label>
+      {/* Product & Parameter Selection Form */}
+      <Card className="bg-white border-slate-200 shadow-xs">
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <CardTitle className="text-sm font-bold text-slate-900">Inventory Simulation & Parameter Controls</CardTitle>
+          <CardDescription className="text-xs text-slate-500">
+            Select SKU and algorithm to simulate dynamic lead time and reorder thresholds
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Target Product SKU</label>
+              {products.length > 0 ? (
                 <Select
                   value={selectedProductId}
                   onChange={(e) => handleProductChange(e.target.value)}
-                  options={[
-                    { label: '-- Custom Entry --', value: '' },
-                    ...products.map((p) => ({ label: `${p.name} (SKU: ${p.sku})`, value: p.id })),
-                  ]}
+                  options={products.map((p) => ({ label: p.name, value: p.id }))}
                 />
-              </div>
-            )}
-            <Input label="Product Name / SKU" value={productName} onChange={(e) => setProductName(e.target.value)} required />
-            <Input label="Current Available Stock" type="number" value={currentStock} onChange={(e) => setCurrentStock(Math.max(0, Number(e.target.value)))} required />
-            <Input label="Unit Procurement Cost" type="number" value={unitCost} onChange={(e) => setUnitCost(Math.max(0, Number(e.target.value)))} required />
-            <Input label="Supplier Lead Time (Days)" type="number" value={leadTimeDays} onChange={(e) => setLeadTimeDays(Math.max(1, Number(e.target.value)))} required />
-          </CardContent>
-        </Card>
+              ) : (
+                <Input value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="Product Name" />
+              )}
+            </div>
 
-        {/* Prediction Results Card */}
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-emerald-600" />
-              <span>AI Stock Optimization Output</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {isLoading ? (
-              <div className="p-12 text-center">
-                <Spinner size="lg" className="mx-auto" />
-                <p className="text-xs text-surface-500 mt-2">Computing optimal safety stock and reorder points...</p>
-              </div>
-            ) : isError || !invData ? (
-              <div className="p-8 text-center border border-danger-200 rounded-lg">
-                <p className="text-sm font-semibold text-danger-600">Failed to calculate inventory optimization</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
-                  Retry
-                </Button>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <div className="p-3.5 rounded-xl bg-surface-100 dark:bg-surface-800">
-                    <span className="text-[10px] text-surface-400 uppercase font-bold">Monthly Demand</span>
-                    <p className="text-lg font-extrabold text-surface-900 dark:text-surface-100">
-                      {invData.predicted_monthly_demand.toFixed(1)} units
-                    </p>
-                  </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Forecasting Model</label>
+              <Select
+                value={modelType}
+                onChange={(e) => setModelType(e.target.value)}
+                options={[
+                  { label: 'LightGBM (Winner, 100% Service)', value: 'lightgbm' },
+                  { label: 'XGBoost Regressor', value: 'xgboost' },
+                  { label: 'Random Forest Regressor', value: 'random_forest' },
+                  { label: 'Censored Demand Forecaster', value: 'censored' },
+                ]}
+              />
+            </div>
 
-                  <div className="p-3.5 rounded-xl bg-surface-100 dark:bg-surface-800">
-                    <span className="text-[10px] text-surface-400 uppercase font-bold">Reorder Point</span>
-                    <p className="text-lg font-extrabold text-indigo-600">
-                      {invData.recommended_reorder_point.toFixed(1)} units
-                    </p>
-                  </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Current Stock Level</label>
+              <Input type="number" value={currentStock} onChange={(e) => setCurrentStock(Math.max(0, Number(e.target.value)))} />
+            </div>
 
-                  <div className="p-3.5 rounded-xl bg-surface-100 dark:bg-surface-800">
-                    <span className="text-[10px] text-surface-400 uppercase font-bold">Recommended Order Qty</span>
-                    <p className="text-lg font-extrabold text-emerald-600">
-                      {Math.round(invData.recommended_reorder_quantity)} units
-                    </p>
-                  </div>
-                </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Unit Cost Price (₹)</label>
+              <Input type="number" value={unitCost} onChange={(e) => setUnitCost(Math.max(0, Number(e.target.value)))} />
+            </div>
 
-                <div className="flex items-center justify-between p-4 rounded-xl border border-surface-200 dark:border-surface-800 bg-surface-50 dark:bg-surface-900">
-                  <div>
-                    <span className="text-xs text-surface-500 font-medium">Days of Supply Remaining</span>
-                    <h4 className="text-xl font-black text-surface-900 dark:text-surface-100">
-                      {invData.days_of_supply_remaining.toFixed(0)} Days
-                    </h4>
-                  </div>
-                  <Badge variant={invData.stockout_risk_level === 'HIGH' ? 'danger' : invData.stockout_risk_level === 'MEDIUM' ? 'warning' : 'success'} className="text-xs font-bold gap-1">
-                    {invData.stockout_risk_level === 'HIGH' && <AlertTriangle className="w-3.5 h-3.5" />}
-                    Stockout Risk: {invData.stockout_risk_level}
-                  </Badge>
-                </div>
-
-                <div className={`p-4 rounded-xl border ${
-                  invData.reorder_recommended
-                    ? 'border-amber-300 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200'
-                    : 'border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-200'
-                } text-xs space-y-1`}>
-                  <p className="font-bold">Automated Reorder Recommendation:</p>
-                  <p>
-                    {invData.reorder_recommended
-                      ? `TRIGGER PURCHASE ORDER: Current stock (${currentStock} units) is below or approaching the reorder threshold (${invData.recommended_reorder_point.toFixed(1)} units). Recommended replenishment order: ${Math.round(invData.recommended_reorder_quantity)} units (${formatCurrency(Math.round(invData.recommended_reorder_quantity) * unitCost)} estimated investment).`
-                      : `STOCK HEALTHY: Current stock level (${currentStock} units) is above the safety threshold. Available inventory covers approximately ${invData.days_of_supply_remaining.toFixed(0)} days of forecasted demand.`}
-                  </p>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Audit History */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <History className="w-5 h-5 text-surface-500" />
-            <span>Inventory Prediction Audit History</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {historyItems.length === 0 ? (
-            <p className="text-xs text-surface-500 text-center py-6">No previous inventory reorder evaluations recorded.</p>
-          ) : (
-            <Table columns={historyColumns} data={historyItems} />
-          )}
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Supplier Lead Time (Days)</label>
+              <Input type="number" value={leadTimeDays} onChange={(e) => setLeadTimeDays(Math.max(1, Number(e.target.value)))} />
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      {isLoading ? (
+        <Card className="p-12 text-center">
+          <Spinner size="lg" className="mx-auto mb-3" />
+          <p className="text-sm font-semibold text-slate-900">Simulating Lead Times & Demand Forecasts...</p>
+        </Card>
+      ) : isError ? (
+        <Card className="p-8 text-center border-rose-200">
+          <p className="text-sm font-semibold text-rose-700">Optimization Calculation Failed</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
+            Retry
+          </Button>
+        </Card>
+      ) : invData ? (
+        <>
+          {/* Reorder Recommendation Banner */}
+          <div
+            className={`p-4 rounded-xl border flex items-center justify-between flex-wrap gap-4 ${
+              invData.reorder_recommended ? 'bg-rose-50 border-rose-200 text-rose-900' : 'bg-teal-50 border-teal-200 text-teal-900'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {invData.reorder_recommended ? (
+                <AlertTriangle className="w-6 h-6 text-rose-600 shrink-0" />
+              ) : (
+                <ShieldCheck className="w-6 h-6 text-teal-600 shrink-0" />
+              )}
+              <div>
+                <h4 className="text-sm font-extrabold">
+                  {invData.reorder_recommended
+                    ? `Purchase Order Trigger: Reorder ${Math.round(invData.recommended_reorder_quantity)} Units Immediately`
+                    : 'Inventory Position Healthy: Stock Level Above Reorder Threshold'}
+                </h4>
+                <p className="text-xs opacity-90 mt-0.5">
+                  Current stock ({invData.current_stock} units) vs Reorder Trigger Point ({invData.recommended_reorder_point} units)
+                </p>
+              </div>
+            </div>
+            <Badge variant={invData.stockout_risk_level === 'CRITICAL' ? 'danger' : invData.stockout_risk_level === 'HIGH' ? 'warning' : 'success'}>
+              {invData.stockout_risk_level} RISK
+            </Badge>
+          </div>
+
+          {/* Key Metrics Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="bg-white border-slate-200 shadow-xs">
+              <CardContent className="p-5">
+                <span className="text-xs font-medium text-slate-500">Projected Monthly Demand</span>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
+                  {invData.predicted_monthly_demand} <span className="text-xs font-normal text-slate-500">units/mo</span>
+                </h3>
+                <span className="text-xs text-slate-400 mt-1 block">Daily velocity: {(invData.predicted_monthly_demand / 30).toFixed(1)} units/day</span>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border-slate-200 shadow-xs">
+              <CardContent className="p-5">
+                <span className="text-xs font-medium text-slate-500">Days of Supply Remaining</span>
+                <h3 className={`text-2xl font-black mt-1 ${invData.days_of_supply_remaining < 14 ? 'text-rose-600' : 'text-teal-700'}`}>
+                  {invData.days_of_supply_remaining.toFixed(1)} <span className="text-xs font-normal text-slate-500">days</span>
+                </h3>
+                <span className="text-xs text-slate-400 mt-1 block">Lead time requirement: {leadTimeDays} days</span>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border-slate-200 shadow-xs">
+              <CardContent className="p-5">
+                <span className="text-xs font-medium text-slate-500">Recommended Reorder Point</span>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
+                  {invData.recommended_reorder_point} <span className="text-xs font-normal text-slate-500">units</span>
+                </h3>
+                <span className="text-xs text-slate-400 mt-1 block">Safety buffer + lead time demand</span>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border-slate-200 shadow-xs">
+              <CardContent className="p-5">
+                <span className="text-xs font-medium text-slate-500">Optimal Order Quantity (EOQ)</span>
+                <h3 className="text-2xl font-black text-teal-800 mt-1">
+                  {invData.recommended_reorder_quantity} <span className="text-xs font-normal text-slate-500">units</span>
+                </h3>
+                <span className="text-xs text-slate-400 mt-1 block">Est. PO Capital: {formatCurrency(invData.recommended_reorder_quantity * unitCost)}</span>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Audit Trail */}
+          {historyItems.length > 0 && (
+            <Card className="bg-white border-slate-200 shadow-xs">
+              <CardHeader className="border-b border-slate-100 pb-3">
+                <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <History className="w-4 h-4 text-teal-700" />
+                  <span>Audit Trail & Historical Forecasts</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table columns={historyColumns} data={historyItems.slice(0, 5)} keyExtractor={(r) => r.id} emptyMessage="No prior recommendations recorded" />
+              </CardContent>
+            </Card>
+          )}
+        </>
+      ) : null}
     </div>
   )
 }

@@ -42,15 +42,15 @@ export const ProfileMenu: React.FC = () => {
         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-600 text-white font-semibold text-xs shadow-sm">
           {userInitial}
         </div>
-        <div className="hidden md:flex flex-col text-left">
-          <span className="text-xs font-semibold text-surface-900 dark:text-surface-100 max-w-[120px] truncate">
+        <div className="hidden 2xl:flex flex-col text-left">
+          <span className="text-xs font-semibold text-slate-900 max-w-[120px] truncate">
             {user?.full_name || 'User'}
           </span>
-          <span className="text-[10px] text-surface-500 dark:text-surface-400 max-w-[120px] truncate">
+          <span className="text-[10px] text-slate-500 max-w-[120px] truncate">
             {user?.email}
           </span>
         </div>
-        <ChevronDown className="w-4 h-4 text-surface-400" />
+        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
       </button>
 
       {isOpen && (

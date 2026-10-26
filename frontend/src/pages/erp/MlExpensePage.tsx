@@ -12,6 +12,7 @@ import { Table, Column } from '@/components/ui/Table'
 import { useToast } from '@/hooks/useToast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts'
+import { ModelIntelligenceBanner } from '@/components/ml/ModelIntelligenceBanner'
 import type { PredictionHistoryItem } from '@/types/ml.types'
 
 const COLORS = ['#0d9488', '#0284c7', '#d97706', '#e11d48', '#6366f1', '#8b5cf6']
@@ -19,7 +20,7 @@ const COLORS = ['#0d9488', '#0284c7', '#d97706', '#e11d48', '#6366f1', '#8b5cf6'
 export const MlExpensePage: React.FC = () => {
   const toast = useToast()
   const [category, setCategory] = useState('Salaries')
-  const [modelType, setModelType] = useState('xgboost')
+  const [modelType, setModelType] = useState('random_forest')
 
   const { data: expData, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['ml-expense-predict', category, modelType],
@@ -42,7 +43,7 @@ export const MlExpensePage: React.FC = () => {
     const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(expData, null, 2))}`
     const downloadAnchor = document.createElement('a')
     downloadAnchor.setAttribute('href', jsonString)
-    downloadAnchor.setAttribute('download', `expense_forecast_${category.toLowerCase()}.json`)
+    downloadAnchor.setAttribute('download', `expense_forecast_${category.toLowerCase()}_${modelType}.json`)
     document.body.appendChild(downloadAnchor)
     downloadAnchor.click()
     downloadAnchor.remove()
@@ -54,7 +55,7 @@ export const MlExpensePage: React.FC = () => {
     {
       key: 'model_version',
       header: 'Model / Algorithm',
-      render: (r) => <span className="font-mono text-xs">{r.model_used || r.model_version || 'XGBoost'}</span>,
+      render: (r) => <span className="font-mono text-xs">{r.model_used || r.model_version || 'RandomForest'}</span>,
     },
     {
       key: 'predicted_value',
@@ -79,7 +80,7 @@ export const MlExpensePage: React.FC = () => {
         title="Operating Expense Forecast"
         description="Forecast future category expenditure, analyze departmental cost centers, and detect surge anomalies"
         icon={<Layers className="w-5 h-5 text-teal-700" />}
-        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Engine</span>}
+        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Pipeline 5</span>}
         breadcrumbs={[
           { label: 'Apps', href: '/apps' },
           { label: 'Intelligence' },
@@ -102,8 +103,10 @@ export const MlExpensePage: React.FC = () => {
               value={modelType}
               onChange={(e) => setModelType(e.target.value)}
               options={[
+                { label: 'Random Forest (Winner, R²=+0.948)', value: 'random_forest' },
                 { label: 'XGBoost Regressor', value: 'xgboost' },
-                { label: 'Linear Regression', value: 'linear_regression' },
+                { label: 'Linear Regression Baseline', value: 'linear_regression' },
+                { label: 'Recurring Fixed/Variable Forecaster', value: 'recurring' },
               ]}
             />
             <Button
@@ -113,7 +116,7 @@ export const MlExpensePage: React.FC = () => {
               disabled={isFetching}
               leftIcon={<RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />}
             >
-              Predict
+              Re-evaluate
             </Button>
             <Button variant="secondary" size="sm" onClick={handleExport} disabled={!expData} leftIcon={<Download className="w-4 h-4" />}>
               Export
@@ -122,119 +125,121 @@ export const MlExpensePage: React.FC = () => {
         }
       />
 
-      {/* Fallback Warning Banner */}
-      {expData?.is_fallback && (
-        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-lg p-4 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-          <div className="text-xs text-amber-900 dark:text-amber-200">
-            <span className="font-bold">Using Statistical Baseline Estimate: </span>
-            {expData.warning_message || 'Insufficient expense vouchers for machine learning inference. Projected from recent expense transaction trends.'}
-          </div>
-        </div>
-      )}
+      {/* Model Intelligence Banner */}
+      <ModelIntelligenceBanner
+        pipelineTitle="Pipeline 5: Operating Expense Forecasting"
+        selectedAlgorithm={expData?.model_name || expData?.model_used || 'Random Forest Expense Forecaster'}
+        modelVersion={expData?.model_version || 'expense_prediction_selected.pkl'}
+        valMetricLabel="Val WAPE (R² = +0.948)"
+        valMetricValue={expData?.metrics?.val_wape_pct ? `${expData.metrics.val_wape_pct}%` : '19.10%'}
+        testMetricLabel="Test Set WAPE"
+        testMetricValue={expData?.metrics?.test_wape_pct ? `${expData.metrics.test_wape_pct}%` : '19.58%'}
+        holdoutMetricLabel="WAPE"
+        holdoutMetricValue="18.00%"
+        baselineComparison="18.00% vs 25.51% (Naive)"
+        isFallback={expData?.is_fallback}
+        warningMessage={expData?.warning_message}
+      />
 
       {isLoading ? (
         <Card className="p-12 text-center">
-          <Spinner size="lg" className="mx-auto" />
-          <p className="text-xs text-surface-500 mt-2">Computing category expense forecast...</p>
+          <Spinner size="lg" className="mx-auto mb-3" />
+          <p className="text-sm font-semibold text-slate-900">Calculating Operating Expense Projections...</p>
         </Card>
-      ) : isError || !expData ? (
-        <Card className="p-8 text-center border border-danger-200 rounded-lg">
-          <p className="text-sm font-semibold text-danger-600">Expense prediction failed</p>
+      ) : isError ? (
+        <Card className="p-8 text-center border-rose-200">
+          <p className="text-sm font-semibold text-rose-700">Expense Forecasting Failed</p>
           <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
             Retry
           </Button>
         </Card>
-      ) : (
+      ) : expData ? (
         <>
+          {/* Main Metric Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
+            <Card className="bg-white border-slate-200 shadow-xs">
               <CardContent className="p-5">
-                <p className="text-xs text-surface-500 font-medium">Model Used</p>
-                <h3 className="text-base font-bold text-surface-900 dark:text-surface-100 mt-1">{expData.model_used || 'XGBoost'}</h3>
-                <Badge variant={expData.is_fallback ? 'warning' : 'info'} className="mt-2">
-                  Category: {expData.category || category}
-                </Badge>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-xs text-surface-500 font-medium">Predicted Category Spend</p>
-                <h3 className="text-xl font-extrabold text-surface-900 dark:text-surface-100 mt-1">
+                <span className="text-xs font-medium text-slate-500">Projected {category} Expense</span>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
                   {formatCurrency(expData.predicted_expense)}
                 </h3>
-                <p className="text-xs text-surface-400 mt-1">{expData.predicted_transaction_count} expected transactions</p>
+                <span className="text-xs text-slate-400 mt-1 block">Expected upcoming month burn</span>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white border-slate-200 shadow-xs">
               <CardContent className="p-5">
-                <p className="text-xs text-surface-500 font-medium">Expense Surge Risk Alert</p>
-                <Badge
-                  variant={expData.expense_risk_alert === 'NORMAL' ? 'success' : expData.expense_risk_alert === 'MEDIUM' ? 'warning' : 'danger'}
-                  className="mt-2 text-sm font-bold uppercase"
+                <span className="text-xs font-medium text-slate-500">Burn Risk Alert</span>
+                <h3
+                  className={`text-2xl font-black mt-1 ${
+                    expData.expense_risk_alert === 'HIGH_ANOMALOUS_EXPENSE'
+                      ? 'text-rose-600'
+                      : expData.expense_risk_alert === 'ELEVATED'
+                      ? 'text-amber-600'
+                      : 'text-teal-700'
+                  }`}
                 >
-                  Risk Level: {expData.expense_risk_alert || 'NORMAL'}
+                  {expData.expense_risk_alert.replace(/_/g, ' ')}
+                </h3>
+                <span className="text-xs text-slate-400 mt-1 block">Relative to 3-month trailing moving average</span>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border-slate-200 shadow-xs">
+              <CardContent className="p-5">
+                <span className="text-xs font-medium text-slate-500">Estimated Transaction Count</span>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
+                  {expData.predicted_transaction_count} <span className="text-xs font-normal text-slate-500">invoices</span>
+                </h3>
+                <Badge variant={expData.is_fallback ? 'warning' : 'success'} className="mt-2 text-[10px]">
+                  {expData.model_name || expData.model_used}
                 </Badge>
               </CardContent>
             </Card>
           </div>
 
-          {/* Breakdown Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BrainCircuit className="w-5 h-5 text-indigo-600" />
-                <span>Forecasted Operating Expense Share</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              {breakdownData.length === 0 ? (
-                <p className="text-xs text-surface-500 text-center py-8">No category breakdown records available.</p>
-              ) : (
-                <div className="h-72 w-full flex items-center justify-center">
+          {/* Breakdown & Audit Trail */}
+          {breakdownData.length > 0 && (
+            <Card className="bg-white border-slate-200 shadow-xs">
+              <CardHeader className="border-b border-slate-100 pb-3">
+                <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <BrainCircuit className="w-4 h-4 text-teal-700" />
+                  <span>Cost Center Distribution</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie
-                        data={breakdownData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={90}
-                        label={(e) => `${e.name}: ${formatCurrency(e.value)}`}
-                      >
+                      <Pie data={breakdownData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
                         {breakdownData.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: unknown) => formatCurrency(Number(value) || 0)} />
+                      <Tooltip formatter={(value: any) => [formatCurrency(Number(value)), 'Expense']} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Audit History */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="w-5 h-5 text-surface-500" />
-                <span>Expense Forecast Audit History</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {historyItems.length === 0 ? (
-                <p className="text-xs text-surface-500 text-center py-6">No previous expense forecasts recorded.</p>
-              ) : (
-                <Table columns={historyColumns} data={historyItems} />
-              )}
-            </CardContent>
-          </Card>
+          {historyItems.length > 0 && (
+            <Card className="bg-white border-slate-200 shadow-xs">
+              <CardHeader className="border-b border-slate-100 pb-3">
+                <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <History className="w-4 h-4 text-teal-700" />
+                  <span>Audit Trail & Historical Predictions</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table columns={historyColumns} data={historyItems.slice(0, 5)} keyExtractor={(r) => r.id} emptyMessage="No prior predictions recorded" />
+              </CardContent>
+            </Card>
+          )}
         </>
-      )}
+      ) : null}
     </div>
   )
 }

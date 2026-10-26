@@ -11,11 +11,15 @@ export interface RevenueForecastItem {
 
 export interface RevenuePredictionResponse {
   model_used: string
+  model_name?: string
+  model_version?: string
   forecast_period_months: number
   predictions: RevenueForecastItem[]
   total_projected_revenue: number
   average_monthly_revenue: number
   growth_trend: string
+  metrics?: Record<string, any>
+  data_provenance?: Record<string, any>
   is_fallback?: boolean
   warning_message?: string | null
 }
@@ -30,9 +34,13 @@ export interface SalesPredictionResponse {
   entity_type: string
   entity_id?: string | null
   model_used: string
+  model_name?: string
+  model_version?: string
   predictions: SalesForecastItem[]
   total_predicted_units: number
   total_predicted_amount: number
+  metrics?: Record<string, any>
+  data_provenance?: Record<string, any>
   is_fallback?: boolean
   warning_message?: string | null
 }
@@ -47,6 +55,11 @@ export interface InventoryPredictionResponse {
   stockout_risk_level: string
   days_of_supply_remaining: number
   reorder_recommended: boolean
+  model_used?: string
+  model_name?: string
+  model_version?: string
+  metrics?: Record<string, any>
+  data_provenance?: Record<string, any>
   is_fallback?: boolean
   warning_message?: string | null
 }
@@ -57,17 +70,26 @@ export interface ProfitPredictionResponse {
   profitability_status: string
   confidence_score: number
   influencing_factors: Record<string, any>
+  model_used?: string
+  model_name?: string
+  model_version?: string
+  metrics?: Record<string, any>
+  data_provenance?: Record<string, any>
   is_fallback?: boolean
   warning_message?: string | null
 }
 
 export interface ExpensePredictionResponse {
   model_used: string
+  model_name?: string
+  model_version?: string
   category?: string | null
   predicted_expense: number
   predicted_transaction_count: number
   expense_risk_alert: string
   category_breakdown?: Record<string, number> | null
+  metrics?: Record<string, any>
+  data_provenance?: Record<string, any>
   is_fallback?: boolean
   warning_message?: string | null
 }
@@ -79,6 +101,12 @@ export interface BusinessHealthResponse {
   sub_scores: Record<string, number>
   weights: Record<string, number>
   recommendations: string[]
+  projected_next_month_health_score?: number
+  model_used?: string
+  model_name?: string
+  model_version?: string
+  metrics?: Record<string, any>
+  data_provenance?: Record<string, any>
   is_fallback?: boolean
   warning_message?: string | null
 }
@@ -89,6 +117,11 @@ export interface AnomalyDetectionResponse {
   severity: string
   confidence: number
   reason: string
+  model_used?: string
+  model_name?: string
+  model_version?: string
+  metrics?: Record<string, any>
+  data_provenance?: Record<string, any>
   is_fallback?: boolean
   warning_message?: string | null
 }
@@ -111,4 +144,3 @@ export interface PredictionHistoryItem {
   status: string
   created_at: string
 }
-

@@ -174,8 +174,8 @@ export const HelpPage: React.FC = () => {
             Use keyboard shortcuts to rapidly access modules and search throughout your company records:
           </p>
 
-          <div className="border border-slate-200 rounded-lg overflow-hidden">
-            <table className="w-full text-left">
+          <div className="border border-slate-200 rounded-lg overflow-x-auto">
+            <table className="w-full text-left min-w-[400px]">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="py-2 px-3 font-semibold text-slate-900">Action</th>

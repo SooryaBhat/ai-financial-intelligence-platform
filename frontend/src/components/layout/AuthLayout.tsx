@@ -5,7 +5,7 @@ import { ShieldCheck, HelpCircle } from 'lucide-react'
 
 export const AuthLayout: React.FC = () => {
   return (
-    <div className="min-h-screen bg-slate-50 relative overflow-hidden flex flex-col justify-between py-8 px-4 sm:px-6 lg:px-8 selection:bg-teal-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 relative overflow-x-clip flex flex-col justify-between py-8 px-4 sm:px-6 lg:px-8 selection:bg-teal-500 selection:text-white w-full max-w-full">
       {/* Subtle decorative accents with pointer-events: none */}
       <img
         src="/assets/decorative/header-wave-teal.svg"

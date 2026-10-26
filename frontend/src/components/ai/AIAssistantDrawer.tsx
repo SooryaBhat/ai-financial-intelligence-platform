@@ -274,7 +274,7 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
 
       {/* Slide-over Right Panel */}
       <div className="absolute inset-y-0 right-0 max-w-full flex pl-10 pointer-events-auto">
-        <div className="w-screen max-w-md bg-white border-l border-slate-200 shadow-2xl flex flex-col ring-1 ring-slate-900/5 animate-slide-in">
+        <div className="w-full max-w-md bg-white border-l border-slate-200 shadow-2xl flex flex-col ring-1 ring-slate-900/5 animate-slide-in">
           {/* Header */}
           <div className="px-5 py-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
             <div className="flex items-center gap-3">

@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { DollarSign, BrainCircuit, Download, RefreshCw, AlertTriangle, History } from 'lucide-react'
+import { DollarSign, BrainCircuit, Download, RefreshCw, History } from 'lucide-react'
 import { mlService } from '@/services/erp.service'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -11,17 +12,19 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Table, Column } from '@/components/ui/Table'
 import { useToast } from '@/hooks/useToast'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { ModelIntelligenceBanner } from '@/components/ml/ModelIntelligenceBanner'
 import type { PredictionHistoryItem } from '@/types/ml.types'
 
 export const MlProfitPage: React.FC = () => {
   const toast = useToast()
+  const [modelType, setModelType] = useState('lightgbm')
   const [projectedRevenueInput, setProjectedRevenueInput] = useState<string>('')
 
   const revenueNum = projectedRevenueInput ? Number(projectedRevenueInput) : undefined
 
   const { data: profitData, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['ml-profit-predict', revenueNum],
-    queryFn: () => mlService.predictProfit({ projectedRevenue: revenueNum }),
+    queryKey: ['ml-profit-predict', modelType, revenueNum],
+    queryFn: () => mlService.predictProfit({ modelType, projectedRevenue: revenueNum }),
   })
 
   // Load audit history
@@ -36,7 +39,7 @@ export const MlProfitPage: React.FC = () => {
     const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(profitData, null, 2))}`
     const downloadAnchor = document.createElement('a')
     downloadAnchor.setAttribute('href', jsonString)
-    downloadAnchor.setAttribute('download', `profit_prediction.json`)
+    downloadAnchor.setAttribute('download', `profit_prediction_${modelType}.json`)
     document.body.appendChild(downloadAnchor)
     downloadAnchor.click()
     downloadAnchor.remove()
@@ -48,7 +51,7 @@ export const MlProfitPage: React.FC = () => {
     {
       key: 'model_version',
       header: 'Model / Algorithm',
-      render: (r) => <span className="font-mono text-xs">{r.model_used || r.model_version || 'RandomForest'}</span>,
+      render: (r) => <span className="font-mono text-xs">{r.model_used || r.model_version || 'LightGBM'}</span>,
     },
     {
       key: 'predicted_value',
@@ -70,17 +73,28 @@ export const MlProfitPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Net Profit & Margin Predictor"
+        title="Net Operating Profit Predictor"
         description="Forecast future net operating profits, gross margins, and profitability status based on ledger cashflows"
         icon={<DollarSign className="w-5 h-5 text-teal-700" />}
-        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Engine</span>}
+        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Pipeline 4</span>}
         breadcrumbs={[
           { label: 'Apps', href: '/apps' },
           { label: 'Intelligence' },
           { label: 'Profit Prediction' },
         ]}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select
+              value={modelType}
+              onChange={(e) => setModelType(e.target.value)}
+              options={[
+                { label: 'LightGBM Regressor (Winner, Val WAPE 12.15%)', value: 'lightgbm' },
+                { label: 'Random Forest Regressor', value: 'random_forest' },
+                { label: 'XGBoost Regressor', value: 'xgboost' },
+                { label: 'Linear Regression Baseline', value: 'linear_regression' },
+                { label: 'Accounting Identity Margin Bridge', value: 'margin_bridge' },
+              ]}
+            />
             <Button
               variant="outline"
               size="sm"
@@ -97,126 +111,114 @@ export const MlProfitPage: React.FC = () => {
         }
       />
 
-      {/* Fallback Warning Banner */}
-      {profitData?.is_fallback && (
-        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-lg p-4 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-          <div className="text-xs text-amber-900 dark:text-amber-200">
-            <span className="font-bold">Using Baseline Financial Estimation: </span>
-            {profitData.warning_message || 'Insufficient sales/expense history for non-linear regression. Margins are derived from current ledger actuals.'}
-          </div>
-        </div>
-      )}
+      {/* Model Intelligence Banner */}
+      <ModelIntelligenceBanner
+        pipelineTitle="Pipeline 4: Net Operating Profit Prediction"
+        selectedAlgorithm={profitData?.model_name || profitData?.model_used || 'LightGBM Profit Forecaster'}
+        modelVersion={profitData?.model_version || 'profit_prediction_selected.pkl'}
+        valMetricLabel="Val WAPE (Volume Error)"
+        valMetricValue={profitData?.metrics?.val_wape_pct ? `${profitData.metrics.val_wape_pct}%` : '12.15%'}
+        testMetricLabel="Test Set WAPE"
+        testMetricValue={profitData?.metrics?.test_wape_pct ? `${profitData.metrics.test_wape_pct}%` : '18.73%'}
+        holdoutMetricLabel="WAPE"
+        holdoutMetricValue="11.08%"
+        baselineComparison="11.08% vs 15.68% (Naive)"
+        isFallback={profitData?.is_fallback}
+        warningMessage={profitData?.warning_message}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Revenue Baseline Input</CardTitle>
-            <CardDescription>Optional manual target or leave blank to derive from historical database sales</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {/* Revenue Scenario Override Form */}
+      <Card className="bg-white border-slate-200 shadow-xs">
+        <CardContent className="p-4 flex items-center gap-4 flex-wrap">
+          <div className="flex-1 min-w-[240px]">
+            <label className="text-xs font-semibold text-slate-700 block mb-1">
+              Projected Upcoming Monthly Revenue Override (Optional)
+            </label>
             <Input
-              label="Projected Revenue Target"
               type="number"
-              placeholder="Auto-compute from sales history"
+              placeholder="Auto-derived from latest revenue ledger if blank"
               value={projectedRevenueInput}
               onChange={(e) => setProjectedRevenueInput(e.target.value)}
             />
-            <p className="text-[11px] text-surface-400">
-              When left blank, the ML engine queries the company sales orders and reconciles against recent monthly run-rates.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BrainCircuit className="w-5 h-5 text-emerald-600" />
-              <span>Profit Forecast & Margin Diagnostics</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {isLoading ? (
-              <div className="p-12 text-center">
-                <Spinner size="lg" className="mx-auto" />
-                <p className="text-xs text-surface-500 mt-2">Computing net profit projection from ledger transactions...</p>
-              </div>
-            ) : isError || !profitData ? (
-              <div className="p-8 text-center border border-danger-200 rounded-lg">
-                <p className="text-sm font-semibold text-danger-600">Failed to calculate profit prediction</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
-                  Retry
-                </Button>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50">
-                    <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">Predicted Net Profit</span>
-                    <h3 className="text-xl font-extrabold text-emerald-700 dark:text-emerald-200 mt-1">
-                      {formatCurrency(profitData.predicted_profit)}
-                    </h3>
-                  </div>
-
-                  <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/50">
-                    <span className="text-xs font-semibold text-indigo-800 dark:text-indigo-300">Profit Margin %</span>
-                    <h3 className="text-xl font-extrabold text-indigo-700 dark:text-indigo-200 mt-1">
-                      {profitData.predicted_profit_margin_pct.toFixed(2)}%
-                    </h3>
-                  </div>
-
-                  <div className="p-4 rounded-xl bg-surface-100 dark:bg-surface-800">
-                    <span className="text-xs font-semibold text-surface-600 dark:text-surface-400">Confidence Score</span>
-                    <h3 className="text-xl font-extrabold text-surface-900 dark:text-surface-100 mt-1">
-                      {(profitData.confidence_score * (profitData.confidence_score <= 1 ? 100 : 1)).toFixed(1)}%
-                    </h3>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-xl border border-surface-200 dark:border-surface-800 bg-surface-50 dark:bg-surface-900">
-                  <span className="text-xs font-medium text-surface-700 dark:text-surface-300">Profitability Status Classification:</span>
-                  <Badge variant={profitData.profitability_status === 'HEALTHY' || profitData.profitability_status === 'HIGH_MARGIN' ? 'success' : 'warning'} className="text-xs font-bold uppercase">
-                    {profitData.profitability_status}
-                  </Badge>
-                </div>
-
-                {profitData.influencing_factors && Object.keys(profitData.influencing_factors).length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-surface-400 uppercase tracking-wider">Influencing Baseline Factors</h4>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {Object.entries(profitData.influencing_factors).map(([key, value]) => (
-                        <div key={key} className="p-2.5 rounded-lg bg-surface-100 dark:bg-surface-800">
-                          <span className="text-surface-400 capitalize">{key.replace(/_/g, ' ')}:</span>
-                          <p className="font-bold text-surface-900 dark:text-surface-100">
-                            {typeof value === 'number' ? (value > 1000 ? formatCurrency(value) : value.toFixed(2)) : String(value)}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Audit History */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <History className="w-5 h-5 text-surface-500" />
-            <span>Profit Prediction Audit History</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {historyItems.length === 0 ? (
-            <p className="text-xs text-surface-500 text-center py-6">No previous profit forecasts recorded.</p>
-          ) : (
-            <Table columns={historyColumns} data={historyItems} />
-          )}
+          </div>
+          <Button variant="outline" size="sm" className="mt-5" onClick={() => refetch()} disabled={isFetching}>
+            Apply Scenario
+          </Button>
         </CardContent>
       </Card>
+
+      {isLoading ? (
+        <Card className="p-12 text-center">
+          <Spinner size="lg" className="mx-auto mb-3" />
+          <p className="text-sm font-semibold text-slate-900">Computing Profit Trajectories from General Ledger...</p>
+        </Card>
+      ) : isError ? (
+        <Card className="p-8 text-center border-rose-200">
+          <p className="text-sm font-semibold text-rose-700">Profit Prediction Failed</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
+            Retry
+          </Button>
+        </Card>
+      ) : profitData ? (
+        <>
+          {/* Main Output Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="bg-white border-slate-200 shadow-xs">
+              <CardContent className="p-5">
+                <span className="text-xs font-medium text-slate-500">Projected Net Monthly Profit</span>
+                <h3 className={`text-2xl font-black mt-1 ${profitData.predicted_profit >= 0 ? 'text-teal-700' : 'text-rose-600'}`}>
+                  {formatCurrency(profitData.predicted_profit)}
+                </h3>
+                <span className="text-xs text-slate-400 mt-1 block">Forecasted across operational expenses</span>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border-slate-200 shadow-xs">
+              <CardContent className="p-5">
+                <span className="text-xs font-medium text-slate-500">Projected Profit Margin</span>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
+                  {profitData.predicted_profit_margin_pct.toFixed(1)}%
+                </h3>
+                <span className="text-xs text-slate-400 mt-1 block">Net Profit / Projected Revenue</span>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border-slate-200 shadow-xs">
+              <CardContent className="p-5">
+                <span className="text-xs font-medium text-slate-500">Profitability Status</span>
+                <h3 className="text-lg font-bold text-slate-900 mt-1">{profitData.profitability_status.replace(/_/g, ' ')}</h3>
+                <Badge
+                  variant={
+                    profitData.profitability_status === 'HIGHLY_PROFITABLE'
+                      ? 'success'
+                      : profitData.profitability_status === 'MODERATELY_PROFITABLE'
+                      ? 'info'
+                      : 'warning'
+                  }
+                  className="mt-2 text-[10px]"
+                >
+                  {profitData.model_name || profitData.model_used}
+                </Badge>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Audit History */}
+          {historyItems.length > 0 && (
+            <Card className="bg-white border-slate-200 shadow-xs">
+              <CardHeader className="border-b border-slate-100 pb-3">
+                <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <History className="w-4 h-4 text-teal-700" />
+                  <span>Audit Trail & Historical Predictions</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table columns={historyColumns} data={historyItems.slice(0, 5)} keyExtractor={(r) => r.id} emptyMessage="No prior predictions recorded" />
+              </CardContent>
+            </Card>
+          )}
+        </>
+      ) : null}
     </div>
   )
 }

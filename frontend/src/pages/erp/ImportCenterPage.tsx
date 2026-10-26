@@ -558,8 +558,8 @@ export const ImportCenterPage: React.FC = () => {
               </div>
 
               {/* Mapping Table */}
-              <div className="border border-slate-200 rounded-lg overflow-hidden">
-                <table className="w-full text-left text-xs">
+              <div className="border border-slate-200 rounded-lg overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[500px]">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
                     <tr>
                       <th className="py-2.5 px-4 w-1/3">Source File Header</th>

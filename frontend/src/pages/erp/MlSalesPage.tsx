@@ -12,12 +12,13 @@ import { Table, Column } from '@/components/ui/Table'
 import { useToast } from '@/hooks/useToast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+import { ModelIntelligenceBanner } from '@/components/ml/ModelIntelligenceBanner'
 import type { SalesForecastItem, PredictionHistoryItem } from '@/types/ml.types'
 
 export const MlSalesPage: React.FC = () => {
   const toast = useToast()
   const [entityType, setEntityType] = useState('product')
-  const [modelType, setModelType] = useState('xgboost')
+  const [modelType, setModelType] = useState('product_profile')
   const [monthsAhead, setMonthsAhead] = useState(3)
   const [selectedProductId, setSelectedProductId] = useState<string>('')
 
@@ -70,7 +71,7 @@ export const MlSalesPage: React.FC = () => {
     {
       key: 'model_version',
       header: 'Model / Algorithm',
-      render: (r) => <span className="font-mono text-xs">{r.model_used || r.model_version || 'XGBoost'}</span>,
+      render: (r) => <span className="font-mono text-xs">{r.model_used || r.model_version || 'ProductProfile'}</span>,
     },
     {
       key: 'predicted_value',
@@ -93,26 +94,16 @@ export const MlSalesPage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Sales Demand Forecast"
-        description="Predict upcoming product and category unit sales volumes using trained ML models on historical sales records"
+        description="Predict upcoming product and category unit sales volumes using verified ML models on tenant ledger sales records"
         icon={<ShoppingCart className="w-5 h-5 text-teal-700" />}
-        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Engine</span>}
+        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Pipeline 2</span>}
         breadcrumbs={[
           { label: 'Apps', href: '/apps' },
           { label: 'Intelligence' },
-          { label: 'Sales Demand' },
+          { label: 'Sales Forecast' },
         ]}
         actions={
-          <div className="flex items-center gap-2.5 flex-wrap">
-            {products.length > 0 && (
-              <Select
-                value={selectedProductId}
-                onChange={(e) => setSelectedProductId(e.target.value)}
-                options={[
-                  { label: 'All Products (Aggregated)', value: '' },
-                  ...products.map((p) => ({ label: p.name, value: p.id })),
-                ]}
-              />
-            )}
+          <div className="flex items-center gap-2 flex-wrap">
             <Select
               value={entityType}
               onChange={(e) => setEntityType(e.target.value)}
@@ -121,20 +112,31 @@ export const MlSalesPage: React.FC = () => {
                 { label: 'Category Level', value: 'category' },
               ]}
             />
+            {entityType === 'product' && products.length > 0 && (
+              <Select
+                value={selectedProductId}
+                onChange={(e) => setSelectedProductId(e.target.value)}
+                options={[{ label: 'All Products (Aggregate)', value: '' }, ...products.map((p) => ({ label: p.name, value: p.id }))]}
+              />
+            )}
             <Select
               value={modelType}
               onChange={(e) => setModelType(e.target.value)}
               options={[
-                { label: 'XGBoost Regressor', value: 'xgboost' },
+                { label: 'Product Profile (Winner, R²=+0.948)', value: 'product_profile' },
+                { label: 'AAGF SKU Forecaster', value: 'aagf' },
                 { label: 'LightGBM Regressor', value: 'lightgbm' },
+                { label: 'XGBoost Regressor', value: 'xgboost' },
+                { label: 'Linear Regression Baseline', value: 'linear_regression' },
               ]}
             />
             <Select
               value={monthsAhead.toString()}
               onChange={(e) => setMonthsAhead(Number(e.target.value))}
               options={[
-                { label: '3 Months Horizon', value: '3' },
-                { label: '6 Months Horizon', value: '6' },
+                { label: '1 Month Ahead', value: '1' },
+                { label: '3 Months Ahead', value: '3' },
+                { label: '6 Months Ahead', value: '6' },
               ]}
             />
             <Button
@@ -144,124 +146,138 @@ export const MlSalesPage: React.FC = () => {
               disabled={isFetching}
               leftIcon={<RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />}
             >
-              Predict
+              Recalculate
             </Button>
-            <Button variant="secondary" size="sm" onClick={handleExport} leftIcon={<Download className="w-4 h-4" />}>
+            <Button variant="secondary" size="sm" onClick={handleExport} disabled={!salesData} leftIcon={<Download className="w-4 h-4" />}>
               Export
             </Button>
           </div>
         }
       />
 
-      {/* Fallback Warning Banner */}
-      {salesData?.is_fallback && (
-        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-lg p-4 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-          <div className="text-xs text-amber-900 dark:text-amber-200">
-            <span className="font-bold">Using Statistical Baseline Estimate: </span>
-            {salesData.warning_message || 'Insufficient sales transaction history for reliable machine learning inference. Projections are computed from rolling averages.'}
-          </div>
-        </div>
-      )}
+      {/* Model Governance Banner */}
+      <ModelIntelligenceBanner
+        pipelineTitle="Pipeline 2: SKU & Category Sales Demand"
+        selectedAlgorithm={salesData?.model_name || salesData?.model_used || 'Product Profile Forecaster'}
+        modelVersion={salesData?.model_version || 'sales_forecasting_selected.pkl'}
+        valMetricLabel="Val WAPE (R² = +0.948)"
+        valMetricValue={salesData?.metrics?.val_wape_pct ? `${salesData.metrics.val_wape_pct}%` : '14.48%'}
+        testMetricLabel="Test Set WAPE"
+        testMetricValue={salesData?.metrics?.test_wape_pct ? `${salesData.metrics.test_wape_pct}%` : '17.31%'}
+        holdoutMetricLabel="WAPE"
+        holdoutMetricValue="11.87%"
+        baselineComparison="11.87% vs 76.34% (Naive)"
+        isFallback={salesData?.is_fallback}
+        warningMessage={salesData?.warning_message}
+      />
 
       {isLoading ? (
         <Card className="p-12 text-center">
           <Spinner size="lg" className="mx-auto mb-3" />
-          <p className="text-sm font-semibold text-surface-900 dark:text-surface-100">Running Sales Demand Inference...</p>
+          <p className="text-sm font-semibold text-slate-900">Calculating Sales Forecasts...</p>
         </Card>
       ) : isError ? (
-        <Card className="p-8 text-center border-danger-200">
-          <p className="text-sm font-semibold text-danger-600">Sales Prediction Service Unavailable</p>
-          <p className="text-xs text-surface-500 mt-1">Unable to retrieve predictions from the ML service. Ensure sales data is seeded.</p>
+        <Card className="p-8 text-center border-rose-200">
+          <p className="text-sm font-semibold text-rose-700">Forecast Generation Failed</p>
           <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
             Retry
           </Button>
         </Card>
       ) : (
         <>
+          {/* Top KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
+            <Card className="bg-white border-slate-200 shadow-xs">
               <CardContent className="p-5">
-                <p className="text-xs text-surface-500 font-medium">Model Used</p>
-                <h3 className="text-base font-bold text-surface-900 dark:text-surface-100 mt-1">{salesData?.model_used || 'XGBoost'}</h3>
-                <Badge variant={salesData?.is_fallback ? 'warning' : 'info'} className="mt-2">
-                  {salesData?.is_fallback ? 'Fallback Mode' : `Target: ${salesData?.entity_type || 'Product'}`}
-                </Badge>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-xs text-surface-500 font-medium">Total Predicted Units</p>
-                <h3 className="text-xl font-extrabold text-emerald-600 mt-1">
-                  {(salesData?.total_predicted_units || 0).toLocaleString()} units
+                <span className="text-xs font-medium text-slate-500">Total Projected Demand</span>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
+                  {Math.round(salesData?.total_predicted_units || 0).toLocaleString()} <span className="text-sm font-medium text-slate-500">units</span>
                 </h3>
-                <p className="text-xs text-surface-400 mt-1">Sum over next {monthsAhead} months</p>
+                <span className="text-xs text-teal-700 font-medium mt-1 inline-block">Over next {monthsAhead} months</span>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white border-slate-200 shadow-xs">
               <CardContent className="p-5">
-                <p className="text-xs text-surface-500 font-medium">Total Projected Sales Revenue</p>
-                <h3 className="text-xl font-extrabold text-surface-900 dark:text-surface-100 mt-1">
+                <span className="text-xs font-medium text-slate-500">Gross Projected Sales Value</span>
+                <h3 className="text-2xl font-black text-teal-800 mt-1">
                   {formatCurrency(salesData?.total_predicted_amount || 0)}
                 </h3>
-                <Badge variant="success" className="mt-2">Forward Projection</Badge>
+                <span className="text-xs text-slate-400 mt-1 inline-block">Estimated at standard retail pricing</span>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border-slate-200 shadow-xs">
+              <CardContent className="p-5">
+                <span className="text-xs font-medium text-slate-500">Forecasting Algorithm</span>
+                <h3 className="text-base font-bold text-slate-900 mt-1">{salesData?.model_name || salesData?.model_used}</h3>
+                <Badge variant={salesData?.is_fallback ? 'warning' : 'success'} className="mt-2 text-[10px]">
+                  {salesData?.is_fallback ? 'Heuristic Trend' : 'Trained ML Model Active'}
+                </Badge>
               </CardContent>
             </Card>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BrainCircuit className="w-5 h-5 text-emerald-600" />
-                <span>Monthly Unit Sales Demand Projection</span>
-              </CardTitle>
+          {/* Bar Chart */}
+          <Card className="bg-white border-slate-200 shadow-xs">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <BrainCircuit className="w-4 h-4 text-teal-700" />
+                  <span>Projected Monthly Volume & Estimated Sales Value</span>
+                </CardTitle>
+              </div>
             </CardHeader>
             <CardContent className="p-6">
-              {predictions.length === 0 ? (
-                <p className="text-xs text-surface-500 text-center py-8">No forecast data generated.</p>
-              ) : (
-                <div className="h-72 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={predictions} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
-                      <XAxis dataKey="month" stroke="var(--text-secondary)" fontSize={11} />
-                      <YAxis stroke="var(--text-secondary)" fontSize={11} />
-                      <Tooltip contentStyle={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '12px' }} />
-                      <Bar dataKey="predicted_units_sold" fill="#10b981" radius={[4, 4, 0, 0]} name="Predicted Units" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={predictions} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.7} />
+                    <XAxis dataKey="month" stroke="#64748b" fontSize={11} tickLine={false} />
+                    <YAxis stroke="#64748b" fontSize={11} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#ffffff',
+                        borderColor: '#e2e8f0',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                      }}
+                      formatter={(val: any, name?: any) => [
+                        name === 'Units Sold' ? `${Number(val).toLocaleString()} units` : formatCurrency(Number(val)),
+                        name || '',
+                      ]}
+                    />
+                    <Bar dataKey="predicted_units_sold" fill="#0d9488" radius={[4, 4, 0, 0]} name="Units Sold" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Forecast Output Table</CardTitle>
+          {/* Monthly Table Breakdown */}
+          <Card className="bg-white border-slate-200 shadow-xs">
+            <CardHeader className="border-b border-slate-100 pb-3">
+              <CardTitle className="text-sm font-bold text-slate-900">Period-by-Period Forecast Breakdown</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <Table columns={columns} data={predictions} />
+              <Table columns={columns} data={predictions} keyExtractor={(r) => r.month} emptyMessage="No forecast intervals available" />
             </CardContent>
           </Card>
 
           {/* Audit History */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="w-5 h-5 text-surface-500" />
-                <span>Prediction Audit History</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {historyItems.length === 0 ? (
-                <p className="text-xs text-surface-500 text-center py-6">No previous sales forecasts recorded for this company.</p>
-              ) : (
-                <Table columns={historyColumns} data={historyItems} />
-              )}
-            </CardContent>
-          </Card>
+          {historyItems.length > 0 && (
+            <Card className="bg-white border-slate-200 shadow-xs">
+              <CardHeader className="border-b border-slate-100 pb-3">
+                <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <History className="w-4 h-4 text-teal-700" />
+                  <span>Audit Trail & Historical Predictions</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table columns={historyColumns} data={historyItems.slice(0, 5)} keyExtractor={(r) => r.id} emptyMessage="No prior predictions recorded" />
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
     </div>

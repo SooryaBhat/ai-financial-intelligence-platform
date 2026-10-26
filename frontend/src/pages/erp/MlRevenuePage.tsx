@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { TrendingUp, BrainCircuit, RefreshCw, AlertCircle, History } from 'lucide-react'
+import { TrendingUp, BrainCircuit, RefreshCw, History } from 'lucide-react'
 import { mlService } from '@/services/erp.service'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
@@ -11,11 +11,12 @@ import { Spinner } from '@/components/ui/Spinner'
 import { useAuth } from '@/hooks/useAuth'
 import { formatCurrency } from '@/lib/utils'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+import { ModelIntelligenceBanner } from '@/components/ml/ModelIntelligenceBanner'
 
 export const MlRevenuePage: React.FC = () => {
   const { activeBranchId } = useAuth()
   const [monthsAhead, setMonthsAhead] = useState(6)
-  const [modelType, setModelType] = useState('xgboost')
+  const [modelType, setModelType] = useState('aagf')
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['ml-revenue-forecast', monthsAhead, modelType, activeBranchId],
@@ -28,7 +29,9 @@ export const MlRevenuePage: React.FC = () => {
   })
 
   const forecastData = data || {
-    model_used: 'XGBoost Revenue Predictor',
+    model_used: 'ALLADIN Adaptive Global Forecaster (AAGF)',
+    model_name: 'ALLADIN Adaptive Global Forecaster (AAGF)',
+    model_version: 'revenue_forecasting_selected.pkl',
     forecast_period_months: monthsAhead,
     predictions: [],
     total_projected_revenue: 0,
@@ -48,7 +51,7 @@ export const MlRevenuePage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Revenue Forecasting Engine"
-        description="Forecast monthly company revenues and cash inflow trajectories using database sales ledger records and trained XGBoost or SARIMA models"
+        description="Forecast monthly company revenues and cash inflow trajectories using tenant sales ledgers and verified ML candidate models"
         icon={<TrendingUp className="w-5 h-5 text-teal-700" />}
         badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Pipeline 1</span>}
         breadcrumbs={[
@@ -71,8 +74,10 @@ export const MlRevenuePage: React.FC = () => {
               value={modelType}
               onChange={(e) => setModelType(e.target.value)}
               options={[
+                { label: 'AAGF Custom (Winner, Val WAPE 15.15%)', value: 'aagf' },
                 { label: 'XGBoost Regressor', value: 'xgboost' },
                 { label: 'SARIMA Time-Series', value: 'sarima' },
+                { label: 'Linear Regression Baseline', value: 'linear_regression' },
               ]}
             />
             <Button
@@ -88,15 +93,21 @@ export const MlRevenuePage: React.FC = () => {
         }
       />
 
-      {forecastData.is_fallback && (
-        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-          <div className="text-xs text-amber-800">
-            <span className="font-bold">Safe Baseline Fallback Active: </span>
-            {forecastData.warning_message || 'Database records for this company or outlet are currently below the 6-month threshold required for deep lag feature generation. A conservative baseline forecast is displayed.'}
-          </div>
-        </div>
-      )}
+      {/* Model Intelligence & Provenance Governance Banner */}
+      <ModelIntelligenceBanner
+        pipelineTitle="Pipeline 1: Monthly Revenue Forecasting"
+        selectedAlgorithm={forecastData.model_name || forecastData.model_used}
+        modelVersion={forecastData.model_version || 'revenue_forecasting_selected.pkl'}
+        valMetricLabel="Val WAPE (Approach C)"
+        valMetricValue={forecastData.metrics?.val_wape_pct ? `${forecastData.metrics.val_wape_pct}%` : '15.15%'}
+        testMetricLabel="Test Set WAPE"
+        testMetricValue={forecastData.metrics?.test_wape_pct ? `${forecastData.metrics.test_wape_pct}%` : '17.06%'}
+        holdoutMetricLabel="WAPE"
+        holdoutMetricValue="10.94%"
+        baselineComparison="10.94% vs 15.62% (Naive)"
+        isFallback={forecastData.is_fallback}
+        warningMessage={forecastData.warning_message}
+      />
 
       {isLoading ? (
         <Card className="p-12 text-center">
@@ -230,7 +241,7 @@ export const MlRevenuePage: React.FC = () => {
                       {historyData.slice(0, 5).map((row) => (
                         <tr key={row.id} className="hover:bg-slate-50 transition-colors">
                           <td className="py-2.5 px-4 font-mono text-slate-600">{row.id.slice(0, 8)}...</td>
-                          <td className="py-2.5 px-4 font-semibold text-slate-900">{row.model_version || 'XGBoost'}</td>
+                          <td className="py-2.5 px-4 font-semibold text-slate-900">{row.model_version || 'AAGF'}</td>
                           <td className="py-2.5 px-4 font-bold text-teal-900">{formatCurrency(row.predicted_value || 0)}</td>
                           <td className="py-2.5 px-4">
                             <span className="px-1.5 py-0.5 rounded text-[10px] bg-teal-50 text-teal-700 border border-teal-200">

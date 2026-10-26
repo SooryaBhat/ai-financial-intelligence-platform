@@ -19,7 +19,7 @@ export const LandingPage: React.FC = () => {
   const { isAuthenticated } = useAuth()
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col selection:bg-teal-500 selection:text-white">
+    <div className="min-h-screen bg-white text-slate-900 flex flex-col selection:bg-teal-500 selection:text-white w-full max-w-full overflow-x-clip">
       {/* ── Top Header Navigation ─────────────────────────────────── */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">

@@ -4,22 +4,25 @@ import { AlertTriangle, ShieldAlert, CheckCircle, Info, History } from 'lucide-r
 import { mlService } from '@/services/erp.service'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Table, Column } from '@/components/ui/Table'
 import { useToast } from '@/hooks/useToast'
 import { formatDate } from '@/lib/utils'
+import { ModelIntelligenceBanner } from '@/components/ml/ModelIntelligenceBanner'
 import type { AnomalyDetectionResponse, PredictionHistoryItem } from '@/types/ml.types'
 
 export const MlAnomaliesPage: React.FC = () => {
   const toast = useToast()
+  const [modelType, setModelType] = useState('rule_based')
   const [netAmount, setNetAmount] = useState(12500)
   const [discountPct, setDiscountPct] = useState(5)
 
   const scanMutation = useMutation({
-    mutationFn: (payload: { netAmount: number; discountPct: number }) =>
-      mlService.predictAnomaly({ netAmount: payload.netAmount, discountPct: payload.discountPct }),
+    mutationFn: (payload: { netAmount: number; discountPct: number; modelType: string }) =>
+      mlService.predictAnomaly({ netAmount: payload.netAmount, discountPct: payload.discountPct, modelType: payload.modelType }),
     onError: (err: any) => toast.error(err?.response?.data?.message || 'Anomaly scan failed'),
     onSuccess: () => refetchHistory(),
   })
@@ -35,7 +38,7 @@ export const MlAnomaliesPage: React.FC = () => {
 
   const handleScan = (e: React.FormEvent) => {
     e.preventDefault()
-    scanMutation.mutate({ netAmount, discountPct })
+    scanMutation.mutate({ netAmount, discountPct, modelType })
   }
 
   const historyColumns: Column<PredictionHistoryItem>[] = [
@@ -43,7 +46,7 @@ export const MlAnomaliesPage: React.FC = () => {
     {
       key: 'model_version',
       header: 'Model / Algorithm',
-      render: (r) => <span className="font-mono text-xs">{r.model_used || r.model_version || 'Isolation Forest'}</span>,
+      render: (r) => <span className="font-mono text-xs">{r.model_used || r.model_version || 'RuleBased'}</span>,
     },
     {
       key: 'predicted_value',
@@ -57,7 +60,7 @@ export const MlAnomaliesPage: React.FC = () => {
         (r.is_fallback || r.output_data?.is_fallback) ? (
           <Badge variant="warning">Statistical IQR</Badge>
         ) : (
-          <Badge variant="success">Isolation Forest</Badge>
+          <Badge variant="success">ML Inference</Badge>
         ),
     },
   ]
@@ -66,9 +69,9 @@ export const MlAnomaliesPage: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         title="Transaction Anomaly Inspector"
-        description="Scan invoices and commercial transactions for statistical outliers and audit review signals using Isolation Forest ML"
+        description="Scan invoices and commercial transactions for statistical outliers and audit review signals using verified ML models"
         icon={<AlertTriangle className="w-5 h-5 text-teal-700" />}
-        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Engine</span>}
+        badge={<span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-purple-50 text-purple-700 border border-purple-200">ML Pipeline 7</span>}
         breadcrumbs={[
           { label: 'Apps', href: '/apps' },
           { label: 'Intelligence' },
@@ -76,108 +79,123 @@ export const MlAnomaliesPage: React.FC = () => {
         ]}
       />
 
+      {/* Model Governance Banner */}
+      <ModelIntelligenceBanner
+        pipelineTitle="Pipeline 7: Transaction Anomaly & Outlier Detection"
+        selectedAlgorithm={result?.model_name || result?.model_used || 'Rule-Based Anomaly Detector'}
+        modelVersion={result?.model_version || 'anomaly_detection_selected.pkl'}
+        valMetricLabel="Dev Val F1 (0% FPR)"
+        valMetricValue={result?.metrics?.val_f1_score ? `${result.metrics.val_f1_score}` : '0.6667'}
+        testMetricLabel="Test Set F1"
+        testMetricValue={result?.metrics?.test_f1_score ? `${result.metrics.test_f1_score}` : '0.8947'}
+        holdoutMetricLabel="F1"
+        holdoutMetricValue="0.6379"
+        baselineComparison="F1: 0.895 (0.00% False Positive Rate)"
+        isFallback={result?.is_fallback}
+        warningMessage={result?.warning_message}
+      />
+
       {/* Advisory Banner */}
       <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg p-3.5 flex items-start gap-2.5 text-xs text-blue-900 dark:text-blue-200">
         <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
         <p>
-          <span className="font-bold">Audit Guidance: </span>
-          Flagged transactions represent potential statistical anomalies requiring operational or accounting review. An anomaly alert is not proof or confirmation of fraud.
+          <span className="font-bold">Audit Guidance & Benchmark Note: </span>
+          Synthetic threshold evaluation produces high precision on extreme outliers, but misses subtle non-threshold patterns. On the independent Multi-Type Benchmark v2, multivariate PCA and Isolation Forest detect contextual discounts, off-hours spikes, and margin erosion. An anomaly alert is an analytical signal requiring human verification, not confirmation of fraud.
         </p>
       </div>
 
-      {/* Fallback Warning Banner */}
-      {result?.is_fallback && (
-        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-lg p-4 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-          <div className="text-xs text-amber-900 dark:text-amber-200">
-            <span className="font-bold">Using Statistical Baseline (IQR / Z-Score): </span>
-            {result.warning_message || 'Computed against empirical transaction percentiles.'}
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Form Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Submit Transaction for Anomaly Audit</CardTitle>
-            <CardDescription>Evaluate net amount and discount variance against historical baselines</CardDescription>
+        <Card className="bg-white border-slate-200 shadow-xs">
+          <CardHeader className="border-b border-slate-100 pb-3">
+            <CardTitle className="text-sm font-bold text-slate-900">Simulate Transaction & Evaluate Risk</CardTitle>
+            <CardDescription className="text-xs text-slate-500">
+              Input invoice transaction parameters to test anomaly classification
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-5">
             <form onSubmit={handleScan} className="space-y-4">
-              <Input
-                label="Invoice Net Amount"
-                type="number"
-                value={netAmount}
-                onChange={(e) => setNetAmount(Math.max(0, Number(e.target.value)))}
-                required
-              />
-              <Input
-                label="Applied Discount (%)"
-                type="number"
-                step="0.1"
-                min="0"
-                max="100"
-                value={discountPct}
-                onChange={(e) => setDiscountPct(Math.max(0, Math.min(100, Number(e.target.value))))}
-                required
-              />
-              <Button variant="primary" type="submit" className="w-full" isLoading={scanMutation.isPending}>
-                Inspect Transaction
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Anomaly Detection Algorithm</label>
+                <Select
+                  value={modelType}
+                  onChange={(e) => setModelType(e.target.value)}
+                  options={[
+                    { label: 'Rule-Based Detector (Winner, F1: 0.895, 0% FPR)', value: 'rule_based' },
+                    { label: 'Isolation Forest (Unsupervised ML)', value: 'isolation_forest' },
+                    { label: 'Robust MAD Anomaly Detector', value: 'robust_mad' },
+                    { label: 'PCA Reconstruction Error Detector', value: 'pca' },
+                  ]}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Net Invoice Amount (₹)</label>
+                <Input type="number" value={netAmount} onChange={(e) => setNetAmount(Number(e.target.value))} required />
+                <span className="text-[11px] text-slate-400 mt-1 block">Standard retail average: ₹15,000 - ₹35,000</span>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Discount Applied (%)</label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={discountPct}
+                  onChange={(e) => setDiscountPct(Number(e.target.value))}
+                  required
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">Discounts exceeding 35% trigger automatic scrutiny</span>
+              </div>
+
+              <Button type="submit" variant="primary" className="w-full mt-2" disabled={scanMutation.isPending}>
+                {scanMutation.isPending ? 'Executing Anomaly Pipeline...' : 'Run Anomaly Detection Scan'}
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* Audit Result Card */}
-        <Card className="flex flex-col justify-center">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShieldAlert className="w-5 h-5 text-primary-600" />
-              <span>Audit Diagnostic Output</span>
-            </CardTitle>
+        {/* Results Card */}
+        <Card className="bg-white border-slate-200 shadow-xs flex flex-col justify-between">
+          <CardHeader className="border-b border-slate-100 pb-3">
+            <CardTitle className="text-sm font-bold text-slate-900">Inference Classification Output</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {!result ? (
-              <div className="p-8 text-center text-xs text-surface-400">
-                Submit transaction parameters to run anomaly detection.
+          <CardContent className="p-5 flex-1 flex flex-col justify-center">
+            {result ? (
+              <div className="space-y-4 text-center">
+                <div className="inline-flex p-3 rounded-full bg-slate-50 border border-slate-200 mx-auto">
+                  {result.is_anomaly ? (
+                    <ShieldAlert className="w-10 h-10 text-rose-600" />
+                  ) : (
+                    <CheckCircle className="w-10 h-10 text-teal-600" />
+                  )}
+                </div>
+
+                <div>
+                  <h3 className={`text-xl font-black ${result.is_anomaly ? 'text-rose-600' : 'text-teal-700'}`}>
+                    {result.is_anomaly ? 'ANOMALOUS TRANSACTION DETECTED' : 'NORMAL TRANSACTION VERIFIED'}
+                  </h3>
+                  <div className="flex items-center justify-center gap-2 mt-2">
+                    <Badge variant={result.is_anomaly ? 'danger' : 'success'}>{result.severity} SEVERITY</Badge>
+                    <span className="text-xs font-semibold text-slate-600">
+                      Confidence: {result.confidence.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-left text-xs space-y-1.5">
+                  <p className="font-semibold text-slate-700">Diagnostic Details:</p>
+                  <p className="text-slate-600">{result.reason}</p>
+                  <p className="text-[11px] text-slate-400 font-mono mt-1">
+                    Algorithm: {result.model_name || result.model_used} | Score: {result.anomaly_score.toFixed(4)}
+                  </p>
+                </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-surface-500">Anomaly Classification</span>
-                  <Badge variant={result.is_anomaly ? 'danger' : 'success'} className="text-xs font-bold gap-1">
-                    {result.is_anomaly ? <AlertTriangle className="w-3.5 h-3.5" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                    {result.is_anomaly ? 'POTENTIAL ANOMALY (FLAGGED FOR REVIEW)' : 'NORMAL TRANSACTION'}
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-lg bg-surface-100 dark:bg-surface-800">
-                    <span className="text-[10px] text-surface-400 uppercase font-bold">Severity Rating</span>
-                    <p className="text-sm font-bold text-surface-900 dark:text-surface-100">{result.severity}</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-surface-100 dark:bg-surface-800">
-                    <span className="text-[10px] text-surface-400 uppercase font-bold">Confidence</span>
-                    <p className="text-sm font-bold text-surface-900 dark:text-surface-100">
-                      {(result.confidence * (result.confidence <= 1 ? 100 : 1)).toFixed(1)}%
-                    </p>
-                  </div>
-                </div>
-
-                {result.anomaly_score != null && (
-                  <div className="p-3 rounded-lg bg-surface-100 dark:bg-surface-800 flex justify-between items-center text-xs">
-                    <span className="text-surface-500 font-medium">Outlier Score:</span>
-                    <span className="font-mono font-bold text-surface-900 dark:text-surface-100">{result.anomaly_score.toFixed(4)}</span>
-                  </div>
-                )}
-
-                {result.reason && (
-                  <div className="p-3.5 rounded-xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 text-xs text-rose-800 dark:text-rose-300">
-                    <p className="font-bold mb-1">Diagnostic Reason:</p>
-                    <p>{result.reason}</p>
-                  </div>
-                )}
+              <div className="text-center text-slate-400 py-12">
+                <AlertTriangle className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm font-medium">No transaction evaluated yet</p>
+                <p className="text-xs mt-1">Fill out the invoice parameters and run the scan above</p>
               </div>
             )}
           </CardContent>
@@ -185,21 +203,19 @@ export const MlAnomaliesPage: React.FC = () => {
       </div>
 
       {/* Audit History */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <History className="w-5 h-5 text-surface-500" />
-            <span>Anomaly Audit History</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {historyItems.length === 0 ? (
-            <p className="text-xs text-surface-500 text-center py-6">No previous anomaly scans recorded.</p>
-          ) : (
-            <Table columns={historyColumns} data={historyItems} />
-          )}
-        </CardContent>
-      </Card>
+      {historyItems.length > 0 && (
+        <Card className="bg-white border-slate-200 shadow-xs">
+          <CardHeader className="border-b border-slate-100 pb-3">
+            <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <History className="w-4 h-4 text-teal-700" />
+              <span>Audit Trail & Historical Scans</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table columns={historyColumns} data={historyItems.slice(0, 5)} keyExtractor={(r) => r.id} emptyMessage="No prior scans recorded" />
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

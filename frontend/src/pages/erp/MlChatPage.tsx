@@ -227,7 +227,7 @@ export const MlChatPage: React.FC = () => {
   ]
 
   return (
-    <div className="flex h-[calc(100vh-4.25rem)] bg-slate-50 overflow-hidden -m-4 sm:-m-6">
+    <div className="flex h-[calc(100vh-4.25rem)] bg-slate-50 overflow-hidden -m-4 sm:-m-6 lg:-m-8 min-w-0">
       {/* ── Left Sidebar (ChatGPT-style) ───────────────────────── */}
       <ChatSidebar
         sessions={sessions}
