@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Bell,
   Search as SearchIcon,
@@ -15,9 +15,10 @@ import {
   GitBranch,
   Menu,
   X,
+  ArrowRight,
 } from 'lucide-react'
 import { AlladinLogo } from '@/components/brand/AlladinLogo'
-import { ModuleIcon } from '@/components/ui/ModuleIcon'
+import { ModuleIcon, ModuleIconName } from '@/components/ui/ModuleIcon'
 import { ProfileMenu } from './ProfileMenu'
 import { useAuth } from '@/hooks/useAuth'
 import { useQuery } from '@tanstack/react-query'
@@ -33,10 +34,35 @@ export interface NavbarProps {
 
 type DropdownKey = 'commercial' | 'inventory' | 'finance' | 'ml' | 'admin' | null
 
+interface SearchSuggestion {
+  id: string
+  label: string
+  category: string
+  href: string
+  iconName: ModuleIconName
+}
+
+const SEARCH_SUGGESTIONS: SearchSuggestion[] = [
+  { id: 'dashboard', label: 'Dashboard Overview', category: 'Analytics', href: '/dashboard', iconName: 'dashboard' },
+  { id: 'sales', label: 'Sales Orders', category: 'Sales & Commercial', href: '/sales', iconName: 'sales-orders' },
+  { id: 'invoices', label: 'Invoices & Billing', category: 'Sales & Commercial', href: '/invoices', iconName: 'invoices-billing' },
+  { id: 'customers', label: 'Customer Directory', category: 'Sales & Commercial', href: '/customers', iconName: 'customers' },
+  { id: 'products', label: 'Products & SKUs', category: 'Procurement', href: '/products', iconName: 'products-skus' },
+  { id: 'inventory', label: 'Current Inventory', category: 'Procurement', href: '/inventory', iconName: 'inventory' },
+  { id: 'revenue', label: 'Revenue Forecast (ML)', category: 'Forecasting & ML', href: '/ml/revenue', iconName: 'revenue-forecast' },
+  { id: 'chat', label: 'AI Copilot Assistant', category: 'AI Intelligence', href: '/ml/chat', iconName: 'ai-copilot-voice' },
+  { id: 'imports', label: 'Data Import Center', category: 'Operations', href: '/imports', iconName: 'data-import' },
+  { id: 'companies', label: 'Companies & Workspaces', category: 'Administration', href: '/companies', iconName: 'companies' },
+  { id: 'branches', label: 'Branch Offices', category: 'Administration', href: '/branches', iconName: 'branches' },
+  { id: 'users', label: 'Users & Permissions', category: 'Administration', href: '/users', iconName: 'users-roles' },
+  { id: 'settings', label: 'Platform Settings', category: 'Administration', href: '/settings', iconName: 'platform-settings' },
+]
+
 export const Navbar: React.FC<NavbarProps> = ({
   onOpenSearch,
   onToggleAIAssistant,
 }) => {
+  const navigate = useNavigate()
   const location = useLocation()
   const { isAuthenticated, activeCompany, companies, setActiveCompanyId, activeBranchId, setActiveBranchId } = useAuth()
 
@@ -46,9 +72,20 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [mobileSearch, setMobileSearch] = useState('')
 
+  // Search input and suggestions state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
+
   const navRef = useRef<HTMLDivElement>(null)
+  const adminRef = useRef<HTMLDivElement>(null)
+  const searchRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const companyRef = useRef<HTMLDivElement>(null)
   const branchRef = useRef<HTMLDivElement>(null)
+
+  // Determine admin permissions
+  const userRole = (activeCompany?.role || activeCompany?.role_name || '').toLowerCase()
+  const isAdminUser = !userRole || userRole === 'owner' || userRole === 'admin' || activeCompany?.is_owner === true || activeCompany?.is_owner === undefined
 
   // Fetch unread notification count — scoped to authenticated session and company
   const companyKey = activeCompany?.company_id || activeCompany?.id
@@ -78,28 +115,50 @@ export const Navbar: React.FC<NavbarProps> = ({
   const branches = branchesData?.items || []
   const activeBranch = branches.find((b: any) => b.id === activeBranchId)
 
+  // Filter search suggestions based on current query
+  const filteredSuggestions = searchQuery.trim()
+    ? SEARCH_SUGGESTIONS.filter(
+        (s) =>
+          s.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.category.toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 6)
+    : SEARCH_SUGGESTIONS.slice(0, 5)
+
   // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (navRef.current && !navRef.current.contains(e.target as Node)) {
-        setActiveDropdown(null)
+      const target = e.target as Node
+      if (navRef.current && !navRef.current.contains(target)) {
+        if (activeDropdown !== 'admin') {
+          setActiveDropdown(null)
+        }
       }
-      if (companyRef.current && !companyRef.current.contains(e.target as Node)) {
+      if (adminRef.current && !adminRef.current.contains(target)) {
+        if (activeDropdown === 'admin') {
+          setActiveDropdown(null)
+        }
+      }
+      if (searchRef.current && !searchRef.current.contains(target)) {
+        setIsSearchFocused(false)
+      }
+      if (companyRef.current && !companyRef.current.contains(target)) {
         setIsCompanyMenuOpen(false)
       }
-      if (branchRef.current && !branchRef.current.contains(e.target as Node)) {
+      if (branchRef.current && !branchRef.current.contains(target)) {
         setIsBranchMenuOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }, [activeDropdown])
 
   // Close menus on route change
   useEffect(() => {
     setActiveDropdown(null)
     setIsCompanyMenuOpen(false)
+    setIsBranchMenuOpen(false)
     setIsMobileMenuOpen(false)
+    setIsSearchFocused(false)
   }, [location.pathname])
 
   const toggleDropdown = (key: DropdownKey) => {
@@ -520,24 +579,142 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          {/* 5. Administration & Settings */}
-          <div className="relative">
+        </nav>
+      </div>
+
+      {/* ── Region 2: Center (Dedicated Search Bar with Controlled Width) ── */}
+      <div
+        className="flex-1 flex items-center justify-center min-w-0 px-2 sm:px-3 max-w-[240px] md:max-w-[270px] lg:max-w-[300px] xl:max-w-[360px]"
+        ref={searchRef}
+      >
+        <div className="relative w-full min-w-0">
+          <div
+            className={cn(
+              'w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs bg-slate-50 transition-all shadow-2xs cursor-text',
+              isSearchFocused
+                ? 'border-teal-500 bg-white ring-2 ring-teal-500/20 shadow-xs'
+                : 'border-slate-200 hover:border-slate-300 hover:bg-white text-slate-500'
+            )}
+            onClick={() => {
+              searchInputRef.current?.focus()
+              setIsSearchFocused(true)
+            }}
+          >
+            <SearchIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setIsSearchFocused(true)
+              }}
+              onFocus={() => setIsSearchFocused(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setIsSearchFocused(false)
+                  searchInputRef.current?.blur()
+                } else if (e.key === 'Enter') {
+                  if (filteredSuggestions.length > 0) {
+                    navigate(filteredSuggestions[0].href)
+                    setIsSearchFocused(false)
+                    setSearchQuery('')
+                  } else {
+                    onOpenSearch()
+                  }
+                }
+              }}
+              placeholder="Search modules, AI... (⌘K)"
+              className="w-full bg-transparent border-none p-0 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-0 truncate"
+            />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenSearch()
+              }}
+              className="hidden sm:inline-flex items-center shrink-0 ml-1 px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-200/80 hover:bg-slate-300 text-slate-600 border border-slate-300 transition-colors"
+              title="Open Command Palette (Ctrl+K)"
+            >
+              ⌘K
+            </button>
+          </div>
+
+          {/* Anchored Suggestions Dropdown right below the search bar */}
+          {isSearchFocused && (
+            <div className="absolute top-full left-0 mt-1.5 w-full min-w-[280px] sm:min-w-[320px] bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50 text-xs animate-fade-in">
+              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 flex items-center justify-between">
+                <span>{searchQuery.trim() ? 'Matching Modules' : 'Quick Jump'}</span>
+                <span className="text-[10px] font-normal text-slate-400">Esc to close</span>
+              </div>
+              <div className="py-1 max-h-60 overflow-y-auto divide-y divide-slate-50">
+                {filteredSuggestions.length > 0 ? (
+                  filteredSuggestions.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        navigate(item.href)
+                        setIsSearchFocused(false)
+                        setSearchQuery('')
+                      }}
+                      className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-slate-50 transition-colors group"
+                    >
+                      <ModuleIcon name={item.iconName} size="xs" className="w-4 h-4 shrink-0 transition-transform group-hover:scale-110" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-slate-800 group-hover:text-teal-800 truncate">
+                          {item.label}
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate">{item.category}</div>
+                      </div>
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-teal-600 shrink-0" />
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-3 text-center text-slate-400 text-xs">
+                    No matching modules found.
+                  </div>
+                )}
+              </div>
+              <div className="pt-1 border-t border-slate-100 px-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSearchFocused(false)
+                    onOpenSearch()
+                  }}
+                  className="w-full py-1 text-center text-[11px] font-semibold text-teal-700 hover:bg-teal-50 rounded transition-colors flex items-center justify-center gap-1"
+                >
+                  <span>Open Full Command Palette</span>
+                  <span className="font-mono text-[10px]">(Ctrl+K)</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Region 3: Right (Admin, Company, Outlet, Notifications, Profile) ── */}
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        {/* Admin Navigation Dropdown */}
+        {isAdminUser && (
+          <div className="relative" ref={adminRef}>
             <button
               onClick={() => toggleDropdown('admin')}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-semibold transition-colors',
+                'flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-semibold transition-colors',
                 isAdminActive
-                  ? 'bg-teal-50 text-teal-800'
+                  ? 'bg-teal-50 text-teal-800 ring-1 ring-teal-200'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               )}
+              title="Workspace Administration & Settings"
             >
               <Settings className="w-3.5 h-3.5 text-slate-500" />
-              <span>Admin</span>
+              <span className="hidden sm:inline">Admin</span>
               <ChevronDown className="w-3 h-3 text-slate-400" />
             </button>
 
             {activeDropdown === 'admin' && (
-              <div className="absolute left-0 mt-1.5 w-56 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in text-xs">
+              <div className="absolute right-0 mt-1.5 w-56 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 animate-fade-in text-xs">
                 <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
                   Workspace Administration
                 </div>
@@ -607,43 +784,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
           </div>
-
-          {/* Direct link to Import Center */}
-          <Link
-            to="/imports"
-            className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-slate-700 hover:text-teal-800 hover:bg-slate-100 transition-colors font-semibold"
-            title="Import CSV, Excel, or PDF Data"
-          >
-            <ModuleIcon name="data-import" size="xs" className="w-3.5 h-3.5 shrink-0" />
-            <span>Import</span>
-          </Link>
-
-          {/* Direct link to AI Assistant Drawer */}
-          <button
-            onClick={onToggleAIAssistant}
-            className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-teal-800 bg-teal-50/70 hover:bg-teal-100/80 transition-colors font-bold border border-teal-200/60"
-            title="Open AI Decision Assistant Drawer"
-          >
-            <ModuleIcon name="ai-copilot-voice" size="xs" className="w-3.5 h-3.5 shrink-0" />
-            <span>AI Copilot</span>
-          </button>
-        </nav>
-      </div>
-
-      {/* ── Right section: Global Search, Company Switcher, Notifications, Profile ── */}
-      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        {/* Global Search Button (Ctrl+K) */}
-        <button
-          onClick={onOpenSearch}
-          className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-500 hover:border-slate-300 hover:bg-white hover:text-slate-700 transition-all shadow-2xs"
-          title="Search commands, modules, records (Ctrl+K)"
-        >
-          <SearchIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span className="hidden xl:inline">Search...</span>
-          <kbd className="hidden sm:inline-block ml-0.5 px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-200 text-slate-600 border border-slate-300">
-            ⌘K
-          </kbd>
-        </button>
+        )}
 
         {/* Company / Workspace Switcher Dropdown */}
         <div className="relative hidden md:block" ref={companyRef}>
