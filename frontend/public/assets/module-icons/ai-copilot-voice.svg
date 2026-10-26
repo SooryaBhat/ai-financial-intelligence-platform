@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" role="img" aria-label="ai copilot voice">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#67E8F9"/><stop offset="1" stop-color="#4F46E5"/></linearGradient><linearGradient id="shine" x1="0" y1="0" x2="0.9" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".65"/><stop offset=".5" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+<rect x=".5" y=".5" width="23" height="23" rx="6" fill="#67E8F9" opacity=".12"/>
+<g stroke="url(#g)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="url(#g)"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 4v4M9 3h6M8 12h.1M16 12h.1M9 16h6M2 12v4M22 12v4"/></g>
+<path d="M5 4h7" stroke="#fff" stroke-width="1.1" stroke-linecap="round" opacity=".7"/>
+</svg>

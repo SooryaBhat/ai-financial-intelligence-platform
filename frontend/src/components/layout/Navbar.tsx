@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom'
 import {
   Bell,
   Search as SearchIcon,
-  Bot,
   HelpCircle,
   Building2,
   ChevronDown,
@@ -11,29 +10,14 @@ import {
   TrendingUp,
   Package,
   ShoppingCart,
-  Receipt,
-  Users,
-  Briefcase,
-  Layers,
-  FileText,
-  Warehouse,
+  DollarSign,
   Settings,
   GitBranch,
-  UserCheck,
-  Tag,
-  PackageCheck,
-  ArrowLeftRight,
-  ShoppingBag,
-  CreditCard,
-  DollarSign,
-  HeartPulse,
-  AlertTriangle,
   Menu,
   X,
-  LayoutDashboard,
-  UploadCloud,
 } from 'lucide-react'
 import { AlladinLogo } from '@/components/brand/AlladinLogo'
+import { ModuleIcon } from '@/components/ui/ModuleIcon'
 import { ProfileMenu } from './ProfileMenu'
 import { useAuth } from '@/hooks/useAuth'
 import { useQuery } from '@tanstack/react-query'
@@ -196,7 +180,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/sales"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <ShoppingCart className="w-4 h-4 text-emerald-600" />
+                    <ModuleIcon name="sales-orders" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Sales Orders</div>
                       <div className="text-[10px] text-slate-400">Order management & pipelines</div>
@@ -206,7 +190,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/invoices"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Receipt className="w-4 h-4 text-blue-600" />
+                    <ModuleIcon name="invoices-billing" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Invoices & Billing</div>
                       <div className="text-[10px] text-slate-400">Receivables & tax invoices</div>
@@ -216,7 +200,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/customers"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Users className="w-4 h-4 text-violet-600" />
+                    <ModuleIcon name="customers" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Customers Directory</div>
                       <div className="text-[10px] text-slate-400">Client CRM & account ledgers</div>
@@ -226,7 +210,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/payments"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <CreditCard className="w-4 h-4 text-sky-600" />
+                    <ModuleIcon name="payments" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Payments & Collections</div>
                       <div className="text-[10px] text-slate-400">Settlements & payment vouchers</div>
@@ -263,7 +247,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/products"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Package className="w-4 h-4 text-indigo-600" />
+                    <ModuleIcon name="products-skus" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Products & SKUs</div>
                       <div className="text-[10px] text-slate-400">Master catalog & pricing</div>
@@ -273,7 +257,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/inventory"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <PackageCheck className="w-4 h-4 text-teal-600" />
+                    <ModuleIcon name="inventory" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Current Stock</div>
                       <div className="text-[10px] text-slate-400">On-hand quantities by location</div>
@@ -283,7 +267,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/stock-movements"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <ArrowLeftRight className="w-4 h-4 text-slate-600" />
+                    <ModuleIcon name="stock-movements" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Stock Movements</div>
                       <div className="text-[10px] text-slate-400">Inbound, outbound & transfers</div>
@@ -293,7 +277,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/warehouses"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Warehouse className="w-4 h-4 text-amber-600" />
+                    <ModuleIcon name="warehouses" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Warehouses</div>
                       <div className="text-[10px] text-slate-400">Storage facilities & zones</div>
@@ -303,7 +287,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/categories"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Tag className="w-4 h-4 text-rose-600" />
+                    <ModuleIcon name="categories" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Categories</div>
                       <div className="text-[10px] text-slate-400">Taxonomy & classification</div>
@@ -314,7 +298,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/purchases"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <ShoppingBag className="w-4 h-4 text-cyan-600" />
+                    <ModuleIcon name="purchase-orders" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Purchase Orders</div>
                       <div className="text-[10px] text-slate-400">Supplier procurement orders</div>
@@ -324,7 +308,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/suppliers"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Briefcase className="w-4 h-4 text-stone-600" />
+                    <ModuleIcon name="suppliers" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Suppliers</div>
                       <div className="text-[10px] text-slate-400">Vendor master directory</div>
@@ -361,7 +345,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/dashboard"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <LayoutDashboard className="w-4 h-4 text-teal-600" />
+                    <ModuleIcon name="dashboard" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Executive Dashboard</div>
                       <div className="text-[10px] text-slate-400">KPIs, ledger charts & alerts</div>
@@ -371,7 +355,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/invoices"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Receipt className="w-4 h-4 text-blue-600" />
+                    <ModuleIcon name="invoices-billing" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Invoices & Receivables</div>
                       <div className="text-[10px] text-slate-400">Customer billing & tax records</div>
@@ -381,7 +365,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/expenses"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Layers className="w-4 h-4 text-orange-600" />
+                    <ModuleIcon name="expenses" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Expenses</div>
                       <div className="text-[10px] text-slate-400">Operating vouchers & approvals</div>
@@ -391,7 +375,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/payments"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <CreditCard className="w-4 h-4 text-sky-600" />
+                    <ModuleIcon name="payments" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Payments</div>
                       <div className="text-[10px] text-slate-400">Bank settlements & receipts</div>
@@ -401,7 +385,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/reports"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <FileText className="w-4 h-4 text-indigo-600" />
+                    <ModuleIcon name="financial-reports" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Financial Reports</div>
                       <div className="text-[10px] text-slate-400">P&L, balance sheets & audit</div>
@@ -442,7 +426,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/ml/revenue"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <TrendingUp className="w-4 h-4 text-purple-600" />
+                    <ModuleIcon name="revenue-forecast" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Revenue Forecast</div>
                       <div className="text-[10px] text-slate-400">XGBoost & SARIMA projections</div>
@@ -452,7 +436,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/ml/sales"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <ShoppingCart className="w-4 h-4 text-emerald-600" />
+                    <ModuleIcon name="sales-demand" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Sales Demand Forecast</div>
                       <div className="text-[10px] text-slate-400">Product order volume prediction</div>
@@ -462,7 +446,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/ml/inventory"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <PackageCheck className="w-4 h-4 text-blue-600" />
+                    <ModuleIcon name="inventory-reorder" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Inventory Reorder Intelligence</div>
                       <div className="text-[10px] text-slate-400">Replenishment recommendations</div>
@@ -472,7 +456,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/ml/profit"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <DollarSign className="w-4 h-4 text-teal-600" />
+                    <ModuleIcon name="profit-prediction" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Profit Margin Forecast</div>
                       <div className="text-[10px] text-slate-400">Gross & net margin trends</div>
@@ -482,7 +466,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/ml/expense"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Layers className="w-4 h-4 text-orange-600" />
+                    <ModuleIcon name="expense-forecast" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Expense Forecast</div>
                       <div className="text-[10px] text-slate-400">Operating overhead prediction</div>
@@ -493,7 +477,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/ml/business-health"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <HeartPulse className="w-4 h-4 text-rose-600" />
+                    <ModuleIcon name="business-health" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Business Health Score</div>
                       <div className="text-[10px] text-slate-400">Solvency & composite health metric</div>
@@ -503,7 +487,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/ml/anomalies"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    <ModuleIcon name="anomaly-detection" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Transaction Anomalies</div>
                       <div className="text-[10px] text-slate-400">Outlier & fraud risk detection</div>
@@ -513,7 +497,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/ml/chat"
                     className="flex items-center gap-2.5 px-3 py-2 text-teal-800 bg-teal-50/60 hover:bg-teal-50 transition-colors"
                   >
-                    <Bot className="w-4 h-4 text-teal-700" />
+                    <ModuleIcon name="ai-copilot-voice" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-bold">AI Assistant Dedicated Page</div>
                       <div className="text-[10px] text-teal-700">Full-screen decision copilot</div>
@@ -550,7 +534,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/companies"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Building2 className="w-4 h-4 text-slate-600" />
+                    <ModuleIcon name="companies" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Companies</div>
                       <div className="text-[10px] text-slate-400">Entities & multi-tenancy</div>
@@ -560,7 +544,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/branches"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <GitBranch className="w-4 h-4 text-indigo-600" />
+                    <ModuleIcon name="branches" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Branches</div>
                       <div className="text-[10px] text-slate-400">Branch offices & divisions</div>
@@ -570,7 +554,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/users"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <UserCheck className="w-4 h-4 text-violet-600" />
+                    <ModuleIcon name="users-roles" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Users & Roles</div>
                       <div className="text-[10px] text-slate-400">Permissions & user access</div>
@@ -580,7 +564,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/notifications"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Bell className="w-4 h-4 text-amber-600" />
+                    <ModuleIcon name="notifications" size="sm" className="w-4 h-4 shrink-0" />
                     <div className="flex-1 flex items-center justify-between">
                       <div>
                         <div className="font-semibold">Notifications</div>
@@ -601,7 +585,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     to="/settings"
                     className="flex items-center gap-2.5 px-3 py-2 text-slate-700 hover:bg-slate-50 hover:text-teal-800 transition-colors"
                   >
-                    <Settings className="w-4 h-4 text-slate-600" />
+                    <ModuleIcon name="platform-settings" size="sm" className="w-4 h-4 shrink-0" />
                     <div>
                       <div className="font-semibold">Settings</div>
                       <div className="text-[10px] text-slate-400">Platform preferences</div>
@@ -618,7 +602,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-slate-700 hover:text-teal-800 hover:bg-slate-100 transition-colors font-semibold"
             title="Import CSV, Excel, or PDF Data"
           >
-            <UploadCloud className="w-3.5 h-3.5 text-teal-700" />
+            <ModuleIcon name="data-import" size="xs" className="w-3.5 h-3.5 shrink-0" />
             <span>Import</span>
           </Link>
 
@@ -628,7 +612,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-teal-800 bg-teal-50/70 hover:bg-teal-100/80 transition-colors font-bold border border-teal-200/60"
             title="Open AI Decision Assistant Drawer"
           >
-            <Bot className="w-3.5 h-3.5 text-teal-700" />
+            <ModuleIcon name="ai-copilot-voice" size="xs" className="w-3.5 h-3.5 shrink-0" />
             <span>AI Copilot</span>
           </button>
         </nav>
@@ -826,7 +810,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
                 >
-                  <ShoppingCart className="w-4 h-4 text-emerald-600" />
+                  <ModuleIcon name="sales-orders" size="sm" className="w-4 h-4 shrink-0" />
                   <span>Sales Orders</span>
                 </Link>
                 <Link
@@ -834,7 +818,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
                 >
-                  <Receipt className="w-4 h-4 text-blue-600" />
+                  <ModuleIcon name="invoices-billing" size="sm" className="w-4 h-4 shrink-0" />
                   <span>Invoices</span>
                 </Link>
                 <Link
@@ -842,7 +826,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
                 >
-                  <Users className="w-4 h-4 text-violet-600" />
+                  <ModuleIcon name="customers" size="sm" className="w-4 h-4 shrink-0" />
                   <span>Customers</span>
                 </Link>
                 <Link
@@ -850,7 +834,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
                 >
-                  <CreditCard className="w-4 h-4 text-sky-600" />
+                  <ModuleIcon name="payments" size="sm" className="w-4 h-4 shrink-0" />
                   <span>Payments</span>
                 </Link>
               </div>
@@ -864,7 +848,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
                 >
-                  <Package className="w-4 h-4 text-indigo-600" />
+                  <ModuleIcon name="products-skus" size="sm" className="w-4 h-4 shrink-0" />
                   <span>Products</span>
                 </Link>
                 <Link
@@ -872,7 +856,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
                 >
-                  <PackageCheck className="w-4 h-4 text-teal-600" />
+                  <ModuleIcon name="inventory" size="sm" className="w-4 h-4 shrink-0" />
                   <span>Inventory</span>
                 </Link>
                 <Link
@@ -880,7 +864,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
                 >
-                  <ShoppingBag className="w-4 h-4 text-cyan-600" />
+                  <ModuleIcon name="purchase-orders" size="sm" className="w-4 h-4 shrink-0" />
                   <span>Purchases</span>
                 </Link>
                 <Link
@@ -888,7 +872,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
                 >
-                  <Warehouse className="w-4 h-4 text-amber-600" />
+                  <ModuleIcon name="warehouses" size="sm" className="w-4 h-4 shrink-0" />
                   <span>Warehouses</span>
                 </Link>
               </div>
@@ -902,7 +886,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
                 >
-                  <LayoutDashboard className="w-4 h-4 text-teal-600" />
+                  <ModuleIcon name="dashboard" size="sm" className="w-4 h-4 shrink-0" />
                   <span>Dashboard</span>
                 </Link>
                 <Link
@@ -910,7 +894,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
                 >
-                  <Layers className="w-4 h-4 text-orange-600" />
+                  <ModuleIcon name="expenses" size="sm" className="w-4 h-4 shrink-0" />
                   <span>Expenses</span>
                 </Link>
                 <Link
@@ -918,7 +902,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
                 >
-                  <FileText className="w-4 h-4 text-indigo-600" />
+                  <ModuleIcon name="financial-reports" size="sm" className="w-4 h-4 shrink-0" />
                   <span>Reports</span>
                 </Link>
               </div>
@@ -932,7 +916,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
                 >
-                  <TrendingUp className="w-4 h-4 text-purple-600" />
+                  <ModuleIcon name="revenue-forecast" size="sm" className="w-4 h-4 shrink-0" />
                   <span>Revenue ML</span>
                 </Link>
                 <Link
@@ -940,7 +924,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 p-2 rounded-lg text-teal-800 font-semibold hover:bg-teal-50"
                 >
-                  <Bot className="w-4 h-4 text-teal-700" />
+                  <ModuleIcon name="ai-copilot-voice" size="sm" className="w-4 h-4 shrink-0" />
                   <span>AI Copilot</span>
                 </Link>
                 <Link
@@ -948,7 +932,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center gap-2 p-2 rounded-lg text-slate-700 hover:bg-slate-50"
                 >
-                  <HeartPulse className="w-4 h-4 text-rose-600" />
+                  <ModuleIcon name="business-health" size="sm" className="w-4 h-4 shrink-0" />
                   <span>Health Score</span>
                 </Link>
               </div>

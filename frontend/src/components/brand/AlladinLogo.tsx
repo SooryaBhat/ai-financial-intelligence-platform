@@ -1,14 +1,14 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface AlladinLogoProps {
   className?: string
   showTagline?: boolean
   showFullName?: boolean
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   to?: string
+  variant?: 'standard' | 'wordmark' | 'icon-only'
 }
 
 export const AlladinLogo: React.FC<AlladinLogoProps> = ({
@@ -17,38 +17,87 @@ export const AlladinLogo: React.FC<AlladinLogoProps> = ({
   showFullName = false,
   size = 'md',
   to = '/',
+  variant = 'standard',
 }) => {
   const iconSizes = {
-    sm: 'w-7 h-7 text-xs',
-    md: 'w-8 h-8 text-sm',
-    lg: 'w-10 h-10 text-base',
+    sm: 'w-7 h-7',
+    md: 'w-8 h-8',
+    lg: 'w-10 h-10',
+    xl: 'w-12 h-12',
   }
 
   const textSizes = {
     sm: 'text-base',
     md: 'text-lg',
     lg: 'text-xl',
+    xl: 'text-2xl',
+  }
+
+  const wordmarkHeights = {
+    sm: 'h-7',
+    md: 'h-8',
+    lg: 'h-10',
+    xl: 'h-12',
+  }
+
+  if (variant === 'wordmark') {
+    const wordmarkContent = (
+      <img
+        src="/assets/brand/alladin-logo.svg"
+        alt="ALLADIN ERP · AI"
+        className={cn('w-auto object-contain select-none', wordmarkHeights[size], className)}
+      />
+    )
+    if (to) {
+      return (
+        <Link to={to} className="inline-flex hover:opacity-95 transition-opacity">
+          {wordmarkContent}
+        </Link>
+      )
+    }
+    return wordmarkContent
+  }
+
+  if (variant === 'icon-only') {
+    const iconOnlyContent = (
+      <img
+        src="/assets/brand/alladin-app-icon.svg"
+        alt="ALLADIN Icon"
+        className={cn('rounded-lg shadow-xs select-none object-contain', iconSizes[size], className)}
+      />
+    )
+    if (to) {
+      return (
+        <Link to={to} className="inline-flex hover:opacity-95 transition-opacity">
+          {iconOnlyContent}
+        </Link>
+      )
+    }
+    return iconOnlyContent
   }
 
   const content = (
     <div className={cn('flex items-center gap-2.5', className)}>
-      {/* Brand Icon: Minimalist geometric emblem with subtle teal gradient & AI sparkle */}
+      {/* Official ALLADIN App Icon: Luminous teal genie lamp, AI flame & gold spark */}
       <div
         className={cn(
-          'relative flex items-center justify-center rounded-lg bg-gradient-to-br from-teal-600 to-teal-800 text-white font-black tracking-wider shadow-sm ring-1 ring-teal-700/20 shrink-0 select-none',
+          'relative flex items-center justify-center rounded-lg overflow-hidden shadow-xs ring-1 ring-teal-500/20 shrink-0 select-none bg-[#073D4A]',
           iconSizes[size]
         )}
       >
-        <span className="font-mono tracking-tighter">A</span>
-        <Sparkles className="w-2.5 h-2.5 absolute -top-1 -right-1 text-teal-300 pointer-events-none" />
+        <img
+          src="/assets/brand/alladin-app-icon.svg"
+          alt="ALLADIN"
+          className="w-full h-full object-contain"
+        />
       </div>
 
       <div className="flex flex-col min-w-0">
         <div className="flex items-center gap-1.5 leading-none">
-          <span className={cn('font-bold tracking-tight text-slate-900', textSizes[size])}>
+          <span className={cn('font-extrabold tracking-tight text-slate-900', textSizes[size])}>
             ALLADIN
           </span>
-          <span className="px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded bg-teal-50 text-teal-700 border border-teal-200/60 leading-none">
+          <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded bg-teal-50 text-teal-700 border border-teal-200/70 leading-none">
             ERP·AI
           </span>
         </div>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" role="img" aria-label="platform settings">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#CBD5E1"/><stop offset="1" stop-color="#475569"/></linearGradient><linearGradient id="shine" x1="0" y1="0" x2="0.9" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".65"/><stop offset=".5" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+<rect x=".5" y=".5" width="23" height="23" rx="6" fill="#CBD5E1" opacity=".12"/>
+<g stroke="url(#g)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="url(#g)"><circle cx="12" cy="12" r="3"/><path d="m19 13 2 1-2 3-2-1-2 1v2h-4v-2l-2-1-2 1-2-3 2-1v-2l-2-1 2-3 2 1 2-1V5h4v2l2 1 2-1 2 3-2 1z"/></g>
+<path d="M5 4h7" stroke="#fff" stroke-width="1.1" stroke-linecap="round" opacity=".7"/>
+</svg>

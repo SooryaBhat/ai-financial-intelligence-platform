@@ -2,22 +2,17 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import {
   TrendingUp,
-  BrainCircuit,
-  Bot,
-  Building2,
-  Package,
   Receipt,
   ShoppingCart,
   ShieldCheck,
   CheckCircle2,
   ArrowRight,
-  Layers,
-  LineChart,
   HelpCircle,
   Search,
 } from 'lucide-react'
 import { AlladinLogo } from '@/components/brand/AlladinLogo'
 import { Button } from '@/components/ui/Button'
+import { ModuleIcon } from '@/components/ui/ModuleIcon'
 import { useAuth } from '@/hooks/useAuth'
 
 export const LandingPage: React.FC = () => {
@@ -73,7 +68,27 @@ export const LandingPage: React.FC = () => {
 
       {/* ── Hero Section ─────────────────────────────────────────── */}
       <section className="relative pt-16 pb-20 md:pt-24 md:pb-28 overflow-hidden bg-gradient-to-b from-slate-50/80 via-white to-white border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Subtle decorative wave and glow accents */}
+        <img
+          src="/assets/decorative/header-wave-teal.svg"
+          alt=""
+          aria-hidden="true"
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-44 object-cover opacity-35 pointer-events-none select-none"
+        />
+        <img
+          src="/assets/decorative/corner-glow.svg"
+          alt=""
+          aria-hidden="true"
+          className="absolute -top-16 -right-16 w-96 h-96 opacity-25 pointer-events-none select-none"
+        />
+        <img
+          src="/assets/decorative/dot-pattern.svg"
+          alt=""
+          aria-hidden="true"
+          className="absolute top-36 -left-12 w-64 h-48 opacity-15 pointer-events-none select-none"
+        />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-3xl mx-auto text-center space-y-5">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200/80 text-teal-800 text-xs font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-teal-600 animate-pulse" />
@@ -150,8 +165,12 @@ export const LandingPage: React.FC = () => {
               {/* Top Bar of Preview */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-teal-700 text-white font-bold flex items-center justify-center text-sm shadow-sm">
-                    A
+                  <div className="w-9 h-9 rounded-lg overflow-hidden bg-[#073D4A] flex items-center justify-center shadow-xs">
+                    <img
+                      src="/assets/brand/alladin-app-icon.svg"
+                      alt="ALLADIN"
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-900">ALLADIN Intelligence Workspace</h3>
@@ -164,7 +183,7 @@ export const LandingPage: React.FC = () => {
                     <span>Search records (⌘K)</span>
                   </div>
                   <div className="px-2.5 py-1 rounded bg-teal-600 text-white text-xs font-medium flex items-center gap-1.5">
-                    <Bot className="w-3.5 h-3.5" />
+                    <ModuleIcon name="ai-copilot-voice" size="xs" className="w-3.5 h-3.5" />
                     <span>AI Copilot Active</span>
                   </div>
                 </div>
@@ -254,9 +273,7 @@ export const LandingPage: React.FC = () => {
                 <div className="bg-white p-4 rounded-lg border border-slate-200 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
-                      <div className="p-1 rounded bg-teal-50 text-teal-700">
-                        <Bot className="w-4 h-4" />
-                      </div>
+                      <ModuleIcon name="ai-copilot-voice" size="sm" className="w-5 h-5" />
                       <div>
                         <h4 className="text-xs font-bold text-slate-900">ALLADIN AI Assistant</h4>
                         <p className="text-[10px] text-slate-500">Database Grounded</p>
@@ -288,8 +305,22 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* ── Feature Sections ─────────────────────────────────────── */}
-      <section id="features" className="py-20 bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="features" className="py-20 bg-white border-b border-slate-200 relative overflow-hidden">
+        {/* Subtle decorative background shapes */}
+        <img
+          src="/assets/decorative/background-mint.svg"
+          alt=""
+          aria-hidden="true"
+          className="absolute -bottom-16 -right-16 w-96 h-96 opacity-20 pointer-events-none select-none"
+        />
+        <img
+          src="/assets/decorative/gradient-blob.svg"
+          alt=""
+          aria-hidden="true"
+          className="absolute -top-20 -left-20 w-80 h-80 opacity-20 pointer-events-none select-none"
+        />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-2xl mx-auto mb-16 space-y-2">
             <h2 className="text-xs font-bold uppercase tracking-wider text-teal-700">Enterprise Capabilities</h2>
             <p className="text-3xl font-extrabold text-slate-950 tracking-tight">
@@ -302,11 +333,9 @@ export const LandingPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Feature 1: ERP Operations */}
-            <div className="p-6 rounded-xl border border-slate-200 bg-white hover:border-teal-300 transition-colors space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center font-bold">
-                <Building2 className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">ERP & Ledger Management</h3>
+            <div className="p-6 rounded-xl border border-slate-200/90 bg-white hover:border-teal-400 hover:shadow-sm transition-all space-y-3 group">
+              <ModuleIcon name="companies" size="md" className="transition-transform group-hover:scale-105" />
+              <h3 className="text-base font-bold text-slate-900 group-hover:text-teal-800 transition-colors">ERP & Ledger Management</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
                 Complete operational records covering sales orders, purchase requests, customer invoices,
                 suppliers, expenses, and payments with multi-company support.
@@ -328,11 +357,9 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Feature 2: ML Forecasting */}
-            <div className="p-6 rounded-xl border border-slate-200 bg-white hover:border-teal-300 transition-colors space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center font-bold">
-                <TrendingUp className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">Machine-Learning Forecasting</h3>
+            <div className="p-6 rounded-xl border border-slate-200/90 bg-white hover:border-teal-400 hover:shadow-sm transition-all space-y-3 group">
+              <ModuleIcon name="revenue-forecast" size="md" className="transition-transform group-hover:scale-105" />
+              <h3 className="text-base font-bold text-slate-900 group-hover:text-teal-800 transition-colors">Machine-Learning Forecasting</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
                 Trained statistical and regression models (XGBoost, SARIMA, LightGBM) forecast upcoming
                 monthly revenue, sales volume, profit margins, and expense trends.
@@ -354,11 +381,9 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Feature 3: Inventory Intelligence */}
-            <div className="p-6 rounded-xl border border-slate-200 bg-white hover:border-teal-300 transition-colors space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center font-bold">
-                <Package className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">Inventory & Stock Telemetry</h3>
+            <div className="p-6 rounded-xl border border-slate-200/90 bg-white hover:border-teal-400 hover:shadow-sm transition-all space-y-3 group">
+              <ModuleIcon name="inventory-reorder" size="md" className="transition-transform group-hover:scale-105" />
+              <h3 className="text-base font-bold text-slate-900 group-hover:text-teal-800 transition-colors">Inventory & Stock Telemetry</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
                 Track stock across multiple warehouses, monitor inward and outward stock movements,
                 and calculate automated reorder points before shortages occur.
@@ -380,11 +405,9 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Feature 4: AI Assistant */}
-            <div className="p-6 rounded-xl border border-slate-200 bg-white hover:border-teal-300 transition-colors space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center font-bold">
-                <Bot className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">Persistent AI Business Assistant</h3>
+            <div className="p-6 rounded-xl border border-slate-200/90 bg-white hover:border-teal-400 hover:shadow-sm transition-all space-y-3 group">
+              <ModuleIcon name="ai-copilot-voice" size="md" className="transition-transform group-hover:scale-105" />
+              <h3 className="text-base font-bold text-slate-900 group-hover:text-teal-800 transition-colors">Persistent AI Business Assistant</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
                 Ask questions about your business in natural language. The assistant draws directly on your
                 active company ledger context to provide truthful, grounded answers.
@@ -409,8 +432,22 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* ── How It Works Section ─────────────────────────────────── */}
-      <section id="how-it-works" className="py-20 bg-slate-50/70 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="how-it-works" className="py-20 bg-slate-50/70 border-b border-slate-200 relative overflow-hidden">
+        {/* Subtle decorative accents */}
+        <img
+          src="/assets/decorative/background-violet.svg"
+          alt=""
+          aria-hidden="true"
+          className="absolute top-0 right-0 w-80 h-80 opacity-15 pointer-events-none select-none"
+        />
+        <img
+          src="/assets/decorative/header-wave-violet.svg"
+          alt=""
+          aria-hidden="true"
+          className="absolute bottom-0 left-0 w-full h-24 object-cover opacity-20 pointer-events-none select-none"
+        />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-2xl mx-auto mb-14 space-y-2">
             <h2 className="text-xs font-bold uppercase tracking-wider text-teal-700">Workflow</h2>
             <p className="text-3xl font-extrabold text-slate-950 tracking-tight">
@@ -422,10 +459,10 @@ export const LandingPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white p-6 rounded-xl border border-slate-200 relative">
+            <div className="bg-white p-6 rounded-xl border border-slate-200 relative shadow-2xs">
               <span className="text-3xl font-black text-teal-700/20 absolute top-4 right-4">01</span>
-              <div className="w-9 h-9 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center font-bold mb-3">
-                <Layers className="w-4 h-4" />
+              <div className="mb-3">
+                <ModuleIcon name="data-import" size="md" />
               </div>
               <h3 className="text-base font-bold text-slate-900">Record Operational Transactions</h3>
               <p className="text-xs text-slate-600 mt-2 leading-relaxed">
@@ -434,10 +471,10 @@ export const LandingPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-xl border border-slate-200 relative">
+            <div className="bg-white p-6 rounded-xl border border-slate-200 relative shadow-2xs">
               <span className="text-3xl font-black text-teal-700/20 absolute top-4 right-4">02</span>
-              <div className="w-9 h-9 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center font-bold mb-3">
-                <LineChart className="w-4 h-4" />
+              <div className="mb-3">
+                <ModuleIcon name="profit-prediction" size="md" />
               </div>
               <h3 className="text-base font-bold text-slate-900">Run Machine Learning Models</h3>
               <p className="text-xs text-slate-600 mt-2 leading-relaxed">
@@ -446,10 +483,10 @@ export const LandingPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-xl border border-slate-200 relative">
+            <div className="bg-white p-6 rounded-xl border border-slate-200 relative shadow-2xs">
               <span className="text-3xl font-black text-teal-700/20 absolute top-4 right-4">03</span>
-              <div className="w-9 h-9 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center font-bold mb-3">
-                <BrainCircuit className="w-4 h-4" />
+              <div className="mb-3">
+                <ModuleIcon name="business-health" size="md" />
               </div>
               <h3 className="text-base font-bold text-slate-900">Act with Decision Intelligence</h3>
               <p className="text-xs text-slate-600 mt-2 leading-relaxed">
@@ -462,8 +499,14 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* ── Ready to Start CTA Banner ────────────────────────────── */}
-      <section className="py-16 bg-white border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
+      <section className="py-16 bg-white border-b border-slate-200 relative overflow-hidden">
+        <img
+          src="/assets/decorative/corner-glow.svg"
+          alt=""
+          aria-hidden="true"
+          className="absolute -bottom-16 -left-16 w-80 h-80 opacity-25 pointer-events-none select-none"
+        />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4 relative z-10">
           <h2 className="text-2xl sm:text-3xl font-bold text-slate-950 tracking-tight">
             Ready to bring clarity to your business data?
           </h2>

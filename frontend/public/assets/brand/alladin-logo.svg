@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="116" viewBox="0 0 520 116">
+<rect x="5" y="8" width="100" height="100" rx="28" fill="#073D4A"/>
+<path d="M29 69c8-15 23-23 42-23h21c-2 12 4 20 15 24-8 15-22 22-43 22H52c-13-1-21-8-23-23z" fill="#21CBB5"/>
+<path d="M48 54c-10-16 5-28 10-41 13 12 19 23 14 34-3 6-9 10-7 16z" fill="#5AF1DB"/>
+<path d="M79 24c3 10 7 14 17 17-10 3-14 7-17 17-3-10-7-14-17-17 10-3 14-7 17-17z" fill="#FCD34D"/>
+<text x="126" y="69" font-family="Inter,Arial,sans-serif" font-size="48" font-weight="800" letter-spacing="-1.5" fill="#111827">ALLADIN</text>
+<rect x="343" y="78" width="128" height="25" rx="8" fill="#E6FBF7" stroke="#91E9DD"/>
+<text x="407" y="95" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#087F75">ERP · AI</text>
+</svg>

@@ -26,6 +26,7 @@ import { ChatMessageItemView } from '@/components/chat/ChatMessageItemView'
 import { MemorySettingsModal } from '@/components/chat/MemorySettingsModal'
 import { VoiceConversationModal } from '@/components/voice/VoiceConversationModal'
 import { ModelSelector } from '@/components/chat/ModelSelector'
+import { ModuleIcon } from '@/components/ui/ModuleIcon'
 
 export const MlChatPage: React.FC = () => {
   const { activeCompany } = useAuth()
@@ -337,8 +338,8 @@ export const MlChatPage: React.FC = () => {
           ) : displayMessages.length === 0 ? (
             /* Empty State / Welcome Screen */
             <div className="py-12 max-w-2xl mx-auto text-center space-y-6">
-              <div className="w-14 h-14 bg-teal-50 border border-teal-200 text-teal-700 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
-                <Bot className="w-8 h-8" />
+              <div className="mx-auto flex justify-center">
+                <ModuleIcon name="ai-copilot-voice" size="xl" className="w-16 h-16" />
               </div>
 
               <div className="space-y-2">

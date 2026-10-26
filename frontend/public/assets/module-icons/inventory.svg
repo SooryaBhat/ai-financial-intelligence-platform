@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" role="img" aria-label="inventory">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FCD34D"/><stop offset="1" stop-color="#F97316"/></linearGradient><linearGradient id="shine" x1="0" y1="0" x2="0.9" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".65"/><stop offset=".5" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+<rect x=".5" y=".5" width="23" height="23" rx="6" fill="#FCD34D" opacity=".12"/>
+<g stroke="url(#g)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="url(#g)"><path d="m7 3 5 3-5 3-5-3zM17 3l5 3-5 3-5-3zM12 12l5 3-5 3-5-3z"/><path d="M2 6v5l5 3v-5M22 6v5l-5 3v-5M7 15v4l5 3 5-3v-4"/></g>
+<path d="M5 4h7" stroke="#fff" stroke-width="1.1" stroke-linecap="round" opacity=".7"/>
+</svg>

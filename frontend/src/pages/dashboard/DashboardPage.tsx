@@ -3,14 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   TrendingUp,
-  DollarSign,
   ShoppingCart,
-  Package,
   BrainCircuit,
   ArrowRight,
   ArrowUpRight,
-  Receipt,
-  Bot,
   RefreshCw,
   LayoutGrid,
   AlertCircle,
@@ -21,6 +17,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { ModuleIcon } from '@/components/ui/ModuleIcon'
 import { useAuth } from '@/hooks/useAuth'
 import { formatCurrency } from '@/lib/utils'
 import { mlService, reportService } from '@/services/erp.service'
@@ -65,8 +62,17 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* ── Top Header Banner ── */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="space-y-1">
+      <div className="relative overflow-hidden bg-white border border-slate-200/90 rounded-xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* Subtle decorative glow & accents */}
+        <img
+          src="/assets/decorative/corner-glow.svg"
+          alt=""
+          aria-hidden="true"
+          className="absolute -top-12 -right-12 w-64 h-64 opacity-25 pointer-events-none select-none"
+        />
+        <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl from-teal-50/40 via-cyan-50/15 to-transparent rounded-full -mr-16 -mt-16 pointer-events-none" />
+
+        <div className="space-y-1 relative z-10">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="default" className="bg-teal-50 text-teal-800 border-teal-200 font-semibold">
               {activeCompany?.company_name || 'Active Workspace'}
@@ -86,7 +92,7 @@ export const DashboardPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0 relative z-10">
           <Link to="/apps">
             <Button
               variant="outline"
@@ -123,37 +129,37 @@ export const DashboardPage: React.FC = () => {
         </span>
         <Link
           to="/invoices"
-          className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:border-teal-500 hover:text-teal-800 transition-colors font-medium flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
+          className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:border-teal-500 hover:text-teal-800 transition-colors font-medium flex items-center gap-2 shadow-2xs whitespace-nowrap group"
         >
-          <Receipt className="w-3.5 h-3.5 text-teal-700" />
+          <ModuleIcon name="invoices-billing" size="xs" className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-110" />
           <span>Invoices</span>
         </Link>
         <Link
           to="/sales"
-          className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:border-teal-500 hover:text-teal-800 transition-colors font-medium flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
+          className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:border-teal-500 hover:text-teal-800 transition-colors font-medium flex items-center gap-2 shadow-2xs whitespace-nowrap group"
         >
-          <ShoppingCart className="w-3.5 h-3.5 text-teal-700" />
+          <ModuleIcon name="sales-orders" size="xs" className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-110" />
           <span>New Sales Order</span>
         </Link>
         <Link
           to="/products"
-          className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:border-teal-500 hover:text-teal-800 transition-colors font-medium flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
+          className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:border-teal-500 hover:text-teal-800 transition-colors font-medium flex items-center gap-2 shadow-2xs whitespace-nowrap group"
         >
-          <Package className="w-3.5 h-3.5 text-teal-700" />
+          <ModuleIcon name="products-skus" size="xs" className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-110" />
           <span>Add Product SKU</span>
         </Link>
         <Link
           to="/expenses"
-          className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:border-teal-500 hover:text-teal-800 transition-colors font-medium flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
+          className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:border-teal-500 hover:text-teal-800 transition-colors font-medium flex items-center gap-2 shadow-2xs whitespace-nowrap group"
         >
-          <DollarSign className="w-3.5 h-3.5 text-teal-700" />
+          <ModuleIcon name="expenses" size="xs" className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-110" />
           <span>Log Expense</span>
         </Link>
         <Link
           to="/ml/chat"
-          className="px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 transition-colors font-semibold flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
+          className="px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 transition-colors font-semibold flex items-center gap-2 shadow-2xs whitespace-nowrap group"
         >
-          <Bot className="w-3.5 h-3.5 text-teal-700" />
+          <ModuleIcon name="ai-copilot-voice" size="xs" className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-110" />
           <span>Ask AI Assistant</span>
         </Link>
       </div>
@@ -163,13 +169,11 @@ export const DashboardPage: React.FC = () => {
         {/* KPI 1: Total Revenue */}
         <div
           onClick={() => navigate('/sales')}
-          className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs hover:border-teal-300 hover:shadow-xs transition-all cursor-pointer group"
+          className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs hover:border-teal-400 hover:shadow-xs transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Gross Sales Revenue</span>
-            <div className="p-2 rounded-lg bg-teal-50 text-teal-700 group-hover:bg-teal-600 group-hover:text-white transition-colors">
-              <DollarSign className="w-4 h-4" />
-            </div>
+            <ModuleIcon name="revenue-forecast" size="md" className="transition-transform group-hover:scale-105" />
           </div>
           <div className="mt-2">
             {isSummaryLoading ? (
@@ -193,13 +197,11 @@ export const DashboardPage: React.FC = () => {
         {/* KPI 2: Sales Volume */}
         <div
           onClick={() => navigate('/sales')}
-          className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs hover:border-teal-300 hover:shadow-xs transition-all cursor-pointer group"
+          className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs hover:border-teal-400 hover:shadow-xs transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Sales Transactions</span>
-            <div className="p-2 rounded-lg bg-teal-50 text-teal-700 group-hover:bg-teal-600 group-hover:text-white transition-colors">
-              <ShoppingCart className="w-4 h-4" />
-            </div>
+            <ModuleIcon name="sales-orders" size="md" className="transition-transform group-hover:scale-105" />
           </div>
           <div className="mt-2">
             {isSummaryLoading ? (
@@ -221,13 +223,11 @@ export const DashboardPage: React.FC = () => {
         {/* KPI 3: Operating Expenses */}
         <div
           onClick={() => navigate('/expenses')}
-          className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs hover:border-teal-300 hover:shadow-xs transition-all cursor-pointer group"
+          className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs hover:border-teal-400 hover:shadow-xs transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Operating Expenses</span>
-            <div className="p-2 rounded-lg bg-slate-100 text-slate-700 group-hover:bg-slate-800 group-hover:text-white transition-colors">
-              <Receipt className="w-4 h-4" />
-            </div>
+            <ModuleIcon name="expenses" size="md" className="transition-transform group-hover:scale-105" />
           </div>
           <div className="mt-2">
             {isSummaryLoading ? (
@@ -249,13 +249,11 @@ export const DashboardPage: React.FC = () => {
         {/* KPI 4: Net Profit */}
         <div
           onClick={() => navigate('/ml/profit')}
-          className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs hover:border-teal-300 hover:shadow-xs transition-all cursor-pointer group"
+          className="bg-white p-5 rounded-xl border border-slate-200/90 shadow-2xs hover:border-teal-400 hover:shadow-xs transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Net Operating Profit</span>
-            <div className="p-2 rounded-lg bg-teal-50 text-teal-700 group-hover:bg-teal-600 group-hover:text-white transition-colors">
-              <TrendingUp className="w-4 h-4" />
-            </div>
+            <ModuleIcon name="profit-prediction" size="md" className="transition-transform group-hover:scale-105" />
           </div>
           <div className="mt-2">
             {isSummaryLoading ? (
@@ -399,7 +397,10 @@ export const DashboardPage: React.FC = () => {
               className="p-3 rounded-lg border border-slate-200 hover:border-teal-400 bg-slate-50 hover:bg-white transition-all cursor-pointer group space-y-1"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-900">Inventory Status</span>
+                <div className="flex items-center gap-2">
+                  <ModuleIcon name="inventory-reorder" size="xs" className="w-4 h-4 shrink-0" />
+                  <span className="text-xs font-bold text-slate-900">Inventory Status</span>
+                </div>
                 <Badge variant="default" size="sm" className="bg-teal-50 text-teal-800 border-teal-200">
                   {summary?.inventory_count ?? 0} SKUs
                 </Badge>
@@ -422,7 +423,10 @@ export const DashboardPage: React.FC = () => {
               className="p-3 rounded-lg border border-slate-200 hover:border-teal-400 bg-slate-50 hover:bg-white transition-all cursor-pointer group space-y-1"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-900">Outstanding Receivables</span>
+                <div className="flex items-center gap-2">
+                  <ModuleIcon name="invoices-billing" size="xs" className="w-4 h-4 shrink-0" />
+                  <span className="text-xs font-bold text-slate-900">Outstanding Receivables</span>
+                </div>
                 <span className="text-xs font-bold text-slate-800">
                   {formatCurrency(summary?.total_outstanding ?? 0)}
                 </span>
@@ -438,7 +442,10 @@ export const DashboardPage: React.FC = () => {
               className="p-3 rounded-lg border border-teal-200 bg-teal-50/60 hover:bg-teal-50 transition-colors cursor-pointer space-y-1"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-teal-900">Business Health Score</span>
+                <div className="flex items-center gap-2">
+                  <ModuleIcon name="business-health" size="xs" className="w-4 h-4 shrink-0" />
+                  <span className="text-xs font-bold text-teal-900">Business Health Score</span>
+                </div>
                 <Badge variant="success" size="sm">
                   Active
                 </Badge>
@@ -454,7 +461,8 @@ export const DashboardPage: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full text-slate-700 hover:text-teal-800 border-slate-200"
+                className="w-full text-slate-700 hover:text-teal-800 border-slate-200 flex items-center justify-center gap-2"
+                leftIcon={<ModuleIcon name="ai-copilot-voice" size="xs" className="w-3.5 h-3.5" />}
                 rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
               >
                 Consult AI Copilot

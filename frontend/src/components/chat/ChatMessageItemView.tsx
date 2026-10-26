@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import {
-  Bot,
   User,
   Copy,
   Check,
@@ -19,6 +18,7 @@ import {
   AlertCircle,
   Sparkles,
 } from 'lucide-react'
+import { ModuleIcon } from '@/components/ui/ModuleIcon'
 import { ToolCallExecution } from '@/services/erp.service'
 
 interface ChatMessageItemViewProps {
@@ -126,8 +126,8 @@ export const ChatMessageItemView: React.FC<ChatMessageItemViewProps> = ({ messag
     <div className="flex justify-start my-4 group">
       <div className="flex items-start max-w-3xl space-x-3 w-full">
         {/* Assistant Avatar */}
-        <div className="w-8 h-8 rounded-full bg-teal-700 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
-          <Bot className="w-4 h-4" />
+        <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 shadow-xs mt-0.5">
+          <ModuleIcon name="ai-copilot-voice" size="md" className="w-8 h-8" />
         </div>
 
         <div className="space-y-2 flex-1 min-w-0">

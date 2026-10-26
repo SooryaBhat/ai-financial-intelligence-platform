@@ -1,0 +1,22 @@
+{
+  "name": "ALLADIN — AI ERP & Decision Intelligence Network",
+  "short_name": "ALLADIN",
+  "description": "AI-powered Ledger Learning and Analytics for Decision Intelligence Network",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#061A2A",
+  "theme_color": "#073D4A",
+  "icons": [
+    {
+      "src": "/assets/brand/alladin-app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/brand/alladin-favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

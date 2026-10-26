@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
-  Bot,
   X,
   Send,
   Trash2,
@@ -25,6 +24,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { ToolCallExecution } from '@/services/erp.service'
 import { chatService } from '@/services/chat.service'
 import { useAuth } from '@/hooks/useAuth'
+import { ModuleIcon } from '@/components/ui/ModuleIcon'
 import { VoiceConversationModal } from '@/components/voice/VoiceConversationModal'
 import { ModelSelector } from '@/components/chat/ModelSelector'
 
@@ -278,9 +278,7 @@ export const AIAssistantDrawer: React.FC<AIAssistantDrawerProps> = ({
           {/* Header */}
           <div className="px-5 py-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center font-bold shadow-sm">
-                <Bot className="w-4 h-4" />
-              </div>
+              <ModuleIcon name="ai-copilot-voice" size="md" className="w-8 h-8 shrink-0" />
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-bold text-slate-900">ALLADIN AI Assistant</h3>

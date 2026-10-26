@@ -1,40 +1,12 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import {
-  ShoppingCart,
-  Package,
-  Receipt,
-  Users,
-  Building2,
-  TrendingUp,
-  AlertTriangle,
-  FileText,
-  Settings,
-  Briefcase,
-  Layers,
-  GitBranch,
-  UserCheck,
-  Tag,
-  Warehouse,
-  PackageCheck,
-  ArrowLeftRight,
-  ShoppingBag,
-  CreditCard,
-  Bell,
-  PieChart,
-  Bot,
-  Search,
-  DollarSign,
-  HeartPulse,
-  LayoutDashboard,
-  Sparkles,
-  UploadCloud,
-} from 'lucide-react'
+import { Search, Sparkles } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { reportService } from '@/services/erp.service'
 import { formatCurrency } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { ModuleIcon, ModuleIconName } from '@/components/ui/ModuleIcon'
 import { cn } from '@/lib/utils'
 
 interface AppModule {
@@ -42,10 +14,7 @@ interface AppModule {
   label: string
   description: string
   href: string
-  icon: React.ComponentType<{ className?: string }>
-  color: string
-  bg: string
-  border: string
+  moduleIcon: ModuleIconName
   badge?: string
   group: string
 }
@@ -57,10 +26,7 @@ const appModules: AppModule[] = [
     label: 'Dashboard',
     description: 'KPIs, charts & operational intelligence',
     href: '/dashboard',
-    icon: LayoutDashboard,
-    color: 'text-teal-700',
-    bg: 'bg-teal-50',
-    border: 'border-teal-200',
+    moduleIcon: 'dashboard',
     group: 'Operations',
   },
   {
@@ -68,10 +34,7 @@ const appModules: AppModule[] = [
     label: 'Data Import Center',
     description: 'Bulk CSV, Excel & PDF extraction with validation',
     href: '/imports',
-    icon: UploadCloud,
-    color: 'text-indigo-700',
-    bg: 'bg-indigo-50',
-    border: 'border-indigo-200',
+    moduleIcon: 'data-import',
     badge: 'Step 7',
     group: 'Operations',
   },
@@ -80,10 +43,7 @@ const appModules: AppModule[] = [
     label: 'Sales Orders',
     description: 'Customer orders & commercial pipeline',
     href: '/sales',
-    icon: ShoppingCart,
-    color: 'text-emerald-700',
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200',
+    moduleIcon: 'sales-orders',
     group: 'Operations',
   },
   {
@@ -91,10 +51,7 @@ const appModules: AppModule[] = [
     label: 'Invoices & Billing',
     description: 'Customer invoices & receivables ledger',
     href: '/invoices',
-    icon: Receipt,
-    color: 'text-blue-700',
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
+    moduleIcon: 'invoices-billing',
     group: 'Operations',
   },
   {
@@ -102,10 +59,7 @@ const appModules: AppModule[] = [
     label: 'Customers',
     description: 'Customer accounts & CRM directory',
     href: '/customers',
-    icon: Users,
-    color: 'text-violet-700',
-    bg: 'bg-violet-50',
-    border: 'border-violet-200',
+    moduleIcon: 'customers',
     group: 'Operations',
   },
   {
@@ -113,10 +67,7 @@ const appModules: AppModule[] = [
     label: 'Payments',
     description: 'Payment records & settlement tracker',
     href: '/payments',
-    icon: CreditCard,
-    color: 'text-sky-700',
-    bg: 'bg-sky-50',
-    border: 'border-sky-200',
+    moduleIcon: 'payments',
     group: 'Operations',
   },
   {
@@ -124,10 +75,7 @@ const appModules: AppModule[] = [
     label: 'Expenses',
     description: 'Operating expense vouchers & approvals',
     href: '/expenses',
-    icon: Layers,
-    color: 'text-orange-700',
-    bg: 'bg-orange-50',
-    border: 'border-orange-200',
+    moduleIcon: 'expenses',
     group: 'Operations',
   },
 
@@ -137,10 +85,7 @@ const appModules: AppModule[] = [
     label: 'Products & SKUs',
     description: 'Product master catalog & price lists',
     href: '/products',
-    icon: Package,
-    color: 'text-indigo-700',
-    bg: 'bg-indigo-50',
-    border: 'border-indigo-200',
+    moduleIcon: 'products-skus',
     group: 'Inventory',
   },
   {
@@ -148,10 +93,7 @@ const appModules: AppModule[] = [
     label: 'Inventory',
     description: 'Real-time stock balances & locations',
     href: '/inventory',
-    icon: PackageCheck,
-    color: 'text-teal-700',
-    bg: 'bg-teal-50',
-    border: 'border-teal-200',
+    moduleIcon: 'inventory',
     group: 'Inventory',
   },
   {
@@ -159,10 +101,7 @@ const appModules: AppModule[] = [
     label: 'Stock Movements',
     description: 'In/out movements, transfers & logs',
     href: '/stock-movements',
-    icon: ArrowLeftRight,
-    color: 'text-slate-700',
-    bg: 'bg-slate-100',
-    border: 'border-slate-200',
+    moduleIcon: 'stock-movements',
     group: 'Inventory',
   },
   {
@@ -170,10 +109,7 @@ const appModules: AppModule[] = [
     label: 'Warehouses',
     description: 'Storage facility & zone management',
     href: '/warehouses',
-    icon: Warehouse,
-    color: 'text-amber-700',
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
+    moduleIcon: 'warehouses',
     group: 'Inventory',
   },
   {
@@ -181,10 +117,7 @@ const appModules: AppModule[] = [
     label: 'Categories',
     description: 'Product classification & taxonomy',
     href: '/categories',
-    icon: Tag,
-    color: 'text-rose-700',
-    bg: 'bg-rose-50',
-    border: 'border-rose-200',
+    moduleIcon: 'categories',
     group: 'Inventory',
   },
   {
@@ -192,10 +125,7 @@ const appModules: AppModule[] = [
     label: 'Purchase Orders',
     description: 'Vendor orders & procurement workflow',
     href: '/purchases',
-    icon: ShoppingBag,
-    color: 'text-cyan-700',
-    bg: 'bg-cyan-50',
-    border: 'border-cyan-200',
+    moduleIcon: 'purchase-orders',
     group: 'Inventory',
   },
   {
@@ -203,10 +133,7 @@ const appModules: AppModule[] = [
     label: 'Suppliers',
     description: 'Approved vendor master directory',
     href: '/suppliers',
-    icon: Briefcase,
-    color: 'text-stone-700',
-    bg: 'bg-stone-100',
-    border: 'border-stone-200',
+    moduleIcon: 'suppliers',
     group: 'Inventory',
   },
 
@@ -216,10 +143,7 @@ const appModules: AppModule[] = [
     label: 'Revenue Forecast',
     description: 'XGBoost & SARIMA revenue projections',
     href: '/ml/revenue',
-    icon: TrendingUp,
-    color: 'text-purple-700',
-    bg: 'bg-purple-50',
-    border: 'border-purple-200',
+    moduleIcon: 'revenue-forecast',
     badge: 'ML',
     group: 'Intelligence',
   },
@@ -228,10 +152,7 @@ const appModules: AppModule[] = [
     label: 'Sales Demand',
     description: 'Demand forecasting & pipeline prediction',
     href: '/ml/sales',
-    icon: ShoppingCart,
-    color: 'text-emerald-700',
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200',
+    moduleIcon: 'sales-demand',
     badge: 'ML',
     group: 'Intelligence',
   },
@@ -240,10 +161,7 @@ const appModules: AppModule[] = [
     label: 'Inventory Reorder',
     description: 'AI replenishment recommendations',
     href: '/ml/inventory',
-    icon: PackageCheck,
-    color: 'text-blue-700',
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
+    moduleIcon: 'inventory-reorder',
     badge: 'ML',
     group: 'Intelligence',
   },
@@ -252,10 +170,7 @@ const appModules: AppModule[] = [
     label: 'Profit Prediction',
     description: 'Margin trajectory & profitability models',
     href: '/ml/profit',
-    icon: DollarSign,
-    color: 'text-teal-700',
-    bg: 'bg-teal-50',
-    border: 'border-teal-200',
+    moduleIcon: 'profit-prediction',
     badge: 'ML',
     group: 'Intelligence',
   },
@@ -264,10 +179,7 @@ const appModules: AppModule[] = [
     label: 'Expense Forecast',
     description: 'Operating cost forecast & trend model',
     href: '/ml/expense',
-    icon: PieChart,
-    color: 'text-orange-700',
-    bg: 'bg-orange-50',
-    border: 'border-orange-200',
+    moduleIcon: 'expense-forecast',
     badge: 'ML',
     group: 'Intelligence',
   },
@@ -276,10 +188,7 @@ const appModules: AppModule[] = [
     label: 'Business Health',
     description: 'Composite health score & risk rating',
     href: '/ml/business-health',
-    icon: HeartPulse,
-    color: 'text-rose-700',
-    bg: 'bg-rose-50',
-    border: 'border-rose-200',
+    moduleIcon: 'business-health',
     badge: 'ML',
     group: 'Intelligence',
   },
@@ -288,10 +197,7 @@ const appModules: AppModule[] = [
     label: 'Anomaly Detection',
     description: 'Transaction outlier & fraud alerts',
     href: '/ml/anomalies',
-    icon: AlertTriangle,
-    color: 'text-amber-700',
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
+    moduleIcon: 'anomaly-detection',
     badge: 'ML',
     group: 'Intelligence',
   },
@@ -300,10 +206,7 @@ const appModules: AppModule[] = [
     label: 'AI Copilot & Voice',
     description: 'Conversational voice & text ERP intelligence assistant',
     href: '/ml/chat',
-    icon: Bot,
-    color: 'text-teal-700',
-    bg: 'bg-teal-50',
-    border: 'border-teal-300',
+    moduleIcon: 'ai-copilot-voice',
     badge: 'Voice & AI',
     group: 'Intelligence',
   },
@@ -314,10 +217,7 @@ const appModules: AppModule[] = [
     label: 'Companies',
     description: 'Multi-entity enterprise workspaces',
     href: '/companies',
-    icon: Building2,
-    color: 'text-slate-700',
-    bg: 'bg-slate-100',
-    border: 'border-slate-200',
+    moduleIcon: 'companies',
     group: 'Admin',
   },
   {
@@ -325,10 +225,7 @@ const appModules: AppModule[] = [
     label: 'Branches',
     description: 'Branch offices & regional divisions',
     href: '/branches',
-    icon: GitBranch,
-    color: 'text-indigo-700',
-    bg: 'bg-indigo-50',
-    border: 'border-indigo-200',
+    moduleIcon: 'branches',
     group: 'Admin',
   },
   {
@@ -336,10 +233,7 @@ const appModules: AppModule[] = [
     label: 'Users & Roles',
     description: 'User access control & permissions',
     href: '/users',
-    icon: UserCheck,
-    color: 'text-violet-700',
-    bg: 'bg-violet-50',
-    border: 'border-violet-200',
+    moduleIcon: 'users-roles',
     group: 'Admin',
   },
   {
@@ -347,10 +241,7 @@ const appModules: AppModule[] = [
     label: 'Financial Reports',
     description: 'P&L, balance sheets & audit trails',
     href: '/reports',
-    icon: FileText,
-    color: 'text-blue-700',
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
+    moduleIcon: 'financial-reports',
     group: 'Admin',
   },
   {
@@ -358,10 +249,7 @@ const appModules: AppModule[] = [
     label: 'Notifications',
     description: 'System alerts & workflow updates',
     href: '/notifications',
-    icon: Bell,
-    color: 'text-amber-700',
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
+    moduleIcon: 'notifications',
     group: 'Admin',
   },
   {
@@ -369,10 +257,7 @@ const appModules: AppModule[] = [
     label: 'Platform Settings',
     description: 'Company parameters & configuration',
     href: '/settings',
-    icon: Settings,
-    color: 'text-slate-700',
-    bg: 'bg-slate-100',
-    border: 'border-slate-200',
+    moduleIcon: 'platform-settings',
     group: 'Admin',
   },
 ]
@@ -419,16 +304,28 @@ export const AppLauncherPage: React.FC = () => {
     .filter((g) => g.modules.length > 0)
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* ── Welcome / Hero Header (Crisp White/Light Enterprise Theme) ── */}
-      <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 p-6 sm:p-8 shadow-sm">
-        {/* Subtle decorative background accents in teal / slate */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-teal-50/60 via-slate-50/30 to-transparent rounded-full -mr-20 -mt-20 pointer-events-none" />
+    <div className="space-y-8 animate-fade-in relative">
+      {/* ── Welcome / Hero Header (Crisp White/Light Enterprise Theme with Tasteful ALLADIN Accents) ── */}
+      <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200/90 p-6 sm:p-8 shadow-xs">
+        {/* Subtle decorative background accents with pointer-events: none */}
+        <img
+          src="/assets/decorative/corner-glow.svg"
+          alt=""
+          aria-hidden="true"
+          className="absolute -top-10 -right-10 w-80 h-80 opacity-30 pointer-events-none select-none"
+        />
+        <img
+          src="/assets/decorative/dot-pattern.svg"
+          alt=""
+          aria-hidden="true"
+          className="absolute bottom-0 right-16 w-48 h-32 opacity-20 pointer-events-none select-none"
+        />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-teal-50/50 via-cyan-50/20 to-transparent rounded-full -mr-20 -mt-20 pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full bg-teal-50 text-teal-800 border border-teal-200/80">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full bg-teal-50 text-teal-800 border border-teal-200/80">
                 <Sparkles className="w-3 h-3 text-teal-600" />
                 {activeCompany?.company_name || 'Enterprise Workspace'}
               </span>
@@ -443,7 +340,7 @@ export const AppLauncherPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Quick Metrics Ribbon (White & Light Theme) */}
+          {/* Quick Metrics Ribbon */}
           <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
             <div
               onClick={() => navigate('/invoices')}
@@ -514,26 +411,23 @@ export const AppLauncherPage: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
             {group.modules.map((mod) => {
-              const Icon = mod.icon
               return (
                 <Link
                   key={mod.id}
                   to={mod.href}
                   className={cn(
-                    'group flex items-start gap-3.5 p-4 rounded-xl border border-slate-200 bg-white shadow-2xs',
-                    'hover:shadow-md hover:border-teal-300 hover:-translate-y-0.5 transition-all duration-150',
+                    'group flex items-start gap-3.5 p-4 rounded-xl border border-slate-200/90 bg-white shadow-2xs',
+                    'hover:shadow-md hover:border-teal-400 hover:-translate-y-0.5 transition-all duration-150',
                     'focus:outline-none focus:ring-2 focus:ring-teal-500 select-none'
                   )}
                 >
-                  {/* Module icon container */}
-                  <div
-                    className={cn(
-                      'w-11 h-11 rounded-xl flex items-center justify-center border shrink-0 transition-transform group-hover:scale-105',
-                      mod.bg,
-                      mod.border
-                    )}
-                  >
-                    <Icon className={cn('w-5 h-5', mod.color)} />
+                  {/* Module icon container - 44-48px consistent colourful vector tile */}
+                  <div className="shrink-0 transition-transform duration-150 group-hover:scale-105">
+                    <ModuleIcon
+                      name={mod.moduleIcon}
+                      size="lg"
+                      alt={mod.label}
+                    />
                   </div>
 
                   {/* Module info */}

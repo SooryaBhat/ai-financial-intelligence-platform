@@ -1,35 +1,11 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard,
-  ShoppingCart,
-  Package,
-  Receipt,
-  Users,
-  Building2,
-  TrendingUp,
-  BrainCircuit,
-  AlertTriangle,
-  FileText,
-  Settings,
   ChevronLeft,
   ChevronRight,
   PlusCircle,
-  Briefcase,
-  Layers,
-  GitBranch,
-  UserCheck,
-  Tag,
-  Warehouse,
-  PackageCheck,
-  ArrowLeftRight,
-  ShoppingBag,
-  CreditCard,
-  Bell,
-  PieChart,
-  Bot,
-  UploadCloud,
 } from 'lucide-react'
+import { ModuleIcon, ModuleIconName } from '@/components/ui/ModuleIcon'
 import { cn } from '@/lib/utils'
 
 export interface SidebarProps {
@@ -42,7 +18,7 @@ interface NavGroup {
   items: {
     label: string
     href: string
-    icon: React.ComponentType<{ className?: string }>
+    moduleIcon: ModuleIconName
     badge?: string
   }[]
 }
@@ -51,49 +27,49 @@ const navGroups: NavGroup[] = [
   {
     title: 'Operations & Commercial',
     items: [
-      { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Data Import Center', href: '/imports', icon: UploadCloud, badge: 'New' },
-      { label: 'Sales Orders', href: '/sales', icon: ShoppingCart },
-      { label: 'Invoices & Billing', href: '/invoices', icon: Receipt },
-      { label: 'Customer Directory', href: '/customers', icon: Users },
-      { label: 'Payments', href: '/payments', icon: CreditCard },
-      { label: 'Operating Expenses', href: '/expenses', icon: Layers },
+      { label: 'Overview', href: '/dashboard', moduleIcon: 'dashboard' },
+      { label: 'Data Import Center', href: '/imports', moduleIcon: 'data-import', badge: 'New' },
+      { label: 'Sales Orders', href: '/sales', moduleIcon: 'sales-orders' },
+      { label: 'Invoices & Billing', href: '/invoices', moduleIcon: 'invoices-billing' },
+      { label: 'Customer Directory', href: '/customers', moduleIcon: 'customers' },
+      { label: 'Payments', href: '/payments', moduleIcon: 'payments' },
+      { label: 'Operating Expenses', href: '/expenses', moduleIcon: 'expenses' },
     ],
   },
   {
     title: 'Procurement & Inventory',
     items: [
-      { label: 'Products & SKUs', href: '/products', icon: Package },
-      { label: 'Inventory Balances', href: '/inventory', icon: PackageCheck },
-      { label: 'Stock Movements', href: '/stock-movements', icon: ArrowLeftRight },
-      { label: 'Warehouses', href: '/warehouses', icon: Warehouse },
-      { label: 'Categories', href: '/categories', icon: Tag },
-      { label: 'Purchase Orders', href: '/purchases', icon: ShoppingBag },
-      { label: 'Suppliers Directory', href: '/suppliers', icon: Briefcase },
+      { label: 'Products & SKUs', href: '/products', moduleIcon: 'products-skus' },
+      { label: 'Inventory Balances', href: '/inventory', moduleIcon: 'inventory' },
+      { label: 'Stock Movements', href: '/stock-movements', moduleIcon: 'stock-movements' },
+      { label: 'Warehouses', href: '/warehouses', moduleIcon: 'warehouses' },
+      { label: 'Categories', href: '/categories', moduleIcon: 'categories' },
+      { label: 'Purchase Orders', href: '/purchases', moduleIcon: 'purchase-orders' },
+      { label: 'Suppliers Directory', href: '/suppliers', moduleIcon: 'suppliers' },
     ],
   },
   {
     title: 'Forecasting & ML Suite',
     items: [
-      { label: 'Revenue Forecast', href: '/ml/revenue', icon: TrendingUp, badge: 'ML' },
-      { label: 'Sales Demand', href: '/ml/sales', icon: ShoppingCart, badge: 'ML' },
-      { label: 'Inventory Reorder', href: '/ml/inventory', icon: PackageCheck, badge: 'ML' },
-      { label: 'Profit Prediction', href: '/ml/profit', icon: TrendingUp, badge: 'ML' },
-      { label: 'Expense Forecast', href: '/ml/expense', icon: PieChart, badge: 'ML' },
-      { label: 'Business Health', href: '/ml/business-health', icon: BrainCircuit, badge: 'ML' },
-      { label: 'Anomaly Detection', href: '/ml/anomalies', icon: AlertTriangle, badge: 'ML' },
-      { label: 'Conversational Copilot', href: '/ml/chat', icon: Bot, badge: 'AI' },
+      { label: 'Revenue Forecast', href: '/ml/revenue', moduleIcon: 'revenue-forecast', badge: 'ML' },
+      { label: 'Sales Demand', href: '/ml/sales', moduleIcon: 'sales-demand', badge: 'ML' },
+      { label: 'Inventory Reorder', href: '/ml/inventory', moduleIcon: 'inventory-reorder', badge: 'ML' },
+      { label: 'Profit Prediction', href: '/ml/profit', moduleIcon: 'profit-prediction', badge: 'ML' },
+      { label: 'Expense Forecast', href: '/ml/expense', moduleIcon: 'expense-forecast', badge: 'ML' },
+      { label: 'Business Health', href: '/ml/business-health', moduleIcon: 'business-health', badge: 'ML' },
+      { label: 'Anomaly Detection', href: '/ml/anomalies', moduleIcon: 'anomaly-detection', badge: 'ML' },
+      { label: 'Conversational Copilot', href: '/ml/chat', moduleIcon: 'ai-copilot-voice', badge: 'AI' },
     ],
   },
   {
     title: 'Organization & Admin',
     items: [
-      { label: 'Companies', href: '/companies', icon: Building2 },
-      { label: 'Branches', href: '/branches', icon: GitBranch },
-      { label: 'Users & Permissions', href: '/users', icon: UserCheck },
-      { label: 'Financial Reports', href: '/reports', icon: FileText },
-      { label: 'Notifications', href: '/notifications', icon: Bell },
-      { label: 'Company Settings', href: '/settings', icon: Settings },
+      { label: 'Companies', href: '/companies', moduleIcon: 'companies' },
+      { label: 'Branches', href: '/branches', moduleIcon: 'branches' },
+      { label: 'Users & Permissions', href: '/users', moduleIcon: 'users-roles' },
+      { label: 'Financial Reports', href: '/reports', moduleIcon: 'financial-reports' },
+      { label: 'Notifications', href: '/notifications', moduleIcon: 'notifications' },
+      { label: 'Company Settings', href: '/settings', moduleIcon: 'platform-settings' },
     ],
   },
 ]
@@ -132,22 +108,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               </h4>
             )}
             {group.items.map((item) => {
-              const Icon = item.icon
               return (
                 <NavLink
                   key={item.href}
                   to={item.href}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-2.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors relative group',
+                      'flex items-center gap-2.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-all relative group',
                       isActive
-                        ? 'bg-teal-50 text-teal-900 font-semibold border-l-2 border-teal-700 pl-2'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        ? 'bg-teal-50 text-teal-900 font-semibold border-l-2 border-teal-700 pl-2 shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50/80'
                     )
                   }
                   title={isCollapsed ? item.label : undefined}
                 >
-                  <Icon className="w-4 h-4 shrink-0 text-slate-500 group-hover:text-teal-700" />
+                  <ModuleIcon
+                    name={item.moduleIcon}
+                    size="xs"
+                    alt={item.label}
+                    className="w-4 h-4 shrink-0 transition-transform group-hover:scale-110"
+                  />
                   {!isCollapsed && <span className="truncate">{item.label}</span>}
                   {!isCollapsed && item.badge && (
                     <span className="ml-auto px-1.5 py-0.2 text-[9px] font-semibold rounded bg-teal-50 text-teal-700 border border-teal-200/60">
@@ -166,7 +146,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
         <div className="p-2 border-t border-slate-100 bg-slate-50/50">
           <NavLink
             to="/onboard"
-            className="flex items-center justify-center gap-1.5 w-full py-1.5 text-xs font-medium rounded border border-dashed border-slate-300 text-slate-600 hover:border-teal-400 hover:text-teal-800 hover:bg-white transition-colors"
+            className="flex items-center justify-center gap-1.5 w-full py-1.5 text-xs font-medium rounded-lg border border-dashed border-slate-300 text-slate-600 hover:border-teal-400 hover:text-teal-800 hover:bg-white transition-colors"
           >
             <PlusCircle className="w-3.5 h-3.5 text-teal-700" />
             <span>Add Organization</span>
