@@ -140,7 +140,8 @@ def test_tool_declarations_registry():
     assert "get_business_health_analysis" in names
     assert "search_business_knowledge_base" in names
     assert "get_profit_analysis" in names
-    assert len(TOOL_DECLARATIONS) == 9
+    assert "search_external_web" in names
+    assert len(TOOL_DECLARATIONS) == 10
 
 
 def test_tool_sales_analysis(mock_supabase_client, sample_company_id):

@@ -14,6 +14,7 @@ Provides 8 enterprise-grade tools scoped strictly to the authenticated company a
 All operations are read-only and strictly scoped to company_id or platform knowledge.
 """
 import calendar
+import os
 import re
 from datetime import date, datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -1074,13 +1075,16 @@ class AIToolExecutor:
 
             formatted_xml = retriever.format_for_assistant(results)
 
+            source_titles = list(dict.fromkeys([p.get("title") for p in passages if p.get("title")]))
+            summary_sources = ", ".join(source_titles[:2]) if source_titles else "knowledge documents"
+
             return {
                 "query": query_clean,
                 "results_count": len(results),
                 "passages": passages,
                 "citations": citations,
                 "formatted_context": formatted_xml,
-                "summary": f"Retrieved {len(results)} relevant knowledge passages from official guides and policies.",
+                "summary": f"Retrieved {len(results)} relevant knowledge passages from {summary_sources}.",
             }
 
         except Exception as e:
@@ -1093,6 +1097,73 @@ class AIToolExecutor:
                 "citations": [],
                 "summary": f"Failed to retrieve business knowledge: {str(e)}",
             }
+
+    # ── Tool 8: External Internet & Market Search ─────────────────────
+
+    def search_external_web(
+        self,
+        query: str,
+    ) -> Dict[str, Any]:
+        """
+        Search external internet sources for current macroeconomic indicators, market data,
+        benchmark interest rates, or statutory tax changes beyond the internal indexed books.
+        If no web search tool provider is configured, transparently reports this limitation.
+        """
+        query_clean = (query or "").strip()
+        tavily_key = (os.getenv("TAVILY_API_KEY") or "").strip()
+        serper_key = (os.getenv("SERPER_API_KEY") or "").strip()
+
+        if tavily_key:
+            try:
+                import httpx
+                resp = httpx.post(
+                    "https://api.tavily.com/search",
+                    json={"api_key": tavily_key, "query": query_clean, "search_depth": "basic", "max_results": 3},
+                    timeout=10.0,
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    results = data.get("results", [])
+                    return {
+                        "query": query_clean,
+                        "provider": "tavily",
+                        "available": True,
+                        "results": results,
+                        "summary": f"Retrieved {len(results)} live internet results for '{query_clean}'.",
+                    }
+            except Exception as e:
+                logger.warning("Tavily search failed: {}", e)
+
+        if serper_key:
+            try:
+                import httpx
+                resp = httpx.post(
+                    "https://google.serper.dev/search",
+                    headers={"X-API-KEY": serper_key, "Content-Type": "application/json"},
+                    json={"q": query_clean, "num": 3},
+                    timeout=10.0,
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    organic = data.get("organic", [])
+                    return {
+                        "query": query_clean,
+                        "provider": "serper",
+                        "available": True,
+                        "results": organic,
+                        "summary": f"Retrieved {len(organic)} live internet results for '{query_clean}'.",
+                    }
+            except Exception as e:
+                logger.warning("Serper search failed: {}", e)
+
+        # Transparent report of missing capability
+        return {
+            "query": query_clean,
+            "provider": "none",
+            "available": False,
+            "message": "Authorized external web search tool is not configured in this environment (set TAVILY_API_KEY or SERPER_API_KEY).",
+            "summary": "External web search tool is currently unconfigured. The assistant will answer using general business knowledge with appropriate disclaimers.",
+        }
 
     # ── Tool 8: Profit Analysis & Margin Reconciliation ────────────────
 
@@ -1258,6 +1329,7 @@ class AIToolExecutor:
             "detect_transaction_anomalies": self.detect_transaction_anomalies,
             "get_business_health_analysis": self.get_business_health_analysis,
             "search_business_knowledge_base": self.search_business_knowledge_base,
+            "search_external_web": self.search_external_web,
             "get_profit_analysis": self.get_profit_analysis,
         }
 
@@ -1508,6 +1580,24 @@ TOOL_DECLARATIONS = [
                     "description": "Optional ISO end date (YYYY-MM-DD).",
                 },
             },
+        },
+    },
+    {
+        "name": "search_external_web",
+        "description": (
+            "Search public internet sources for current macroeconomic news, benchmark interest rates, "
+            "market indicators, and regulations that are not covered in the internal company database or books. "
+            "Use this tool when answering questions requiring current external information."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "query": {
+                    "type": "STRING",
+                    "description": "The search query (e.g., 'Reserve Bank of India repo rate 2026', 'current CPI inflation rate India 2026').",
+                },
+            },
+            "required": ["query"],
         },
     },
 ]

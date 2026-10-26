@@ -84,6 +84,8 @@ export interface SendMessageResponse {
   tools_used?: ToolCallExecution[]
   provider: string
   model: string
+  status?: string
+  error_details?: string
   fallback_used?: boolean
   fallback_reason?: string
   timing?: ExecutionTiming

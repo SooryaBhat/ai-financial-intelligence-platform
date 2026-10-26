@@ -64,18 +64,19 @@ class RAGRetriever:
             # 3. Format citations and return
             formatted_results = []
             for item in raw_results:
-                meta = item.get("metadata") or {}
-                source_title = item.get("title") or meta.get("source_title") or "Business Knowledge Document"
+                meta = item.get("metadata") or item.get("document_metadata") or {}
+                source_title = item.get("title") or meta.get("title") or meta.get("source_title") or "Business Knowledge Document"
                 author = item.get("author") or meta.get("author") or "Official Source"
-                section = item.get("section_title") or "General Guidance"
-                page = item.get("page_number")
-                url = meta.get("source_url") or ""
+                section = item.get("section_title") or meta.get("section_title") or "General Guidance"
+                page = item.get("page_number") or meta.get("page_number")
+                url = item.get("source_url") or meta.get("source_url") or ""
                 license_terms = meta.get("license") or "Reference"
-                content_type = meta.get("content_type") or ""
+                content_type = item.get("content_type") or meta.get("content_type") or ""
                 review_status = meta.get("review_status") or ""
 
-                # Distinguish between official authoritative sources and internal AI-assisted drafts
-                is_draft = (
+                # Distinguish between published books, official authoritative sources, and internal drafts
+                is_book = content_type == "book" or meta.get("is_book") or item.get("doc_id", "").startswith("BK-")
+                is_draft = not is_book and (
                     content_type in ("AI_assisted_draft", "internal_guide")
                     or "ai-assisted" in str(author).lower()
                     or "draft" in str(author).lower()
@@ -83,19 +84,20 @@ class RAGRetriever:
                     or review_status == "unreviewed"
                 )
 
-                status_label = (
-                    "Status: Internal AI-Assisted Draft (Unverified / Non-Official)"
-                    if is_draft
-                    else "Status: Official Document / Verified Source"
-                )
+                if is_book:
+                    status_label = "Status: Published Business Book / Academic Reference"
+                elif is_draft:
+                    status_label = "Status: Internal AI-Assisted Draft (Unverified / Non-Official)"
+                else:
+                    status_label = "Status: Official Document / Verified Source"
 
                 citation_parts = [
-                    f"Source: {source_title}",
+                    f"Book/Source: {source_title}",
                     f"Author/Org: {author}",
                     status_label,
                 ]
                 if section:
-                    citation_parts.append(f"Section: {section}")
+                    citation_parts.append(f"Chapter/Section: {section}")
                 if page:
                     citation_parts.append(f"Page: {page}")
                 if url and url.startswith("http"):

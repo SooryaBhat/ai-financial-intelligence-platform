@@ -17,6 +17,7 @@ import {
   Wrench,
   AlertCircle,
   Sparkles,
+  Globe,
 } from 'lucide-react'
 import { ModuleIcon } from '@/components/ui/ModuleIcon'
 import { ToolCallExecution } from '@/services/erp.service'
@@ -31,6 +32,8 @@ interface ChatMessageItemViewProps {
       tools_used?: ToolCallExecution[]
       provider?: string
       model?: string
+      status?: string
+      error_details?: string
       fallback_used?: boolean
       fallback_reason?: string
       timing?: {
@@ -90,6 +93,8 @@ export const ChatMessageItemView: React.FC<ChatMessageItemViewProps> = ({ messag
         return { label: 'Business Health Composite', icon: HeartPulse, color: 'text-teal-700 bg-teal-50 border-teal-200' }
       case 'search_business_knowledge_base':
         return { label: 'Regulatory & Business Rules RAG', icon: BookOpen, color: 'text-sky-700 bg-sky-50 border-sky-200' }
+      case 'search_external_web':
+        return { label: 'External Internet & Web Research', icon: Globe, color: 'text-purple-700 bg-purple-50 border-purple-200' }
       case 'get_profit_analysis':
         return { label: 'Profit & Margin Analysis', icon: TrendingUp, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' }
       default:
@@ -261,8 +266,38 @@ export const ChatMessageItemView: React.FC<ChatMessageItemViewProps> = ({ messag
             </div>
           )}
 
+          {/* Verified Knowledge Base Citations Badge */}
+          {(() => {
+            const kbTool = toolsUsed.find((t) => t.tool === 'search_business_knowledge_base')
+            const citations: string[] = (kbTool?.result as any)?.citations || []
+            if (!citations.length) return null
+
+            return (
+              <div className="bg-sky-50/80 border border-sky-200 rounded-xl p-3 text-xs text-sky-900 space-y-1.5 shadow-2xs">
+                <div className="flex items-center space-x-1.5 font-semibold text-sky-800 text-[11px] uppercase tracking-wider">
+                  <BookOpen className="w-3.5 h-3.5 text-sky-600" />
+                  <span>Verified Knowledge Base Sources Cited ({citations.length})</span>
+                </div>
+                <div className="space-y-1">
+                  {citations.map((c, i) => (
+                    <div key={i} className="flex items-start space-x-2 text-[11px] text-sky-950 font-medium">
+                      <span className="text-sky-500 font-bold">•</span>
+                      <span className="leading-snug">{c}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+
           {/* Message Markdown Body */}
-          <div className="bg-white border border-slate-200/80 rounded-2xl rounded-tl-sm p-4 text-sm text-slate-800 shadow-sm leading-relaxed prose prose-sm max-w-none prose-headings:font-semibold prose-headings:text-slate-900 prose-headings:mt-3 prose-headings:mb-1.5 prose-p:my-1.5 prose-ul:my-1.5 prose-li:my-0.5 prose-table:my-2 prose-th:bg-slate-50 prose-th:p-2 prose-td:p-2 prose-th:border prose-td:border prose-th:border-slate-200 prose-td:border-slate-200">
+          <div
+            className={`rounded-2xl rounded-tl-sm p-4 text-sm leading-relaxed prose prose-sm max-w-none prose-headings:font-semibold prose-headings:text-slate-900 prose-headings:mt-3 prose-headings:mb-1.5 prose-p:my-1.5 prose-ul:my-1.5 prose-li:my-0.5 prose-table:my-2 prose-th:bg-slate-50 prose-th:p-2 prose-td:p-2 prose-th:border prose-td:border prose-th:border-slate-200 prose-td:border-slate-200 ${
+              message.metadata?.status === 'error' || message.content.includes('Local Ollama Error')
+                ? 'bg-amber-50/40 border-2 border-amber-300 text-amber-950 shadow-xs'
+                : 'bg-white border border-slate-200/80 text-slate-800 shadow-sm'
+            }`}
+          >
             <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>
         </div>

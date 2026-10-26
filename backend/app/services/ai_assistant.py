@@ -259,6 +259,25 @@ class GeminiLLMProvider(BaseLLMProvider):
                             "summary": tool_output.get("summary", f"Executed {tool_name}"),
                         })
 
+                        # Clean and serialize tool output for Gemini function response
+                        safe_tool_output = tool_output
+                        if isinstance(tool_output, dict):
+                            safe_tool_output = dict(tool_output)
+                            if "passages" in safe_tool_output and isinstance(safe_tool_output["passages"], list):
+                                safe_passages = []
+                                for p in safe_tool_output["passages"]:
+                                    if isinstance(p, dict):
+                                        safe_passages.append({
+                                            "title": p.get("title"),
+                                            "author": p.get("author"),
+                                            "page_number": p.get("page_number"),
+                                            "section_title": p.get("section_title"),
+                                            "content": (p.get("content") or "")[:1200],
+                                            "citation": p.get("citation"),
+                                            "status_label": p.get("status_label"),
+                                        })
+                                safe_tool_output["passages"] = safe_passages
+
                         # Append tool response with role="user" (required by google-genai)
                         contents.append(
                             types.Content(
@@ -266,7 +285,7 @@ class GeminiLLMProvider(BaseLLMProvider):
                                 parts=[
                                     types.Part.from_function_response(
                                         name=tool_name,
-                                        response={"result": tool_output},
+                                        response={"result": safe_tool_output},
                                     )
                                 ],
                             )
@@ -453,14 +472,24 @@ class OllamaLLMProvider(BaseLLMProvider):
         if any(k in p_lower for k in ("health", "score", "grade", "runway", "financial health", "kpi", "performance", "rating", "ratio", "debt")):
             selected.add("get_business_health_analysis")
 
-        # 8. Knowledge Base / Regulations / RBI / MSME / CGTMSE / Accounting
+        # 8. Knowledge Base / Regulations / RBI / MSME / CGTMSE / Accounting / Books
         if any(k in p_lower for k in (
             "rbi", "msme", "scheme", "collateral", "policy", "loan limit", "regulation",
             "guideline", "accounting standard", "accounting principle", "working capital",
             "cash flow principle", "cash flow statement", "balance sheet", "double entry",
-            "cgtmse", "bank loan", "knowledge base", "documentation", "rule", "law"
+            "cgtmse", "bank loan", "knowledge base", "documentation", "rule", "law",
+            "accounting equation", "assets", "liabilities", "equity", "book", "books",
+            "source", "principles of financial accounting", "financial intelligence",
+            "personal mba", "principles of management", "introduction to business"
         )):
             selected.add("search_business_knowledge_base")
+
+        # 9. External Web Search / Macroeconomic / Real-time Market Indicators
+        if any(k in p_lower for k in (
+            "current", "today", "news", "inflation rate", "interest rate", "repo rate",
+            "market benchmark", "external", "internet", "web search", "latest rate", "2026"
+        )) and not any(k in p_lower for k in ("our", "my company", "recorded", "database")):
+            selected.add("search_external_web")
 
         # 9. Conversational follow-ups (e.g. "what about that?", "how much did we spend on the highest category?")
         is_followup = any(k in p_lower for k in ("it", "that", "this", "highest", "lowest", "why", "compare", "more", "detail", "breakdown", "category", "spend"))
@@ -1448,25 +1477,23 @@ class AIAssistantService:
                 "fallback_used": False,
             }
 
-        # ── Fast-path for pure company name / identity questions ──────────
+        # ── Fast-path for company name / identity & accessible business data ──
         p_clean = re.sub(r"[^\w\s]", "", question.lower()).strip()
-        is_pure_identity = p_clean in (
-            "what is the company name",
-            "what is our company name",
-            "what is company name",
-            "company name",
-            "name of the company",
-            "name of our company",
-            "who are we",
-            "what company is this",
-            "which company is this",
-        ) or (
-            ("company name" in p_clean or "name of the company" in p_clean or "business name" in p_clean)
-            and len(p_clean.split()) <= 7
-            and not any(w in p_clean for w in ("revenue", "sale", "expense", "stock", "health", "rbi", "loan", "profit", "compare"))
+        wants_name = any(k in p_clean for k in (
+            "company name", "name of the company", "name of our company", "name of my company",
+            "who are we", "what company is this", "which company is this", "what is my company called",
+            "my company name", "company is this"
+        )) or p_clean in (
+            "what is the company name", "what is our company name", "what is my company name",
+            "what is the name of my company", "what is the name of our company", "name of my company",
+            "name of our company", "name of the company", "company name", "who are we"
         )
+        wants_data_access = any(k in p_clean for k in (
+            "business data", "what data", "data can you access", "what can you access",
+            "what data access", "what do you have access to", "what business data"
+        ))
 
-        if is_pure_identity:
+        if wants_name and not any(w in p_clean for w in ("revenue", "sale", "expense", "stock", "health", "rbi", "loan", "profit", "compare", "equation", "accounting")):
             t_ident_start = time.perf_counter()
             prof = self.executor.get_company_profile()
             t_ident_total = time.perf_counter() - t_ident_start
@@ -1474,12 +1501,32 @@ class AIAssistantService:
             c_curr = prof.get("currency", "USD")
             c_ind = prof.get("industry", "General")
             c_country = prof.get("country", "Global")
-            msg = (
-                f"The authenticated company name is **{c_name}**.\n\n"
-                f"- **Industry**: {c_ind}\n"
-                f"- **Operating Country**: {c_country}\n"
-                f"- **Functional Currency**: **{c_curr}**"
-            )
+
+            if wants_data_access:
+                msg = (
+                    f"The authenticated company name is **{c_name}**.\n\n"
+                    f"- **Industry**: {c_ind}\n"
+                    f"- **Operating Country**: {c_country}\n"
+                    f"- **Functional Currency**: **{c_curr}**\n\n"
+                    f"### Authorized Business Data Domains Accessible for {c_name}:\n"
+                    f"1. **Live Sales & Orders**: Total revenue, order volumes, average order value, top-selling products, and MoM/YoY growth via `get_sales_analysis`.\n"
+                    f"2. **Operational Expenses**: Spending totals, category breakdowns, vendor disbursements, and expense history via `get_expense_summary`.\n"
+                    f"3. **Inventory & Warehouse**: Physical stock counts, catalog SKUs, reorder levels, and critical low-stock alerts via `get_inventory_status`.\n"
+                    f"4. **Profit & Margin Reconciliation**: Revenue, Cost of Goods Sold (COGS), gross margin %, and net profit % via `get_profit_analysis`.\n"
+                    f"5. **Revenue Forecasting**: Machine learning predictions (XGBoost & SARIMA) with forward-looking growth trajectories via `forecast_revenue`.\n"
+                    f"6. **Transaction Anomaly Detection**: Unsupervised Isolation Forest scanning for anomalous transactions or risk outliers via `detect_transaction_anomalies`.\n"
+                    f"7. **Composite Business Health**: Multi-KPI financial health score (0–100), operational grade, and risk rating via `get_business_health_analysis`.\n"
+                    f"8. **Business & Accounting Knowledge Base**: Semantic RAG retrieval across 5 business textbooks and regulatory guidelines via `search_business_knowledge_base`.\n"
+                    f"9. **External Web Research Gateway**: Live internet search for macroeconomic benchmarks and external indicators via `search_external_web`."
+                )
+            else:
+                msg = (
+                    f"The authenticated company name is **{c_name}**.\n\n"
+                    f"- **Industry**: {c_ind}\n"
+                    f"- **Operating Country**: {c_country}\n"
+                    f"- **Functional Currency**: **{c_curr}**"
+                )
+
             return {
                 "message": msg,
                 "tools_used": [{
@@ -1523,19 +1570,57 @@ class AIAssistantService:
             except Exception as e:
                 ollama_error = str(e)
                 logger.warning(
-                    "[AIAssistantService] Ollama provider failed: {}. Implicit fallback disabled to protect data locality.",
+                    "[AIAssistantService] Ollama provider failed: {}. Preserving retrieval diagnostics.",
                     e,
                 )
+
+                # Diagnostic tool execution to preserve citations & evidence
+                tools_used: List[Dict[str, Any]] = []
+                p_lower = question.lower()
+                wants_kb = any(k in p_lower for k in (
+                    "accounting", "equation", "asset", "liabilities", "equity", "cash flow",
+                    "working capital", "inventory", "stock", "indicator", "financial",
+                    "principles", "rbi", "msme", "knowledge base", "book", "source", "turnover"
+                ))
+                if wants_kb:
+                    try:
+                        kb_res = self.executor.search_business_knowledge_base(query=question, top_k=3)
+                        tools_used.append({
+                            "tool": "search_business_knowledge_base",
+                            "args": {"query": question, "top_k": 3},
+                            "result": kb_res,
+                            "summary": kb_res.get("summary", "Retrieved knowledge base passages for diagnostics."),
+                        })
+                    except Exception as kb_err:
+                        logger.warning("Diagnostic KB search failed: {}", kb_err)
+
+                citations_found = []
+                for t in tools_used:
+                    if t.get("tool") == "search_business_knowledge_base":
+                        citations_found = (t.get("result") or {}).get("citations", [])
+
+                rag_diagnostics = ""
+                if citations_found:
+                    rag_diagnostics = (
+                        f"\n\n**RAG Retrieval Status**: Successfully retrieved {len(citations_found)} relevant passage(s) "
+                        f"from the business knowledge base (see citations in tool details below). However, final LLM answer generation could not complete "
+                        f"because the local Ollama inference service is offline."
+                    )
+
                 return {
                     "message": (
                         f"⚠️ **Local Ollama Error**: Unable to generate response using local model '{self.ollama_model}'.\n\n"
                         f"**Details**: {ollama_error}\n\n"
-                        f"**Troubleshooting**:\n"
-                        f"- Ensure Ollama is running (`ollama serve` or check `{self.ollama_base_url}`).\n"
-                        f"- Confirm model `{self.ollama_model}` is installed (`ollama list`).\n"
-                        f"- Or switch to **Gemini (Cloud)** using the model selector at the top."
+                        f"**Root Cause Diagnosis**:\n"
+                        f"- The backend attempted to connect to the Ollama server at `{self.ollama_base_url}`.\n"
+                        f"- In production (Render cloud container), `localhost:11434` does not host Ollama because the model runs locally on the developer's laptop.\n"
+                        f"- Cloud environments require `OLLAMA_BASE_URL` to point to a reachable inference endpoint with model `{self.ollama_model}`.{rag_diagnostics}\n\n"
+                        f"**Actionable Next Steps**:\n"
+                        f"1. **Local Development**: Run `ollama serve` and pull `{self.ollama_model}` (`ollama run {self.ollama_model}`).\n"
+                        f"2. **Production Deployment**: Configure `OLLAMA_BASE_URL` on Render to an accessible inference host.\n"
+                        f"3. **Switch Provider**: Select **Gemini (Cloud)** in the provider selector at the top of the chat to complete full multi-tool synthesis."
                     ),
-                    "tools_used": [],
+                    "tools_used": tools_used,
                     "model": self.ollama_model,
                     "provider": "ollama",
                     "status": "error",

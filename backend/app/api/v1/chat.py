@@ -248,6 +248,8 @@ def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_cont
 
     provider_used = result.get("provider", "unknown")
     model_used = result.get("model", "unknown")
+    status_used = result.get("status", "success")
+    error_details = result.get("error_details")
     fallback_used = result.get("fallback_used", False)
     fallback_reason = result.get("fallback_reason")
     timing = result.get("timing")
@@ -262,6 +264,8 @@ def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_cont
                 "tools_used": tools_used,
                 "provider": provider_used,
                 "model": model_used,
+                "status": status_used,
+                "error_details": error_details,
                 "fallback_used": fallback_used,
                 "fallback_reason": fallback_reason,
                 "timing": timing,
@@ -278,6 +282,8 @@ def chat_assistant(payload: dict, ctx: RequestContext = Depends(get_request_cont
         "tools_used": tools_used,
         "provider": provider_used,
         "model": model_used,
+        "status": status_used,
+        "error_details": error_details,
         "fallback_used": fallback_used,
         "fallback_reason": fallback_reason,
         "timing": timing,
@@ -462,6 +468,8 @@ def send_message(
 
     provider_used = result.get("provider", "unknown")
     model_used = result.get("model", "unknown")
+    status_used = result.get("status", "success")
+    error_details = result.get("error_details")
     fallback_used = result.get("fallback_used", False)
     fallback_reason = result.get("fallback_reason")
     timing = result.get("timing")
@@ -477,6 +485,8 @@ def send_message(
                 "tools_used": tools_used,
                 "provider": provider_used,
                 "model": model_used,
+                "status": status_used,
+                "error_details": error_details,
                 "fallback_used": fallback_used,
                 "fallback_reason": fallback_reason,
                 "timing": timing,
@@ -493,6 +503,8 @@ def send_message(
         "tools_used": tools_used,
         "provider": provider_used,
         "model": model_used,
+        "status": status_used,
+        "error_details": error_details,
         "fallback_used": fallback_used,
         "fallback_reason": fallback_reason,
         "timing": timing,
