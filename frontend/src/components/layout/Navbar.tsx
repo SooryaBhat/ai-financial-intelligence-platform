@@ -38,7 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleAIAssistant,
 }) => {
   const location = useLocation()
-  const { activeCompany, companies, setActiveCompanyId, activeBranchId, setActiveBranchId } = useAuth()
+  const { isAuthenticated, activeCompany, companies, setActiveCompanyId, activeBranchId, setActiveBranchId } = useAuth()
 
   const [activeDropdown, setActiveDropdown] = useState<DropdownKey>(null)
   const [isCompanyMenuOpen, setIsCompanyMenuOpen] = useState(false)
@@ -50,12 +50,22 @@ export const Navbar: React.FC<NavbarProps> = ({
   const companyRef = useRef<HTMLDivElement>(null)
   const branchRef = useRef<HTMLDivElement>(null)
 
-  // Fetch unread notification count
+  // Fetch unread notification count — scoped to authenticated session and company
+  const companyKey = activeCompany?.company_id || activeCompany?.id
   const { data: unreadCount, isError: isUnreadCountError } = useQuery({
-    queryKey: ['notifications-unread-count'],
+    queryKey: ['notifications-unread-count', companyKey],
     queryFn: () => notificationService.getUnreadCount(),
+    enabled: Boolean(isAuthenticated && companyKey),
     refetchInterval: 60000,
-    retry: 1,
+    retry: (failureCount, error: any) => {
+      // Do not endlessly retry on 401/403/404
+      const status = error?.response?.status
+      if (status === 401 || status === 403 || status === 404) {
+        return false
+      }
+      return failureCount < 2
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     refetchOnWindowFocus: false,
   })
 

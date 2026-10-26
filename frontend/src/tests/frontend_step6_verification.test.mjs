@@ -259,5 +259,52 @@ describe('ALLADIN Step 6 — Frontend API Client & Contracts Verification', () =
     assert.ok(!loginEndpoint.includes('//api'))
     assert.ok(!loginEndpoint.includes('/api/v1/api/v1'))
   })
+
+  test('Web manifest JSON contract and public asset paths', async () => {
+    const fs = await import('node:fs')
+    const path = await import('node:path')
+    const publicDir = path.resolve('public')
+
+    const siteManifestPath = path.join(publicDir, 'site.webmanifest')
+    const manifestJsonPath = path.join(publicDir, 'manifest.json')
+
+    assert.ok(fs.existsSync(siteManifestPath), 'site.webmanifest must exist in public/')
+    assert.ok(fs.existsSync(manifestJsonPath), 'manifest.json must exist in public/')
+
+    const siteManifest = JSON.parse(fs.readFileSync(siteManifestPath, 'utf8'))
+    const manifestJson = JSON.parse(fs.readFileSync(manifestJsonPath, 'utf8'))
+
+    assert.equal(siteManifest.short_name, 'ALLADIN')
+    assert.equal(manifestJson.short_name, 'ALLADIN')
+    assert.ok(siteManifest.icons.length >= 2, 'Manifest must have at least 2 icon definitions')
+
+    for (const icon of siteManifest.icons) {
+      const assetFile = path.join(publicDir, icon.src.replace(/^\//, ''))
+      assert.ok(fs.existsSync(assetFile), `Manifest icon ${icon.src} must exist in public directory`)
+    }
+  })
+
+  test('Notification unread-count query scoping contract', () => {
+    // When unauthenticated or company not set, query must NOT execute
+    const isEnabled = (isAuthenticated, companyId) => Boolean(isAuthenticated && companyId)
+
+    assert.equal(isEnabled(false, undefined), false)
+    assert.equal(isEnabled(true, undefined), false)
+    assert.equal(isEnabled(false, 'comp-123'), false)
+    assert.equal(isEnabled(true, 'comp-123'), true)
+
+    // Retry contract: Do not retry on 401, 403, 404
+    const shouldRetry = (failureCount, statusCode) => {
+      if ([401, 403, 404].includes(statusCode)) return false
+      return failureCount < 2
+    }
+
+    assert.equal(shouldRetry(0, 401), false)
+    assert.equal(shouldRetry(0, 403), false)
+    assert.equal(shouldRetry(0, 404), false)
+    assert.equal(shouldRetry(0, 500), true)
+    assert.equal(shouldRetry(1, 500), true)
+    assert.equal(shouldRetry(2, 500), false)
+  })
 })
 

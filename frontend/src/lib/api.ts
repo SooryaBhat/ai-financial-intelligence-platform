@@ -136,13 +136,16 @@ api.interceptors.response.use(
       originalRequest._retry = true
       isRefreshing = true
 
+      const isBackgroundPoll = originalRequest.url?.includes('/notifications/unread-count')
       const refreshToken = localStorage.getItem('refresh_token')
       if (!refreshToken) {
         isRefreshing = false
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        localStorage.removeItem('active_company_id')
-        window.location.href = '/login'
+        if (!isBackgroundPoll) {
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+          localStorage.removeItem('active_company_id')
+          window.location.href = '/login'
+        }
         return Promise.reject(error)
       }
 
@@ -172,10 +175,12 @@ api.interceptors.response.use(
         }
       } catch (refreshErr) {
         processQueue(refreshErr as Error, null)
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        localStorage.removeItem('active_company_id')
-        window.location.href = '/login'
+        if (!isBackgroundPoll) {
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+          localStorage.removeItem('active_company_id')
+          window.location.href = '/login'
+        }
         return Promise.reject(refreshErr)
       } finally {
         isRefreshing = false
