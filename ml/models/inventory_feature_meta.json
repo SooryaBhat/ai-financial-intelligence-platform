@@ -1,7 +1,6 @@
 {
   "pipeline": "inventory_demand_prediction",
   "target": "units_out",
-  "horizon": "1 month ahead (monthly replenishment cycle)",
   "features": [
     "lag_1",
     "lag_2",
@@ -22,105 +21,147 @@
     "00000000-0000-0000-0000-000000000002"
   ],
   "holdout_company": "00000000-0000-0000-0000-000000000003",
+  "sample_counts": {
+    "train_rows": 4902,
+    "val_rows": 926,
+    "test_rows": 1500,
+    "holdout_co3_rows": 4443
+  },
   "demand_test_metrics": {
-    "rmse": 13.636079109850709,
-    "mae": 9.257264832772938,
-    "mape": 137.14939459433182,
-    "smape": 58.18084571615947,
-    "wape": 55.59300500108303,
-    "r2": -0.0183
+    "rmse": 13.501607623218375,
+    "mae": 9.713137231138278,
+    "mape": 147.99298640169994,
+    "smape": 61.510888330721144,
+    "wape": 58.19037401832182,
+    "r2": -0.0069,
+    "bias": -5.1604,
+    "mase": 0.7785
   },
   "reorder_policy_evaluation_dev": {
-    "evaluation_type": "Multi-period chronological evaluation with boundary simulation and native baseline audit",
-    "test_period_total_observations": 945,
-    "unique_products_evaluated": 200,
-    "safety_stock_units": 10.32,
-    "lead_time_days": 7,
-    "boundary_simulation_metrics": {
-      "description": "Replenishment decision accuracy when stock varies around the reorder threshold (0.5x to 1.5x ROP)",
-      "sample_size": 945,
-      "true_positives": 413,
-      "false_positives": 60,
-      "false_negatives": 77,
-      "true_negatives": 395,
-      "precision": 0.8732,
-      "recall": 0.8429,
-      "f1_score": 0.8577,
-      "accuracy": 0.855,
-      "positive_support_count": 490,
-      "positive_support_pct": 51.85
+    "sample_size": 1500,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1_score": 0.0,
+    "service_level_pct": 100.0,
+    "confusion_matrix": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 1500
     },
+    "safety_stock_units": 11.37,
+    "lead_time_days": 7.0,
     "native_baseline_audit": {
-      "description": "Evaluation on native synthetic inventory where buffer stock was high (~1,200 units vs ~18 monthly sales)",
-      "sample_size": 200,
+      "sample_size": 1500,
       "true_positives": 0,
-      "false_positives": 0,
-      "false_negatives": 0,
-      "true_negatives": 200,
-      "precision": null,
-      "recall": null,
-      "f1_score": null,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
       "service_level_pct": 100.0,
-      "limitation": "Native synthetic inventory generator maintained excess buffer stock; zero natural stockout events occurred. Claiming F1=1.0 on zero positive support is mathematically degenerate; boundary simulation provides the genuine predictive policy score."
+      "confusion_matrix": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "tn": 1500
+      },
+      "safety_stock_units": 11.37,
+      "lead_time_days": 7.0,
+      "audit_note": "Under normal ERP inventory stock levels, safety buffers prevent depletion below ROP; true positives = 0."
+    },
+    "boundary_simulation_metrics": {
+      "sample_size": 1500,
+      "positive_support_count": 741,
+      "true_positives": 686,
+      "precision": 0.8979,
+      "recall": 0.9258,
+      "f1_score": 0.9116,
+      "service_level_pct": 91.13,
+      "confusion_matrix": {
+        "tp": 686,
+        "fp": 78,
+        "fn": 55,
+        "tn": 681
+      },
+      "simulation_methodology": "Uniform stress perturbation around calculated ROP boundary"
     }
   },
   "reorder_policy_evaluation_co3": {
-    "evaluation_type": "Multi-period chronological evaluation with boundary simulation and native baseline audit",
-    "test_period_total_observations": 534,
-    "unique_products_evaluated": 100,
-    "safety_stock_units": 10.32,
-    "lead_time_days": 7,
-    "boundary_simulation_metrics": {
-      "description": "Replenishment decision accuracy when stock varies around the reorder threshold (0.5x to 1.5x ROP)",
-      "sample_size": 534,
-      "true_positives": 232,
-      "false_positives": 21,
-      "false_negatives": 66,
-      "true_negatives": 215,
-      "precision": 0.917,
-      "recall": 0.7785,
-      "f1_score": 0.8421,
-      "accuracy": 0.8371,
-      "positive_support_count": 298,
-      "positive_support_pct": 55.81
+    "sample_size": 926,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1_score": 0.0,
+    "service_level_pct": 100.0,
+    "confusion_matrix": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 926
     },
+    "safety_stock_units": 11.37,
+    "lead_time_days": 7.0,
     "native_baseline_audit": {
-      "description": "Evaluation on native synthetic inventory where buffer stock was high (~1,200 units vs ~18 monthly sales)",
-      "sample_size": 100,
+      "sample_size": 926,
       "true_positives": 0,
-      "false_positives": 0,
-      "false_negatives": 0,
-      "true_negatives": 100,
-      "precision": null,
-      "recall": null,
-      "f1_score": null,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
       "service_level_pct": 100.0,
-      "limitation": "Native synthetic inventory generator maintained excess buffer stock; zero natural stockout events occurred. Claiming F1=1.0 on zero positive support is mathematically degenerate; boundary simulation provides the genuine predictive policy score."
+      "confusion_matrix": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "tn": 926
+      },
+      "safety_stock_units": 11.37,
+      "lead_time_days": 7.0,
+      "audit_note": "Under normal ERP inventory stock levels, safety buffers prevent depletion below ROP; true positives = 0."
+    },
+    "boundary_simulation_metrics": {
+      "sample_size": 926,
+      "positive_support_count": 464,
+      "true_positives": 408,
+      "precision": 0.9007,
+      "recall": 0.8793,
+      "f1_score": 0.8899,
+      "service_level_pct": 89.09,
+      "confusion_matrix": {
+        "tp": 408,
+        "fp": 45,
+        "fn": 56,
+        "tn": 417
+      },
+      "simulation_methodology": "Uniform stress perturbation around calculated ROP boundary"
     }
   },
   "approach_c_holdout_co3_metrics": {
-    "rmse": 15.28797570055675,
-    "mae": 10.545407068428784,
-    "mape": 119.53463723688911,
-    "smape": 58.54329533009789,
-    "wape": 54.59132109122464,
-    "r2": -0.0816,
+    "rmse": 16.506538191087326,
+    "mae": 11.137836835727457,
+    "mape": 113.34826823990352,
+    "smape": 57.77871842667965,
+    "wape": 53.70442900366501,
+    "r2": -0.0744,
+    "bias": -21.427,
+    "mase": 0.8927,
     "baseline_lag1_metrics": {
-      "rmse": 20.68759371103615,
-      "mae": 15.073281185673116,
-      "mape": 161.65148741905895,
-      "smape": 78.55193179007645,
-      "wape": 78.03115875620725,
-      "r2": -0.9805
+      "rmse": 22.475469910393425,
+      "mae": 16.185685347738016,
+      "mape": 167.06867242169417,
+      "smape": 77.84693134689574,
+      "wape": 78.04414828963363,
+      "r2": -0.9919,
+      "bias": -0.4829,
+      "mase": 1.2973
     },
     "baseline_ma_metrics": {
-      "rmse": 16.873520787455565,
-      "mae": 12.383696994648004,
-      "mape": 148.49555310167867,
-      "smape": 65.29111133867308,
-      "wape": 64.10775558918182,
-      "r2": -0.3176
+      "rmse": 18.232766959023778,
+      "mae": 13.27496436341811,
+      "mape": 149.99643353929156,
+      "smape": 64.86094482411889,
+      "wape": 64.00923192683915,
+      "r2": -0.3109,
+      "bias": -1.1525,
+      "mase": 1.064
     },
-    "n_observations": 2429
+    "n_observations": 4443
   }
 }

@@ -9,6 +9,7 @@ Exposes database-backed, authenticated, and tenant-isolated endpoints for:
   - Business Health Scoring (/business-health/predict)
   - Anomaly Detection (/anomaly/predict)
 """
+from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.logging import logger
@@ -43,6 +44,21 @@ from app.services.context import RequestContext
 from app.services.ml_data_service import MLDataService
 
 router = APIRouter(prefix="/ml", tags=["ML Predictions"])
+
+
+@router.get(
+    "/models/registry",
+    response_model=SuccessResponse[Dict[str, Any]],
+    summary="Get canonical ML model registry",
+    description="Returns the verified canonical ML model registry, including selected models, evaluation metrics, and candidate options."
+)
+def get_model_registry_endpoint(
+    ctx: RequestContext = Depends(get_request_context),
+    loader: ModelLoader = Depends(get_model_loader),
+):
+    reg = loader.get_registry()
+    return SuccessResponse(data=reg)
+
 
 
 @router.post(
@@ -231,8 +247,8 @@ def predict_inventory_endpoint(
             prediction_type="inventory",
             predicted_value=res.predicted_monthly_demand,
             confidence_score=0.85,
-            model_version="inventory_xgb_v2",
-            input_data={"product_id": payload.product_id, "current_stock": curr_stock, "lead_time_days": payload.lead_time_days},
+            model_version=res.model_version or res.model_used or "inventory_demand_selected.pkl",
+            input_data={"product_id": payload.product_id, "current_stock": curr_stock, "lead_time_days": payload.lead_time_days, "model_type": payload.model_type},
             output_data=res.model_dump(),
         )
 
@@ -298,8 +314,8 @@ def predict_profit_endpoint(
             prediction_type="profit",
             predicted_value=res.predicted_profit,
             confidence_score=res.confidence_score,
-            model_version="profit_xgb_v2",
-            input_data={"projected_revenue": proj_rev, "history_len": len(p_hist or [])},
+            model_version=res.model_version or res.model_used or "profit_prediction_selected.pkl",
+            input_data={"projected_revenue": proj_rev, "model_type": payload.model_type, "history_len": len(p_hist or [])},
             output_data=res.model_dump(),
         )
 
@@ -440,7 +456,7 @@ def calculate_business_health_endpoint(
             prediction_type="business_health",
             predicted_value=res.health_score,
             confidence_score=0.92,
-            model_version="health_scorecard_v2",
+            model_version=res.model_version or res.model_used or "health_score_selected.pkl",
             input_data={"revenue_growth": rev_growth, "profit_margin": prof_margin, "expense_control": exp_control},
             output_data=res.model_dump(),
         )
@@ -503,8 +519,8 @@ def detect_anomaly_endpoint(
             prediction_type="anomaly",
             predicted_value=res.anomaly_score,
             confidence_score=res.confidence / 100.0,
-            model_version="isolation_forest_v2",
-            input_data={"net_amount": payload.net_amount, "discount_pct": payload.discount_pct, "is_anomaly": res.is_anomaly},
+            model_version=res.model_version or res.model_used or "anomaly_detection_selected.pkl",
+            input_data={"net_amount": payload.net_amount, "discount_pct": payload.discount_pct, "model_type": payload.model_type, "is_anomaly": res.is_anomaly},
             output_data=res.model_dump(),
         )
 

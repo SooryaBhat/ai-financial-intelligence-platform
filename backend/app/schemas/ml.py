@@ -29,8 +29,8 @@ class RevenuePredictionRequest(AppBaseModel):
         description="Number of months to forecast into the future (1-24)"
     )
     model_type: str = Field(
-        default="xgboost",
-        description="ML model engine: 'xgboost' or 'sarima'"
+        default="aagf",
+        description="ML model engine: 'aagf', 'xgboost', 'sarima', or 'linear_regression'"
     )
     historical_revenue: Optional[List[float]] = Field(
         default=None,
@@ -51,11 +51,15 @@ class RevenueForecastItem(AppBaseModel):
 
 class RevenuePredictionResponse(AppBaseModel):
     model_used: str = Field(..., description="Model engine used for prediction")
+    model_name: Optional[str] = Field(default=None, description="Human readable model name")
+    model_version: Optional[str] = Field(default=None, description="Artifact version tag")
     forecast_period_months: int = Field(..., description="Total months forecasted")
     predictions: List[RevenueForecastItem]
     total_projected_revenue: float = Field(..., description="Sum of forecasted revenues across period")
     average_monthly_revenue: float = Field(..., description="Average projected monthly revenue")
     growth_trend: str = Field(..., description="Trend indicator: 'UPWARD', 'STABLE', or 'DOWNWARD'")
+    metrics: Optional[Dict[str, Any]] = Field(default=None, description="Verified evaluation metrics from registry")
+    data_provenance: Optional[Dict[str, Any]] = Field(default=None, description="Training dataset version and period")
     is_fallback: bool = Field(default=False, description="True if safe fallback baseline was used due to insufficient data")
     warning_message: Optional[str] = Field(default=None, description="Diagnostic warning message regarding historical data")
 
@@ -76,10 +80,14 @@ class SalesPredictionRequest(AppBaseModel):
         description="Optional Product or Category identifier"
     )
     model_type: str = Field(
-        default="xgboost",
-        description="ML model engine: 'xgboost' or 'lightgbm'"
+        default="product_profile",
+        description="ML model engine: 'product_profile', 'aagf', 'xgboost', 'lightgbm', 'linear_regression'"
     )
     months_ahead: int = Field(default=3, ge=1, le=12, description="Months ahead to forecast (1-12)")
+    unit_price: Optional[float] = Field(
+        default=None,
+        description="Optional unit price for line revenue calculation"
+    )
     historical_sales: Optional[List[float]] = Field(
         default=None,
         description="Optional historical monthly sales volume/units"
@@ -97,9 +105,13 @@ class SalesPredictionResponse(AppBaseModel):
     entity_type: str
     entity_id: Optional[str] = None
     model_used: str
+    model_name: Optional[str] = None
+    model_version: Optional[str] = None
     predictions: List[SalesForecastItem]
     total_predicted_units: float
     total_predicted_amount: float
+    metrics: Optional[Dict[str, Any]] = None
+    data_provenance: Optional[Dict[str, Any]] = None
     is_fallback: bool = Field(default=False, description="True if safe fallback was used due to insufficient data")
     warning_message: Optional[str] = Field(default=None, description="Diagnostic warning message")
 
@@ -110,6 +122,10 @@ class InventoryPredictionRequest(AppBaseModel):
     branch_id: Optional[UUID] = Field(default=None, description="Optional outlet / branch UUID")
     product_id: Optional[str] = Field(default=None, description="Product UUID or SKU code")
     product_name: Optional[str] = Field(default=None, description="Product display name")
+    model_type: str = Field(
+        default="lightgbm",
+        description="ML model engine: 'lightgbm', 'xgboost', 'random_forest', 'censored'"
+    )
     current_stock: Optional[float] = Field(default=None, ge=0, description="Current warehouse stock quantity (auto-fetched from DB if omitted)")
     unit_cost: float = Field(default=10.0, ge=0, description="Cost per unit")
     lead_time_days: int = Field(default=14, ge=1, le=90, description="Supplier lead time in days")
@@ -127,6 +143,11 @@ class InventoryPredictionResponse(AppBaseModel):
     stockout_risk_level: str = Field(..., description="Risk category: 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'")
     days_of_supply_remaining: float
     reorder_recommended: bool
+    model_used: Optional[str] = None
+    model_name: Optional[str] = None
+    model_version: Optional[str] = None
+    metrics: Optional[Dict[str, Any]] = None
+    data_provenance: Optional[Dict[str, Any]] = None
     is_fallback: bool = Field(default=False, description="True if safe fallback was used due to insufficient data")
     warning_message: Optional[str] = Field(default=None, description="Diagnostic warning message")
 
@@ -135,6 +156,10 @@ class InventoryPredictionResponse(AppBaseModel):
 
 class ProfitPredictionRequest(AppBaseModel):
     branch_id: Optional[UUID] = Field(default=None, description="Optional outlet / branch UUID")
+    model_type: str = Field(
+        default="lightgbm",
+        description="ML model engine: 'lightgbm', 'xgboost', 'random_forest', 'linear_regression', 'margin_bridge'"
+    )
     historical_profits: Optional[List[float]] = Field(default=None, description="Recent monthly net profit values")
     historical_revenues: Optional[List[float]] = Field(default=None, description="Recent monthly revenue values")
     projected_revenue: Optional[float] = Field(default=None, description="Estimated upcoming monthly revenue")
@@ -147,6 +172,11 @@ class ProfitPredictionResponse(AppBaseModel):
     profitability_status: str = Field(..., description="'HIGHLY_PROFITABLE', 'MODERATELY_PROFITABLE', 'LOW_MARGIN', 'UNPROFITABLE'")
     confidence_score: float
     influencing_factors: Dict[str, Any]
+    model_used: Optional[str] = None
+    model_name: Optional[str] = None
+    model_version: Optional[str] = None
+    metrics: Optional[Dict[str, Any]] = None
+    data_provenance: Optional[Dict[str, Any]] = None
     is_fallback: bool = Field(default=False, description="True if safe fallback was used due to insufficient data")
     warning_message: Optional[str] = Field(default=None, description="Diagnostic warning message")
 
@@ -160,8 +190,8 @@ class ExpensePredictionRequest(AppBaseModel):
         description="Expense category (e.g., Rent, Salaries, Utilities, Marketing, IT & Software, Travel)"
     )
     model_type: str = Field(
-        default="xgboost",
-        description="ML model engine: 'xgboost' or 'linear_regression'"
+        default="random_forest",
+        description="ML model engine: 'random_forest', 'xgboost', 'linear_regression', 'recurring'"
     )
     months_ahead: int = Field(default=1, ge=1, le=12)
     historical_expenses: Optional[List[float]] = Field(default=None)
@@ -170,11 +200,15 @@ class ExpensePredictionRequest(AppBaseModel):
 
 class ExpensePredictionResponse(AppBaseModel):
     model_used: str
+    model_name: Optional[str] = None
+    model_version: Optional[str] = None
     category: Optional[str] = None
     predicted_expense: float
     predicted_transaction_count: int
     expense_risk_alert: str = Field(..., description="'NORMAL', 'ELEVATED', or 'HIGH_ANOMALOUS_EXPENSE'")
     category_breakdown: Optional[Dict[str, float]] = None
+    metrics: Optional[Dict[str, Any]] = None
+    data_provenance: Optional[Dict[str, Any]] = None
     is_fallback: bool = Field(default=False, description="True if safe fallback was used due to insufficient data")
     warning_message: Optional[str] = Field(default=None, description="Diagnostic warning message")
 
@@ -183,6 +217,10 @@ class ExpensePredictionResponse(AppBaseModel):
 
 class BusinessHealthRequest(AppBaseModel):
     branch_id: Optional[UUID] = Field(default=None, description="Optional outlet / branch UUID")
+    model_type: str = Field(
+        default="linear_regression",
+        description="Health transition model: 'linear_regression', 'random_forest', 'xgboost'"
+    )
     revenue_growth: Optional[float] = Field(default=None, description="Revenue growth rate (auto-computed from DB if omitted)")
     profit_margin: Optional[float] = Field(default=None, description="Net profit margin ratio (auto-computed from DB if omitted)")
     expense_control: Optional[float] = Field(default=None, description="Expense efficiency index (auto-computed from DB if omitted)")
@@ -197,6 +235,12 @@ class BusinessHealthResponse(AppBaseModel):
     sub_scores: Dict[str, float] = Field(..., description="Component sub-scores (0-100 scale)")
     weights: Dict[str, float] = Field(..., description="KPI weighting configuration used")
     recommendations: List[str] = Field(..., description="Actionable insights to optimize financial health")
+    projected_next_month_health_score: Optional[float] = Field(default=None, description="Predicted forward 1-month health index")
+    model_used: Optional[str] = None
+    model_name: Optional[str] = None
+    model_version: Optional[str] = None
+    metrics: Optional[Dict[str, Any]] = None
+    data_provenance: Optional[Dict[str, Any]] = None
     is_fallback: bool = Field(default=False, description="True if dynamic database KPIs were limited or baseline was used")
     warning_message: Optional[str] = Field(default=None, description="Diagnostic warning message")
 
@@ -205,6 +249,10 @@ class BusinessHealthResponse(AppBaseModel):
 
 class AnomalyDetectionRequest(AppBaseModel):
     branch_id: Optional[UUID] = Field(default=None, description="Optional outlet / branch UUID")
+    model_type: str = Field(
+        default="rule_based",
+        description="Anomaly model: 'rule_based', 'isolation_forest', 'robust_mad', 'pca'"
+    )
     net_amount: float = Field(..., description="Transaction net amount")
     discount_pct: float = Field(default=0.0, ge=0.0, le=100.0, description="Discount percentage applied")
     day_of_week: Optional[int] = Field(default=None, ge=0, le=6, description="Day of week (0=Monday, 6=Sunday)")
@@ -218,9 +266,14 @@ class AnomalyDetectionRequest(AppBaseModel):
 
 class AnomalyDetectionResponse(AppBaseModel):
     is_anomaly: bool = Field(..., description="True if transaction is flagged as an anomaly")
-    anomaly_score: float = Field(..., description="Raw decision score from Isolation Forest (lower = higher anomaly)")
+    anomaly_score: float = Field(..., description="Raw decision score (lower/negative = higher anomaly)")
     severity: str = Field(..., description="'NORMAL', 'LOW', 'MEDIUM', 'HIGH', or 'CRITICAL'")
     confidence: float = Field(..., description="Confidence percentage (0-100%)")
     reason: str = Field(..., description="Detailed diagnostic explanation")
+    model_used: Optional[str] = None
+    model_name: Optional[str] = None
+    model_version: Optional[str] = None
+    metrics: Optional[Dict[str, Any]] = None
+    data_provenance: Optional[Dict[str, Any]] = None
     is_fallback: bool = Field(default=False, description="True if default statistical baseline was used due to limited history")
     warning_message: Optional[str] = Field(default=None, description="Diagnostic warning message")

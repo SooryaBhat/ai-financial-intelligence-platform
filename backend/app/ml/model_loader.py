@@ -11,7 +11,7 @@ import joblib
 
 from app.core.logging import logger
 
-# Ensure ml/scripts is in sys.path so custom models (like AAGF) unpickle cleanly
+# Ensure ml/scripts and custom_models are in sys.path so custom models unpickle cleanly
 for _base in [
     Path(os.getcwd()),
     Path(os.getcwd()).parent,
@@ -21,10 +21,50 @@ for _base in [
     _scripts_dir = _base / "ml" / "scripts"
     if _scripts_dir.exists() and str(_scripts_dir) not in sys.path:
         sys.path.insert(0, str(_scripts_dir))
+    _custom_dir = _scripts_dir / "custom_models"
+    if _custom_dir.exists() and str(_custom_dir) not in sys.path:
+        sys.path.insert(0, str(_custom_dir))
 
+# Ensure custom modules are available under their module paths
 try:
     import aagf_model
     sys.modules["aagf_model"] = aagf_model
+except Exception:
+    pass
+
+try:
+    import product_profile_model
+    sys.modules["product_profile_model"] = product_profile_model
+except Exception:
+    pass
+
+try:
+    import anomaly_detectors
+    sys.modules["anomaly_detectors"] = anomaly_detectors
+except Exception:
+    pass
+
+try:
+    import health_scorers
+    sys.modules["health_scorers"] = health_scorers
+except Exception:
+    pass
+
+try:
+    import margin_bridge_model
+    sys.modules["margin_bridge_model"] = margin_bridge_model
+except Exception:
+    pass
+
+try:
+    import recurring_expense_model
+    sys.modules["recurring_expense_model"] = recurring_expense_model
+except Exception:
+    pass
+
+try:
+    import censored_demand_model
+    sys.modules["censored_demand_model"] = censored_demand_model
 except Exception:
     pass
 
@@ -74,13 +114,17 @@ class ModelLoader:
             "profit_selected": "profit_prediction_selected.pkl",
             "inventory_selected": "inventory_demand_selected.pkl",
             "expense_selected": "expense_prediction_selected.pkl",
+            "health_score_selected": "health_score_selected.pkl",
+            "anomaly_selected": "anomaly_detection_selected.pkl",
 
-            # Algorithm-specific models (Exact algorithm identities)
+            # Pipeline 1: Revenue
             "revenue_aagf": "revenue_forecasting_aagf.pkl",
             "revenue_linear_regression": "revenue_forecasting_linear_regression.pkl",
             "revenue_xgboost": "revenue_forecasting_xgboost.pkl",
             "revenue_sarima": "revenue_forecasting_sarima.pkl",
 
+            # Pipeline 2: Sales
+            "sales_product_profile": "sales_forecasting_product_profile.pkl",
             "sales_aagf": "sales_forecasting_aagf_product.pkl",
             "sales_aagf_product": "sales_forecasting_aagf_product.pkl",
             "sales_xgb_product": "sales_forecasting_xgb_product.pkl",
@@ -89,22 +133,37 @@ class ModelLoader:
             "sales_linear_regression_product": "sales_forecasting_linear_regression_product.pkl",
             "sales_xgb_category": "sales_forecasting_xgb_category.pkl",
 
-            "inventory_demand": "inventory_demand_xgboost.pkl",
+            # Pipeline 3: Inventory
+            "inventory_lightgbm": "inventory_demand_lightgbm.pkl",
+            "inventory_demand": "inventory_demand_selected.pkl",
             "inventory_xgboost": "inventory_demand_xgboost.pkl",
             "inventory_random_forest": "inventory_demand_random_forest.pkl",
             "inventory_demand_rf": "inventory_demand_random_forest.pkl",
-            "inventory_lightgbm": "inventory_demand_lightgbm.pkl",
+            "inventory_censored": "inventory_demand_censored.pkl",
 
-            "profit_prediction": "profit_prediction_selected.pkl",  # legacy key points to canonical selected
+            # Pipeline 4: Profit
+            "profit_prediction": "profit_prediction_selected.pkl",
+            "profit_lightgbm": "profit_prediction_selected.pkl",
             "profit_xgboost": "profit_prediction_xgboost.pkl",
             "profit_random_forest": "profit_prediction_random_forest.pkl",
             "profit_linear_regression": "profit_prediction_linear_regression.pkl",
+            "profit_margin_bridge": "profit_prediction_margin_bridge.pkl",
 
+            # Pipeline 5: Expense
+            "expense_random_forest": "expense_prediction_selected.pkl",
             "expense_xgboost": "expense_prediction_xgboost.pkl",
             "expense_linear_regression": "expense_prediction_linear_regression.pkl",
+            "expense_recurring": "expense_prediction_recurring.pkl",
 
+            # Pipeline 6: Health Score
             "health_score_pipeline": "health_score_pipeline.pkl",
-            "anomaly_detection": "anomaly_detection_isolation_forest.pkl",
+
+            # Pipeline 7: Anomaly Detection
+            "anomaly_detection": "anomaly_detection_selected.pkl",
+            "anomaly_rule_based": "anomaly_detection_rule_based.pkl",
+            "anomaly_isolation_forest": "anomaly_detection_isolation_forest.pkl",
+            "anomaly_robust_mad": "anomaly_detection_robust_mad.pkl",
+            "anomaly_pca": "anomaly_detection_pca.pkl",
         }
 
         meta_files = {
@@ -157,6 +216,19 @@ class ModelLoader:
         if not self._is_loaded:
             self.load_all_models()
         return self._meta.get(key)
+
+    def get_registry(self) -> Dict[str, Any]:
+        """Retrieve the canonical model registry."""
+        reg = self.get_meta("model_registry")
+        if reg and isinstance(reg, dict):
+            return reg
+        # Fallback to direct file read if needed
+        models_dir = self._resolve_models_dir()
+        p = models_dir / "model_registry.json"
+        if p.exists():
+            with open(p, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return {}
 
 
 # Global singleton instance

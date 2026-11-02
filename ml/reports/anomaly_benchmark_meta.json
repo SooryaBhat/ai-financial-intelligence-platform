@@ -1,0 +1,20 @@
+{
+  "benchmark_version": "v2.0_independent",
+  "description": "Multi-type independent evaluation dataset for transaction anomaly detection",
+  "total_observations": 1560,
+  "total_anomalies": 54,
+  "anomaly_rate_pct": 3.46,
+  "anomaly_breakdown": {
+    "NORMAL": 1506,
+    "EXTREME_OUTLIER": 14,
+    "MARGIN_EROSION": 10,
+    "CONTEXTUAL_DISCOUNT": 10,
+    "MULTIVARIATE_COVARIANCE": 10,
+    "TIMING_VELOCITY": 10
+  },
+  "evaluation_period": "2026-01-01 to 2026-10-21",
+  "companies_included": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
+  ]
+}

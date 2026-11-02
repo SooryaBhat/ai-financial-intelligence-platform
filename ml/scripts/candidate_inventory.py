@@ -1,0 +1,597 @@
+# -*- coding: utf-8 -*-
+"""
+candidate_inventory.py
+======================
+Comprehensive Model Candidate Inventory for all 7 ALLADIN ML Pipelines.
+
+Registers all candidate models across classical statistical baselines, modern
+gradient boosted trees, and specialized custom architectures.
+"""
+
+from typing import Dict, List, Any
+import json
+from pathlib import Path
+
+INVENTORY: Dict[str, Dict[str, Any]] = {
+    "revenue_forecasting": {
+        "pipeline_name": "Revenue Forecasting",
+        "target": "revenue",
+        "evaluation_period": "2025-07-01 to 2025-12-31 (Validation) / 2026-01-01 to 2026-10-31 (Dev Test)",
+        "prediction_horizon": "1 to 24 months",
+        "candidates": [
+            {
+                "name": "Naive_Baseline_Lag1",
+                "model_family": "Heuristic Baseline",
+                "implementation": "numpy / lag-1 projection",
+                "is_baseline": True,
+                "expected_inputs": "lag_1",
+                "description": "Projects the most recent monthly revenue forward as a naive constant."
+            },
+            {
+                "name": "Seasonal_Naive_Lag12",
+                "model_family": "Heuristic Baseline",
+                "implementation": "numpy / lag-12 projection",
+                "is_baseline": True,
+                "expected_inputs": "lag_12",
+                "description": "Projects the same month from the prior year to capture annual seasonality."
+            },
+            {
+                "name": "Moving_Average_3m",
+                "model_family": "Statistical Baseline",
+                "implementation": "numpy / rolling mean",
+                "is_baseline": True,
+                "expected_inputs": "roll3_mean",
+                "description": "Smooths out short-term fluctuations using a 3-month trailing average."
+            },
+            {
+                "name": "Ridge_Regression",
+                "model_family": "Regularized Linear",
+                "implementation": "sklearn.linear_model.Ridge",
+                "is_baseline": False,
+                "expected_inputs": "8 lag and rolling features",
+                "description": "L2-penalized linear model for stable multi-collinear lag weights."
+            },
+            {
+                "name": "Elastic_Net",
+                "model_family": "Regularized Linear",
+                "implementation": "sklearn.linear_model.ElasticNet",
+                "is_baseline": False,
+                "expected_inputs": "8 lag and rolling features",
+                "description": "Blends L1 sparsity and L2 shrinkage to select dominant historical lags."
+            },
+            {
+                "name": "Random_Forest",
+                "model_family": "Ensemble Tree",
+                "implementation": "sklearn.ensemble.RandomForestRegressor",
+                "is_baseline": False,
+                "expected_inputs": "8 lag and rolling features",
+                "description": "Non-linear bagging ensemble robust to outliers and variance."
+            },
+            {
+                "name": "XGBoost",
+                "model_family": "Gradient Boosted Trees",
+                "implementation": "xgboost.XGBRegressor",
+                "is_baseline": False,
+                "expected_inputs": "8 lag and rolling features",
+                "description": "Exact second-order gradient boosting with tree depth regularization."
+            },
+            {
+                "name": "LightGBM",
+                "model_family": "Gradient Boosted Trees",
+                "implementation": "lightgbm.LGBMRegressor",
+                "is_baseline": False,
+                "expected_inputs": "8 lag and rolling features",
+                "description": "Histogram-based leaf-wise gradient boosting optimized for speed."
+            },
+            {
+                "name": "Exponential_Smoothing_ETS",
+                "model_family": "Time Series Classical",
+                "implementation": "statsmodels.tsa.holtwinters.ExponentialSmoothing",
+                "is_baseline": False,
+                "expected_inputs": "Univariate revenue sequence",
+                "description": "Holt-Winters exponential smoothing modeling level, trend, and seasonal components."
+            },
+            {
+                "name": "SARIMAX",
+                "model_family": "Time Series Classical",
+                "implementation": "statsmodels.tsa.statespace.sarimax.SARIMAX",
+                "is_baseline": False,
+                "expected_inputs": "Univariate revenue + calendar exogenous features",
+                "description": "Seasonal ARIMA with seasonal differencing and autoregressive terms."
+            },
+            {
+                "name": "AAGF_Custom",
+                "model_family": "Hybrid Custom Architecture",
+                "implementation": "ml.scripts.aagf_model.ALLADINAdaptiveGlobalForecaster",
+                "is_baseline": False,
+                "expected_inputs": "Enriched lag features + festive calendar indicators",
+                "description": "Dual-component learning combining Ridge trend anchor, LightGBM non-linear shocks, and constrained blend optimization."
+            },
+            {
+                "name": "Calendar_Seasonal_Forecaster",
+                "model_family": "Decomposition Custom",
+                "implementation": "ml.scripts.custom_models.CalendarSeasonalForecaster",
+                "is_baseline": False,
+                "expected_inputs": "Month indicators + lag features",
+                "description": "Decomposes revenue into log-linear trend, Indian retail festive indices, and Ridge residual adapter."
+            }
+        ]
+    },
+    "sales_forecasting": {
+        "pipeline_name": "Sales Demand Forecasting",
+        "target": "quantity",
+        "evaluation_period": "2025-07-01 to 2025-12-31 (Validation) / 2026-01-01 to 2026-10-31 (Dev Test)",
+        "prediction_horizon": "1 to 12 months",
+        "candidates": [
+            {
+                "name": "Historical_Mean_Baseline",
+                "model_family": "Heuristic Baseline",
+                "implementation": "numpy.mean",
+                "is_baseline": True,
+                "expected_inputs": "Historical SKU sales",
+                "description": "Constant historical mean demand per product."
+            },
+            {
+                "name": "Moving_Average_3m",
+                "model_family": "Statistical Baseline",
+                "implementation": "numpy / rolling mean",
+                "is_baseline": True,
+                "expected_inputs": "roll3_mean",
+                "description": "Trailing 3-month moving average of unit sales."
+            },
+            {
+                "name": "Seasonal_Naive_Lag12",
+                "model_family": "Heuristic Baseline",
+                "implementation": "numpy / lag-12",
+                "is_baseline": True,
+                "expected_inputs": "lag_12",
+                "description": "Product unit sales from same month in prior year."
+            },
+            {
+                "name": "Linear_Regression",
+                "model_family": "Linear",
+                "implementation": "sklearn.linear_model.LinearRegression",
+                "is_baseline": False,
+                "expected_inputs": "12 lag and calendar features",
+                "description": "Standard multiple linear regression across product lags."
+            },
+            {
+                "name": "Ridge_Regression",
+                "model_family": "Regularized Linear",
+                "implementation": "sklearn.linear_model.Ridge",
+                "is_baseline": False,
+                "expected_inputs": "12 lag and calendar features",
+                "description": "L2-regularized linear model for product demand."
+            },
+            {
+                "name": "Random_Forest",
+                "model_family": "Ensemble Tree",
+                "implementation": "sklearn.ensemble.RandomForestRegressor",
+                "is_baseline": False,
+                "expected_inputs": "12 lag and calendar features",
+                "description": "Non-linear bagging trees modeling product sales demand."
+            },
+            {
+                "name": "XGBoost",
+                "model_family": "Gradient Boosted Trees",
+                "implementation": "xgboost.XGBRegressor",
+                "is_baseline": False,
+                "expected_inputs": "12 lag and calendar features",
+                "description": "Gradient boosted trees on SKU-level demand."
+            },
+            {
+                "name": "LightGBM",
+                "model_family": "Gradient Boosted Trees",
+                "implementation": "lightgbm.LGBMRegressor",
+                "is_baseline": False,
+                "expected_inputs": "12 lag and calendar features",
+                "description": "Fast histogram-based gradient boosting."
+            },
+            {
+                "name": "Croston_Intermittent",
+                "model_family": "Intermittent Custom",
+                "implementation": "ml.scripts.custom_models.CrostonMethod",
+                "is_baseline": False,
+                "expected_inputs": "Univariate demand sequence with zero-demand periods",
+                "description": "Decomposes intermittent SKU sales into non-zero quantity and inter-arrival intervals."
+            },
+            {
+                "name": "SBA_Intermittent",
+                "model_family": "Intermittent Custom",
+                "implementation": "ml.scripts.custom_models.SBAMethod",
+                "is_baseline": False,
+                "expected_inputs": "Univariate demand sequence with zero-demand periods",
+                "description": "Syntetos-Boylan Approximation debiasing Croston estimates for slow-moving products."
+            },
+            {
+                "name": "AAGF_Custom",
+                "model_family": "Hybrid Custom Architecture",
+                "implementation": "ml.scripts.aagf_model.ALLADINAdaptiveGlobalForecaster",
+                "is_baseline": False,
+                "expected_inputs": "Enriched SKU lags + calendar features",
+                "description": "Global multi-product forecaster with seasonal trend anchoring."
+            },
+            {
+                "name": "Product_Profile_Forecaster",
+                "model_family": "Hierarchical Custom",
+                "implementation": "ml.scripts.custom_models.ProductProfileForecaster",
+                "is_baseline": False,
+                "expected_inputs": "product_id + SKU lags",
+                "description": "Hierarchical forecaster blending product velocity ratio and category baseline."
+            }
+        ]
+    },
+    "inventory_demand": {
+        "pipeline_name": "Inventory Demand Prediction",
+        "target": "units_out",
+        "evaluation_period": "2025-07-01 to 2025-12-31 (Validation) / 2026-01-01 to 2026-10-31 (Dev Test)",
+        "prediction_horizon": "1 to 6 months",
+        "candidates": [
+            {
+                "name": "Moving_Average_3m",
+                "model_family": "Statistical Baseline",
+                "implementation": "numpy / rolling mean",
+                "is_baseline": True,
+                "expected_inputs": "roll3_mean",
+                "description": "3-month trailing moving average of outbound warehouse stock movements."
+            },
+            {
+                "name": "Seasonal_Naive_Lag6",
+                "model_family": "Heuristic Baseline",
+                "implementation": "numpy / lag-6",
+                "is_baseline": True,
+                "expected_inputs": "lag_6",
+                "description": "Outbound movement units from 6 months prior."
+            },
+            {
+                "name": "Croston_Intermittent",
+                "model_family": "Intermittent Custom",
+                "implementation": "ml.scripts.custom_models.CrostonMethod",
+                "is_baseline": False,
+                "expected_inputs": "Outbound movement series",
+                "description": "Models intermittent inventory replenishment demand."
+            },
+            {
+                "name": "SBA_Intermittent",
+                "model_family": "Intermittent Custom",
+                "implementation": "ml.scripts.custom_models.SBAMethod",
+                "is_baseline": False,
+                "expected_inputs": "Outbound movement series",
+                "description": "Debiased intermittent replenishment estimator."
+            },
+            {
+                "name": "Random_Forest",
+                "model_family": "Ensemble Tree",
+                "implementation": "sklearn.ensemble.RandomForestRegressor",
+                "is_baseline": False,
+                "expected_inputs": "11 lag and warehouse movement features",
+                "description": "Tree ensemble modeling non-linear stock consumption."
+            },
+            {
+                "name": "XGBoost",
+                "model_family": "Gradient Boosted Trees",
+                "implementation": "xgboost.XGBRegressor",
+                "is_baseline": False,
+                "expected_inputs": "11 lag and warehouse movement features",
+                "description": "Gradient boosting on outbound inventory movements."
+            },
+            {
+                "name": "LightGBM",
+                "model_family": "Gradient Boosted Trees",
+                "implementation": "lightgbm.LGBMRegressor",
+                "is_baseline": False,
+                "expected_inputs": "11 lag and warehouse movement features",
+                "description": "LightGBM regressor on inventory demand."
+            },
+            {
+                "name": "Censored_Demand_Forecaster",
+                "model_family": "Censored Custom",
+                "implementation": "ml.scripts.custom_models.CensoredDemandForecaster",
+                "is_baseline": False,
+                "expected_inputs": "Outbound movements + stockout indicators",
+                "description": "Tobit-like demand reconstruction distinguishing realized sales from true unconstrained demand during stock-outs."
+            }
+        ]
+    },
+    "profit_prediction": {
+        "pipeline_name": "Net Profit Prediction",
+        "target": "net_profit",
+        "evaluation_period": "2025-07-01 to 2025-12-31 (Validation) / 2026-01-01 to 2026-10-31 (Dev Test)",
+        "prediction_horizon": "1 to 6 months",
+        "candidates": [
+            {
+                "name": "Historical_RunRate_Baseline",
+                "model_family": "Accounting Baseline",
+                "implementation": "numpy / lag-1 net profit",
+                "is_baseline": True,
+                "expected_inputs": "profit_lag1",
+                "description": "Run-rate persistence baseline projecting last month's net profit."
+            },
+            {
+                "name": "Seasonal_GrossProfit_Baseline",
+                "model_family": "Accounting Baseline",
+                "implementation": "Revenue lag * historical gross margin - expense lag",
+                "is_baseline": True,
+                "expected_inputs": "revenue_lag1, expense_ratio_lag1",
+                "description": "Structural accounting baseline computing profit from lagged revenue and cost ratios."
+            },
+            {
+                "name": "Linear_Regression",
+                "model_family": "Linear",
+                "implementation": "sklearn.linear_model.LinearRegression",
+                "is_baseline": False,
+                "expected_inputs": "15 financial lag and ratio features",
+                "description": "Multiple regression across profit lags, revenue momentum, and expense ratios."
+            },
+            {
+                "name": "Ridge_Regression",
+                "model_family": "Regularized Linear",
+                "implementation": "sklearn.linear_model.Ridge",
+                "is_baseline": False,
+                "expected_inputs": "15 financial lag and ratio features",
+                "description": "L2-regularized linear model for monthly net profit."
+            },
+            {
+                "name": "Random_Forest",
+                "model_family": "Ensemble Tree",
+                "implementation": "sklearn.ensemble.RandomForestRegressor",
+                "is_baseline": False,
+                "expected_inputs": "15 financial lag and ratio features",
+                "description": "Non-linear tree ensemble predicting monthly profit."
+            },
+            {
+                "name": "XGBoost",
+                "model_family": "Gradient Boosted Trees",
+                "implementation": "xgboost.XGBRegressor",
+                "is_baseline": False,
+                "expected_inputs": "15 financial lag and ratio features",
+                "description": "Gradient boosting regressor for net profit."
+            },
+            {
+                "name": "LightGBM",
+                "model_family": "Gradient Boosted Trees",
+                "implementation": "lightgbm.LGBMRegressor",
+                "is_baseline": False,
+                "expected_inputs": "15 financial lag and ratio features",
+                "description": "Histogram gradient boosting on net profit."
+            },
+            {
+                "name": "Margin_Bridge_Forecaster",
+                "model_family": "Structural Accounting Custom",
+                "implementation": "ml.scripts.custom_models.MarginBridgeForecaster",
+                "is_baseline": False,
+                "expected_inputs": "Revenue lags + margin ratios",
+                "description": "Decomposes profit into revenue scale and net margin ratio, guaranteeing 100% accounting reconciliation."
+            }
+        ]
+    },
+    "expense_prediction": {
+        "pipeline_name": "Operating Expense Prediction",
+        "target": "total_expense",
+        "evaluation_period": "2025-07-01 to 2025-12-31 (Validation) / 2026-01-01 to 2026-10-31 (Dev Test)",
+        "prediction_horizon": "1 to 6 months",
+        "candidates": [
+            {
+                "name": "Historical_Mean_Baseline",
+                "model_family": "Heuristic Baseline",
+                "implementation": "numpy.mean",
+                "is_baseline": True,
+                "expected_inputs": "Historical category expenses",
+                "description": "Category-level historical average expense baseline."
+            },
+            {
+                "name": "Moving_Average_3m",
+                "model_family": "Statistical Baseline",
+                "implementation": "numpy / roll3_mean",
+                "is_baseline": True,
+                "expected_inputs": "roll3_mean",
+                "description": "Trailing 3-month average of operational disbursements."
+            },
+            {
+                "name": "Same_Period_LastMonth",
+                "model_family": "Heuristic Baseline",
+                "implementation": "numpy / lag-1",
+                "is_baseline": True,
+                "expected_inputs": "lag_1",
+                "description": "Prior month expense persistence baseline."
+            },
+            {
+                "name": "Linear_Regression",
+                "model_family": "Linear",
+                "implementation": "sklearn.linear_model.LinearRegression",
+                "is_baseline": False,
+                "expected_inputs": "14 lag and lagged transaction features",
+                "description": "Multiple linear regression across expense categories."
+            },
+            {
+                "name": "Ridge_Regression",
+                "model_family": "Regularized Linear",
+                "implementation": "sklearn.linear_model.Ridge",
+                "is_baseline": False,
+                "expected_inputs": "14 lag and lagged transaction features",
+                "description": "L2-regularized linear model for operating overhead."
+            },
+            {
+                "name": "Random_Forest",
+                "model_family": "Ensemble Tree",
+                "implementation": "sklearn.ensemble.RandomForestRegressor",
+                "is_baseline": False,
+                "expected_inputs": "14 lag and lagged transaction features",
+                "description": "Tree ensemble for operating costs."
+            },
+            {
+                "name": "XGBoost",
+                "model_family": "Gradient Boosted Trees",
+                "implementation": "xgboost.XGBRegressor",
+                "is_baseline": False,
+                "expected_inputs": "14 lag and lagged transaction features",
+                "description": "Gradient boosting on operating expense items."
+            },
+            {
+                "name": "LightGBM",
+                "model_family": "Gradient Boosted Trees",
+                "implementation": "lightgbm.LGBMRegressor",
+                "is_baseline": False,
+                "expected_inputs": "14 lag and lagged transaction features",
+                "description": "Histogram gradient boosting on expense lines."
+            },
+            {
+                "name": "Recurring_Expense_Forecaster",
+                "model_family": "Two-Component Custom",
+                "implementation": "ml.scripts.custom_models.RecurringExpenseForecaster",
+                "is_baseline": False,
+                "expected_inputs": "Lagged rolling medians + transaction indicators",
+                "description": "Explicitly splits expenses into structural recurring base (Rent/Payroll) and irregular variable spikes."
+            }
+        ]
+    },
+    "business_health": {
+        "pipeline_name": "Business Health Scoring & Transition",
+        "target": "next_health_score",
+        "evaluation_period": "2025-07-01 to 2025-12-31 (Validation) / 2026-01-01 to 2026-10-31 (Dev Test)",
+        "prediction_horizon": "1 month forward transition",
+        "candidates": [
+            {
+                "name": "Traffic_Light_Rules",
+                "model_family": "Rule-Based Categorizer",
+                "implementation": "ml.scripts.custom_models.TrafficLightScorer",
+                "is_baseline": True,
+                "expected_inputs": "profit_margin, expense_control, payment_collection",
+                "description": "Deterministic Red / Amber / Green traffic light operational alerts."
+            },
+            {
+                "name": "Weighted_Scorecard",
+                "model_family": "Multi-Criteria Scorecard",
+                "implementation": "ml.scripts.custom_models.WeightedScorecard",
+                "is_baseline": True,
+                "expected_inputs": "5 core financial KPIs",
+                "description": "Transparent MinMax weighted index (0-100) across growth, margins, expenses, inventory, and collections."
+            },
+            {
+                "name": "PCA_Health_Index",
+                "model_family": "Unsupervised Dimensionality Reduction",
+                "implementation": "ml.scripts.custom_models.PCAHealthIndex",
+                "is_baseline": False,
+                "expected_inputs": "Standardized financial KPIs",
+                "description": "Unsupervised first principal component health index capturing dominant multi-KPI variance."
+            },
+            {
+                "name": "Weakest_Link_Score",
+                "model_family": "Bottleneck Custom",
+                "implementation": "ml.scripts.custom_models.WeakestLinkScorer",
+                "is_baseline": False,
+                "expected_inputs": "Financial KPIs",
+                "description": "Liebig's Law of the Minimum scorer penalizing businesses with severe bottleneck KPIs."
+            },
+            {
+                "name": "Persistence_Transition_Baseline",
+                "model_family": "Transition Baseline",
+                "implementation": "numpy / health_score_t",
+                "is_baseline": True,
+                "expected_inputs": "health_score",
+                "description": "Predicts next month's score will equal the current month's score (health_score_{t+1} ≈ health_score_t)."
+            },
+            {
+                "name": "Linear_Regression_Transition",
+                "model_family": "Linear",
+                "implementation": "sklearn.linear_model.LinearRegression",
+                "is_baseline": False,
+                "expected_inputs": "health_score + lag KPI indicators",
+                "description": "Linear forward transition model predicting next month's health score."
+            },
+            {
+                "name": "Ridge_Transition",
+                "model_family": "Regularized Linear",
+                "implementation": "sklearn.linear_model.Ridge",
+                "is_baseline": False,
+                "expected_inputs": "health_score + lag KPI indicators",
+                "description": "L2-regularized linear forward transition regressor."
+            },
+            {
+                "name": "Random_Forest_Transition",
+                "model_family": "Ensemble Tree",
+                "implementation": "sklearn.ensemble.RandomForestRegressor",
+                "is_baseline": False,
+                "expected_inputs": "health_score + lag KPI indicators",
+                "description": "Non-linear tree ensemble predicting next month's health score."
+            },
+            {
+                "name": "XGBoost_Transition",
+                "model_family": "Gradient Boosted Trees",
+                "implementation": "xgboost.XGBRegressor",
+                "is_baseline": False,
+                "expected_inputs": "health_score + lag KPI indicators",
+                "description": "Gradient boosting regressor for health score transitions."
+            }
+        ]
+    },
+    "anomaly_detection": {
+        "pipeline_name": "Transaction Anomaly Detection",
+        "target": "is_anomaly (-1 = anomaly, 1 = normal)",
+        "evaluation_period": "2025-07-01 to 2025-12-31 (Validation) / 2026-01-01 to 2026-10-21 (Dev Test)",
+        "prediction_horizon": "Per-transaction scoring at invoice creation",
+        "candidates": [
+            {
+                "name": "Rule_Based_Detector",
+                "model_family": "Domain Rules",
+                "implementation": "ml.scripts.custom_models.RuleBasedAnomalyDetector",
+                "is_baseline": True,
+                "expected_inputs": "net_amount, discount_pct",
+                "description": "Deterministic threshold rules on extreme transaction amounts and suspicious discounts."
+            },
+            {
+                "name": "Robust_MAD_Detector",
+                "model_family": "Robust Statistical",
+                "implementation": "ml.scripts.custom_models.RobustMADAnomalyDetector",
+                "is_baseline": True,
+                "expected_inputs": "net_amount",
+                "description": "Median Absolute Deviation outlier scoring resistant to extreme distribution skew."
+            },
+            {
+                "name": "Isolation_Forest",
+                "model_family": "Ensemble Isolation",
+                "implementation": "sklearn.ensemble.IsolationForest",
+                "is_baseline": False,
+                "expected_inputs": "Standardized transaction feature matrix",
+                "description": "Isolates anomalous transactions through randomized decision trees."
+            },
+            {
+                "name": "Local_Outlier_Factor",
+                "model_family": "Density-Based",
+                "implementation": "sklearn.neighbors.LocalOutlierFactor",
+                "is_baseline": False,
+                "expected_inputs": "Standardized transaction feature matrix",
+                "description": "Measures local density deviation of a transaction relative to its k-nearest neighbors."
+            },
+            {
+                "name": "PCA_Reconstruction_Detector",
+                "model_family": "Reconstruction Outlier",
+                "implementation": "ml.scripts.custom_models.PCAReconstructionAnomalyDetector",
+                "is_baseline": False,
+                "expected_inputs": "Standardized transaction feature matrix",
+                "description": "Flags anomalies whose feature vectors cannot be accurately reconstructed from low-rank PCA components."
+            },
+            {
+                "name": "Context_Aware_Detector",
+                "model_family": "Context Stratified Custom",
+                "implementation": "ml.scripts.custom_models.ContextAwareAnomalyDetector",
+                "is_baseline": False,
+                "expected_inputs": "net_amount, company_id, day_of_week",
+                "description": "Standardizes transaction amounts against company-specific and weekday-specific operational baselines."
+            }
+        ]
+    }
+}
+
+
+def export_inventory_json(output_path: Path):
+    """Export candidate inventory to JSON."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as fp:
+        json.dump(INVENTORY, fp, indent=2)
+    print(f"Exported model candidate inventory to: {output_path}")
+
+
+if __name__ == "__main__":
+    out_file = Path(__file__).resolve().parent.parent / "reports" / "model_candidate_inventory.json"
+    export_inventory_json(out_file)

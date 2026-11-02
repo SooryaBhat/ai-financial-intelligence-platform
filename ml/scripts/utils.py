@@ -34,6 +34,31 @@ SYNTHETIC_DIR = DATASETS_DIR / "synthetic"
 MODELS_DIR    = ROOT_DIR / "models"
 REPORTS_DIR   = ROOT_DIR / "reports"
 CONFIGS_DIR   = ROOT_DIR / "configs"
+ARCHIVE_DIR   = DATASETS_DIR / "archive"
+
+# ---------------------------------------------------------------------------
+# Multi-Tenant & Chronological Split Configuration (Approach C)
+# ---------------------------------------------------------------------------
+
+DEV_COMPANIES = [
+    "00000000-0000-0000-0000-000000000001",  # FreshMart Hypermarket Ltd
+    "00000000-0000-0000-0000-000000000002",  # GreenRoots Gourmet & Organics
+]
+HOLDOUT_COMPANY = "00000000-0000-0000-0000-000000000003"  # Apna Kirana QuickRetail
+
+# Standardized Chronological Split Boundaries across full 2022-01-01 to 2026-10-21 (58 months):
+# - Training: 2022-01 to 2025-06 (42 months)
+# - Validation: 2025-07 to 2025-12 (6 months)
+# - Dev Test: 2026-01 to 2026-10 (10 months)
+SPLIT_CONFIG = {
+    "dev_companies": DEV_COMPANIES,
+    "holdout_company": HOLDOUT_COMPANY,
+    "train_end": "2025-06-30",
+    "val_start": "2025-07-01",
+    "val_end": "2025-12-31",
+    "test_start": "2026-01-01",
+    "dataset_version": "v2.0",
+}
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -138,15 +163,32 @@ def save_csv(df: pd.DataFrame, filename: str, directory: Optional[Path] = None,
         logger.info(f"Saved {filename}: {len(df):,} rows")
 
 
-def save_model(model: Any, name: str, metadata: Optional[Dict] = None) -> Path:
+CANONICAL_SELECTED_MODELS = {
+    "revenue_forecasting_selected",
+    "sales_forecasting_selected",
+    "inventory_demand_selected",
+    "profit_prediction_selected",
+    "expense_prediction_selected",
+    "health_score_selected",
+    "anomaly_detection_selected",
+}
+
+
+def save_model(
+    model: Any,
+    name: str,
+    metadata: Optional[Dict] = None,
+    allow_selected_overwrite: bool = True
+) -> Path:
     """
     Serialize a model artifact to the models/ directory using joblib.
     Saves both a versioned copy and a canonical copy for seamless deployment.
 
     Args:
-        model:    Trained model object.
-        name:     Model name (e.g., 'revenue_xgboost' or 'revenue_forecasting_xgboost.pkl').
-        metadata: Optional dict of metadata to save alongside model.
+        model:                    Trained model object.
+        name:                     Model name (e.g., 'revenue_xgboost' or 'revenue_forecasting_xgboost.pkl').
+        metadata:                 Optional dict of metadata to save alongside model.
+        allow_selected_overwrite: Must be True to overwrite canonical selected models. Prevents notebooks from accidental overwrite.
 
     Returns:
         Path to canonical saved model file.
@@ -154,6 +196,14 @@ def save_model(model: Any, name: str, metadata: Optional[Dict] = None) -> Path:
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
     stem = name[:-4] if name.endswith(".pkl") else name
+
+    # Overwrite protection: prevent legacy notebooks from overwriting canonical selected artifacts
+    if stem in CANONICAL_SELECTED_MODELS and not allow_selected_overwrite:
+        raise PermissionError(
+            f"Cannot overwrite canonical selected artifact '{stem}.pkl'. "
+            "Canonical artifacts are locked to protect verified production models from old notebooks."
+        )
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     versioned_path = MODELS_DIR / f"{stem}_{timestamp}.pkl"
     canonical_path = MODELS_DIR / f"{stem}.pkl"
@@ -235,16 +285,37 @@ def wape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return float(np.sum(np.abs(y_true - y_pred)) / total * 100) if total > 0 else 0.0
 
 
-def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+def forecast_bias(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """Compute percentage forecast bias: sum(pred - true) / sum(true) * 100%."""
+    y_true, y_pred = np.array(y_true, dtype=float), np.array(y_pred, dtype=float)
+    total_true = np.sum(np.abs(y_true))
+    return float(np.sum(y_pred - y_true) / (total_true + 1e-8) * 100)
+
+
+def mase(y_true: np.ndarray, y_pred: np.ndarray, y_train: Optional[np.ndarray] = None) -> float:
+    """Compute Mean Absolute Scaled Error relative to naive random walk baseline."""
+    y_true, y_pred = np.array(y_true, dtype=float), np.array(y_pred, dtype=float)
+    mae_model = np.mean(np.abs(y_true - y_pred))
+    if y_train is not None and len(y_train) > 1:
+        d = np.mean(np.abs(np.diff(y_train)))
+    else:
+        d = np.mean(np.abs(np.diff(y_true))) if len(y_true) > 1 else 1.0
+    if d == 0:
+        d = 1e-6
+    return float(mae_model / d)
+
+
+def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_train: Optional[np.ndarray] = None) -> Dict[str, float]:
     """
     Compute all regression metrics in one call.
 
     Args:
         y_true: Actual values.
         y_pred: Predicted values.
+        y_train: Optional training sequence for MASE calculation.
 
     Returns:
-        Dict with keys: rmse, mae, mape, smape, wape, r2.
+        Dict with keys: rmse, mae, mape, smape, wape, r2, bias, mase.
     """
     y_true, y_pred = np.array(y_true, dtype=float), np.array(y_pred, dtype=float)
     ss_res = np.sum((y_true - y_pred) ** 2)
@@ -258,7 +329,10 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
         "smape": smape(y_true, y_pred),
         "wape":  wape(y_true, y_pred),
         "r2":    round(r2, 4),
+        "bias":  round(forecast_bias(y_true, y_pred), 4),
+        "mase":  round(mase(y_true, y_pred, y_train), 4),
     }
+
 
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,11 @@
 {
   "engine": "Transparent KPI Scorecard + Forward Health Transition Predictor",
+  "architecture_distinction": {
+    "scorecard_concept": "Transparent Weighted Scorecard (0-100) \u2014 Rule-based descriptive operational health indicator, NOT a supervised ML model. Evaluated for diagnostic sanity (bounds, monotonicity, volatility).",
+    "classification_concept": "Operational Risk Categorizer (A-F grading and Green/Amber/Red traffic lights) \u2014 Descriptive categorization mapping score intervals to management actions.",
+    "transition_prediction_concept": "Forward-Looking Transition Regressor (Linear Regression winner) \u2014 Supervised regression predicting next month's scorecard score H_{t+1} from current period KPIs H_t.",
+    "evaluation_limitations": "The forward transition model is evaluated against next month's deterministic scorecard score, not empirical bankruptcy/loan default data. Predictive validation is strictly limited to forward ratio tracking."
+  },
   "weights": {
     "revenue_growth": 0.25,
     "profit_margin": 0.25,
@@ -36,18 +42,34 @@
     "D": 35.0,
     "F": 0.0
   },
-  "selected_transition_model": "Random_Forest",
-  "training_companies": [
-    "00000000-0000-0000-0000-000000000001",
-    "00000000-0000-0000-0000-000000000002"
+  "selected_transition_model": "Linear_Regression",
+  "features": [
+    "health_score",
+    "revenue_growth",
+    "profit_margin",
+    "expense_control",
+    "inventory_turnover",
+    "payment_collection",
+    "revenue",
+    "expenses"
   ],
-  "holdout_company": "00000000-0000-0000-0000-000000000003",
-  "transition_test_metrics": {
-    "rmse": 5.208078543746177,
-    "mae": 3.826838190449627,
-    "mape": 10.86969714197494,
-    "smape": 11.489097063023355,
-    "wape": 11.577184058235147,
-    "r2": -0.1495
+  "scorecard_diagnostics": {
+    "score_bounds_verified_0_to_100": true,
+    "score_min": 19.7,
+    "score_max": 46.6,
+    "score_mean": 32.01,
+    "score_std": 4.8,
+    "month_over_month_volatility_std": 8.1,
+    "monotonicity_checks": {
+      "profit_margin_correlation": 0.4275,
+      "expense_control_correlation": 0.0,
+      "revenue_growth_correlation": 0.9781,
+      "payment_collection_correlation": 0.4235
+    },
+    "traffic_light_distribution": {
+      "RED_CRITICAL": 174
+    },
+    "pca_explained_variance_ratio": 0.5328,
+    "weakest_link_mean_penalty": 12.8
   }
 }

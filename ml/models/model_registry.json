@@ -14,40 +14,50 @@
       "aagf": "ml/models/revenue_forecasting_aagf.pkl",
       "linear_regression": "ml/models/revenue_forecasting_linear_regression.pkl",
       "xgboost": "ml/models/revenue_forecasting_xgboost.pkl",
+      "calendar_seasonal": "ml/models/revenue_forecasting_calendar_seasonal.pkl",
       "sarima": "ml/models/revenue_forecasting_sarima.pkl"
     },
     "artifact_exists": true,
-    "registered_at": "2026-10-21T12:45:42.081776",
+    "registered_at": "2026-11-02T21:37:53.127159",
     "status": "production",
     "selection_metric": "val_wape",
     "metrics": {
-      "val_wape_pct": 12.72,
-      "val_rmse": 41073.18,
-      "val_mae": 31121.16,
-      "val_r2": 0.2858,
-      "test_wape_pct": 15.58,
-      "test_rmse": 65340.27,
-      "test_r2": 0.3854,
+      "val_wape_pct": 13.78,
+      "val_rmse": 49324.94,
+      "val_mae": 38580.2,
+      "val_r2": 0.7355,
+      "val_bias_pct": 6.83,
+      "val_mase": 0.72,
+      "test_wape_pct": 16.91,
+      "test_rmse": 61860.61,
+      "test_mae": 44168.56,
+      "test_r2": 0.1995,
+      "test_bias_pct": 9.86,
+      "test_mase": 0.8243,
+      "is_baseline": false,
       "details": {
         "blend_weights": [
-          0.4010152872011907,
-          0.3419185417380123,
-          0.25706617106079716
+          0.9999999999999999,
+          1.7067946897804918e-16,
+          0.0
         ]
       }
     },
     "holdout_company3_metrics": {
-      "wape_pct": 15.18,
-      "rmse": 50865.62,
-      "mae": 42190.87,
-      "r2": 0.289,
-      "naive_baseline_wape_pct": 16.06,
-      "naive_baseline_r2": 0.1758
+      "wape": 11.87,
+      "wape_pct": 11.87,
+      "rmse": 49596.63,
+      "mae": 36984.71,
+      "r2": 0.4037,
+      "bias_pct": 3.87,
+      "mase": 0.6902,
+      "naive_baseline_wape_pct": 15.62,
+      "naive_baseline_r2": 0.1676
     }
   },
   "sales_forecasting": {
-    "selected_algorithm": "AAGF_Custom",
-    "model_name": "ALLADIN Adaptive Global Forecaster (AAGF) Product",
+    "selected_algorithm": "CatBoost",
+    "model_name": "CatBoost",
     "selected_artifact": "ml/models/sales_forecasting_selected.pkl",
     "artifact_file": "sales_forecasting_selected.pkl",
     "artifact_path": "ml/models/sales_forecasting_selected.pkl",
@@ -57,6 +67,7 @@
     ],
     "holdout_company": "00000000-0000-0000-0000-000000000003",
     "algorithm_artifacts": {
+      "product_profile": "ml/models/sales_forecasting_product_profile.pkl",
       "aagf_product": "ml/models/sales_forecasting_aagf_product.pkl",
       "xgb_product": "ml/models/sales_forecasting_xgb_product.pkl",
       "lgb_product": "ml/models/sales_forecasting_lgb_product.pkl",
@@ -64,38 +75,34 @@
       "xgb_category": "ml/models/sales_forecasting_xgb_category.pkl"
     },
     "artifact_exists": true,
-    "registered_at": "2026-10-21T12:45:42.081776",
+    "registered_at": "2026-11-02T21:37:53.127159",
     "status": "production",
     "selection_metric": "val_wape",
     "metrics": {
-      "val_metrics": {
-        "rmse": 12.86229043144407,
-        "mae": 8.770431083147185,
-        "mape": 154.8193892373777,
-        "smape": 59.7846105788155,
-        "wape": 58.469540554314584,
-        "r2": -0.0015
-      },
-      "test_metrics": {
-        "rmse": 12.647178945812525,
-        "mae": 8.922728879361884,
-        "mape": 125.30389802667166,
-        "smape": 55.89185447095698,
-        "wape": 54.05953001828373,
-        "r2": -0.0091
-      }
+      "val_wape_pct": 56.26,
+      "val_rmse": 13.79,
+      "val_mae": 9.5,
+      "val_r2": 0.0355,
+      "val_bias_pct": -3.09,
+      "val_mase": 0.7835,
+      "test_wape_pct": 58.11,
+      "test_rmse": 13.16,
+      "test_mae": 9.51,
+      "test_r2": 0.0008,
+      "test_bias_pct": -3.07,
+      "test_mase": 0.7846,
+      "is_baseline": false
     },
     "holdout_company3_metrics": {
-      "rmse": 14.204078646910457,
-      "mae": 10.038958707810824,
-      "mape": 119.3948768010593,
-      "smape": 56.76734303837483,
-      "wape": 52.9744994149484,
-      "r2": -0.0273,
-      "naive_baseline_comparison": {
-        "wape": 74.05044940562482,
-        "r2": -0.8618
-      }
+      "wape": 53.39,
+      "wape_pct": 53.39,
+      "rmse": 16.4,
+      "mae": 11.11,
+      "r2": -0.0731,
+      "bias_pct": -20.48,
+      "mase": 0.9166,
+      "naive_baseline_wape_pct": 76.34,
+      "naive_baseline_r2": -0.9517
     }
   },
   "inventory_prediction": {
@@ -112,122 +119,152 @@
     "algorithm_artifacts": {
       "lightgbm": "ml/models/inventory_demand_lightgbm.pkl",
       "xgboost": "ml/models/inventory_demand_xgboost.pkl",
-      "random_forest": "ml/models/inventory_demand_random_forest.pkl"
+      "random_forest": "ml/models/inventory_demand_random_forest.pkl",
+      "censored": "ml/models/inventory_demand_censored.pkl"
     },
     "artifact_exists": true,
-    "registered_at": "2026-10-21T12:45:42.081776",
+    "registered_at": "2026-11-02T21:37:53.127159",
     "status": "production",
     "selection_metric": "val_wape",
     "metrics": {
-      "val_metrics": {
-        "rmse": 12.946215470130014,
-        "mae": 9.155816946640423,
-        "mape": 146.38502044370708,
-        "smape": 60.03017213880386,
-        "wape": 58.36800139846111,
-        "r2": -0.0287
-      },
-      "test_metrics": {
-        "rmse": 13.636079109850709,
-        "mae": 9.257264832772938,
-        "mape": 137.14939459433182,
-        "smape": 58.18084571615947,
-        "wape": 55.59300500108303,
-        "r2": -0.0183
-      }
+      "val_wape_pct": 56.88,
+      "val_rmse": 14.3,
+      "val_mae": 9.84,
+      "val_r2": 0.0203,
+      "val_bias_pct": -6.02,
+      "val_mase": 0.7883,
+      "test_wape_pct": 58.19,
+      "test_rmse": 13.5,
+      "test_mae": 9.71,
+      "test_r2": -0.0069,
+      "test_bias_pct": -5.16,
+      "test_mase": 0.7785,
+      "is_baseline": false
     },
     "dev_reorder_evaluation": {
-      "evaluation_type": "Multi-period chronological evaluation with boundary simulation and native baseline audit",
-      "test_period_total_observations": 945,
-      "unique_products_evaluated": 200,
-      "safety_stock_units": 10.32,
-      "lead_time_days": 7,
-      "boundary_simulation_metrics": {
-        "description": "Replenishment decision accuracy when stock varies around the reorder threshold (0.5x to 1.5x ROP)",
-        "sample_size": 945,
-        "true_positives": 413,
-        "false_positives": 60,
-        "false_negatives": 77,
-        "true_negatives": 395,
-        "precision": 0.8732,
-        "recall": 0.8429,
-        "f1_score": 0.8577,
-        "accuracy": 0.855,
-        "positive_support_count": 490,
-        "positive_support_pct": 51.85
+      "sample_size": 1500,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "service_level_pct": 100.0,
+      "confusion_matrix": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "tn": 1500
       },
+      "safety_stock_units": 11.37,
+      "lead_time_days": 7.0,
       "native_baseline_audit": {
-        "description": "Evaluation on native synthetic inventory where buffer stock was high (~1,200 units vs ~18 monthly sales)",
-        "sample_size": 200,
+        "sample_size": 1500,
         "true_positives": 0,
-        "false_positives": 0,
-        "false_negatives": 0,
-        "true_negatives": 200,
-        "precision": null,
-        "recall": null,
-        "f1_score": null,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
         "service_level_pct": 100.0,
-        "limitation": "Native synthetic inventory generator maintained excess buffer stock; zero natural stockout events occurred. Claiming F1=1.0 on zero positive support is mathematically degenerate; boundary simulation provides the genuine predictive policy score."
+        "confusion_matrix": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "tn": 1500
+        },
+        "safety_stock_units": 11.37,
+        "lead_time_days": 7.0,
+        "audit_note": "Under normal ERP inventory stock levels, safety buffers prevent depletion below ROP; true positives = 0."
+      },
+      "boundary_simulation_metrics": {
+        "sample_size": 1500,
+        "positive_support_count": 741,
+        "true_positives": 686,
+        "precision": 0.8979,
+        "recall": 0.9258,
+        "f1_score": 0.9116,
+        "service_level_pct": 91.13,
+        "confusion_matrix": {
+          "tp": 686,
+          "fp": 78,
+          "fn": 55,
+          "tn": 681
+        },
+        "simulation_methodology": "Uniform stress perturbation around calculated ROP boundary"
       }
     },
     "co3_reorder_evaluation": {
-      "evaluation_type": "Multi-period chronological evaluation with boundary simulation and native baseline audit",
-      "test_period_total_observations": 534,
-      "unique_products_evaluated": 100,
-      "safety_stock_units": 10.32,
-      "lead_time_days": 7,
-      "boundary_simulation_metrics": {
-        "description": "Replenishment decision accuracy when stock varies around the reorder threshold (0.5x to 1.5x ROP)",
-        "sample_size": 534,
-        "true_positives": 232,
-        "false_positives": 21,
-        "false_negatives": 66,
-        "true_negatives": 215,
-        "precision": 0.917,
-        "recall": 0.7785,
-        "f1_score": 0.8421,
-        "accuracy": 0.8371,
-        "positive_support_count": 298,
-        "positive_support_pct": 55.81
+      "sample_size": 926,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "service_level_pct": 100.0,
+      "confusion_matrix": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "tn": 926
       },
+      "safety_stock_units": 11.37,
+      "lead_time_days": 7.0,
       "native_baseline_audit": {
-        "description": "Evaluation on native synthetic inventory where buffer stock was high (~1,200 units vs ~18 monthly sales)",
-        "sample_size": 100,
+        "sample_size": 926,
         "true_positives": 0,
-        "false_positives": 0,
-        "false_negatives": 0,
-        "true_negatives": 100,
-        "precision": null,
-        "recall": null,
-        "f1_score": null,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
         "service_level_pct": 100.0,
-        "limitation": "Native synthetic inventory generator maintained excess buffer stock; zero natural stockout events occurred. Claiming F1=1.0 on zero positive support is mathematically degenerate; boundary simulation provides the genuine predictive policy score."
+        "confusion_matrix": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "tn": 926
+        },
+        "safety_stock_units": 11.37,
+        "lead_time_days": 7.0,
+        "audit_note": "Under normal ERP inventory stock levels, safety buffers prevent depletion below ROP; true positives = 0."
+      },
+      "boundary_simulation_metrics": {
+        "sample_size": 926,
+        "positive_support_count": 464,
+        "true_positives": 408,
+        "precision": 0.9007,
+        "recall": 0.8793,
+        "f1_score": 0.8899,
+        "service_level_pct": 89.09,
+        "confusion_matrix": {
+          "tp": 408,
+          "fp": 45,
+          "fn": 56,
+          "tn": 417
+        },
+        "simulation_methodology": "Uniform stress perturbation around calculated ROP boundary"
       }
     },
     "holdout_company3_metrics": {
-      "rmse": 15.28797570055675,
-      "mae": 10.545407068428784,
-      "mape": 119.53463723688911,
-      "smape": 58.54329533009789,
-      "wape": 54.59132109122464,
-      "r2": -0.0816,
+      "wape": 53.7,
+      "wape_pct": 53.7,
+      "rmse": 16.51,
+      "mae": 11.14,
+      "r2": -0.0744,
+      "bias_pct": -21.43,
+      "mase": 0.8927,
       "baseline_lag1_metrics": {
-        "rmse": 20.68759371103615,
-        "mae": 15.073281185673116,
-        "mape": 161.65148741905895,
-        "smape": 78.55193179007645,
-        "wape": 78.03115875620725,
-        "r2": -0.9805
+        "rmse": 22.475469910393425,
+        "mae": 16.185685347738016,
+        "mape": 167.06867242169417,
+        "smape": 77.84693134689574,
+        "wape": 78.04414828963363,
+        "r2": -0.9919,
+        "bias": -0.4829,
+        "mase": 1.2973
       },
       "baseline_ma_metrics": {
-        "rmse": 16.873520787455565,
-        "mae": 12.383696994648004,
-        "mape": 148.49555310167867,
-        "smape": 65.29111133867308,
-        "wape": 64.10775558918182,
-        "r2": -0.3176
-      },
-      "n_observations": 2429
+        "rmse": 18.232766959023778,
+        "mae": 13.27496436341811,
+        "mape": 149.99643353929156,
+        "smape": 64.86094482411889,
+        "wape": 64.00923192683915,
+        "r2": -0.3109,
+        "bias": -1.1525,
+        "mase": 1.064
+      }
     }
   },
   "profit_prediction": {
@@ -245,59 +282,53 @@
       "lightgbm": "ml/models/profit_prediction_selected.pkl",
       "random_forest": "ml/models/profit_prediction_random_forest.pkl",
       "xgboost": "ml/models/profit_prediction_xgboost.pkl",
-      "linear_regression": "ml/models/profit_prediction_linear_regression.pkl"
+      "linear_regression": "ml/models/profit_prediction_linear_regression.pkl",
+      "margin_bridge": "ml/models/profit_prediction_margin_bridge.pkl"
     },
     "artifact_exists": true,
-    "registered_at": "2026-10-21T12:45:42.082779",
+    "registered_at": "2026-11-02T21:37:53.127159",
     "status": "production",
     "selection_metric": "val_wape",
     "metrics": {
-      "val_metrics": {
-        "rmse": 141259.12795060824,
-        "mae": 117687.74666666664,
-        "mape": 7.192311597187724,
-        "smape": 7.424022004069432,
-        "wape": 7.3129078004259895,
-        "r2": -0.5052
-      },
-      "test_metrics": {
-        "rmse": 157208.0867046929,
-        "mae": 130314.97166666668,
-        "mape": 8.721157216586468,
-        "smape": 8.585122351953212,
-        "wape": 8.571515814629903,
-        "r2": -0.0021
-      }
+      "val_wape_pct": 12.15,
+      "val_rmse": 196986.75,
+      "val_mae": 176071.83,
+      "val_r2": -0.473,
+      "val_bias_pct": -4.69,
+      "val_mase": 0.8553,
+      "test_wape_pct": 18.73,
+      "test_rmse": 387385.4,
+      "test_mae": 277876.97,
+      "test_r2": -0.0068,
+      "test_bias_pct": -3.61,
+      "test_mase": 1.3499,
+      "is_baseline": false
     },
     "holdout_company3_metrics": {
-      "rmse": 184638.8217258471,
-      "mae": 142095.1263333333,
-      "mape": 8.868259939847526,
-      "smape": 9.016712451611365,
-      "wape": 8.977734126751203,
-      "r2": -0.0984,
+      "wape": 11.08,
+      "wape_pct": 11.08,
+      "rmse": 239998.58,
+      "mae": 175217.61,
+      "r2": -0.0012,
+      "bias_pct": 4.07,
+      "mase": 0.8512,
       "baseline_lag1_metrics": {
-        "rmse": 253640.37854313303,
-        "mae": 200859.0439999999,
-        "mape": 13.225917449345317,
-        "smape": 12.685153453717954,
-        "wape": 12.69050628629762,
-        "r2": -1.0728
+        "rmse": 332737.3352380713,
+        "mae": 247842.4665384615,
+        "mape": 19.388094415009487,
+        "smape": 16.20292708446727,
+        "wape": 15.677004852160653,
+        "r2": -0.9245,
+        "bias": -1.5768,
+        "mase": 1.204
       },
-      "baseline_mean_metrics": {
-        "rmse": 184638.8208111728,
-        "mae": 142095.12592592588,
-        "mape": 8.868259930915631,
-        "smape": 9.016712425157456,
-        "wape": 8.977734101010732,
-        "r2": -0.0984
-      },
-      "n_observations": 30
+      "naive_baseline_wape_pct": 15.68,
+      "naive_baseline_r2": -0.9245
     }
   },
   "expense_prediction": {
-    "selected_algorithm": "LightGBM",
-    "model_name": "LightGBM",
+    "selected_algorithm": "Random_Forest",
+    "model_name": "Random_Forest",
     "selected_artifact": "ml/models/expense_prediction_selected.pkl",
     "artifact_file": "expense_prediction_selected.pkl",
     "artifact_path": "ml/models/expense_prediction_selected.pkl",
@@ -307,71 +338,71 @@
     ],
     "holdout_company": "00000000-0000-0000-0000-000000000003",
     "algorithm_artifacts": {
-      "lightgbm": "ml/models/expense_prediction_selected.pkl",
+      "random_forest": "ml/models/expense_prediction_selected.pkl",
       "xgboost": "ml/models/expense_prediction_xgboost.pkl",
-      "linear_regression": "ml/models/expense_prediction_linear_regression.pkl"
+      "linear_regression": "ml/models/expense_prediction_linear_regression.pkl",
+      "recurring": "ml/models/expense_prediction_recurring.pkl"
     },
     "artifact_exists": true,
-    "registered_at": "2026-10-21T12:45:42.082779",
+    "registered_at": "2026-11-02T21:37:53.127159",
     "status": "production",
     "selection_metric": "val_wape",
     "metrics": {
-      "val_metrics": {
-        "rmse": 54904.20208344886,
-        "mae": 31467.860929828053,
-        "mape": 94.41942807643704,
-        "smape": 41.418845559526204,
-        "wape": 16.985763787184368,
-        "r2": 0.9701
-      },
-      "test_metrics": {
-        "rmse": 43237.64825451905,
-        "mae": 27601.722846626377,
-        "mape": 71.37810230168978,
-        "smape": 40.87118139696765,
-        "wape": 16.45250253744721,
-        "r2": 0.9784
-      }
+      "val_wape_pct": 19.1,
+      "val_rmse": 63148.45,
+      "val_mae": 31143.64,
+      "val_r2": 0.9477,
+      "val_bias_pct": 5.73,
+      "val_mase": 0.6517,
+      "test_wape_pct": 19.58,
+      "test_rmse": 63414.06,
+      "test_mae": 32485.2,
+      "test_r2": 0.9555,
+      "test_bias_pct": -2.71,
+      "test_mase": 0.6798,
+      "is_baseline": false
     },
     "holdout_company3_metrics": {
-      "rmse": 59451.864610027595,
-      "mae": 33117.18969346028,
-      "mape": 95.15204261282362,
-      "smape": 42.4715653703453,
-      "wape": 18.904003201751774,
-      "r2": 0.9634,
+      "wape": 18.0,
+      "wape_pct": 18.0,
+      "rmse": 58536.73,
+      "mae": 31319.3,
+      "r2": 0.9651,
+      "bias_pct": -3.19,
+      "mase": 0.6554,
       "baseline_naive_metrics": {
-        "rmse": 82152.40949734602,
-        "mae": 45157.49708185053,
-        "mape": 115.68570482600032,
-        "smape": 56.60698307075195,
-        "wape": 25.776869273028087,
-        "r2": 0.9302
+        "rmse": 88743.07546249984,
+        "mae": 44383.712439024384,
+        "mape": 98.1324450415194,
+        "smape": 53.41835076830218,
+        "wape": 25.511174874424626,
+        "r2": 0.9197,
+        "bias": 0.2202,
+        "mase": 0.9288
       },
-      "baseline_snaive_metrics": {
-        "rmse": 75378.27279782375,
-        "mae": 43626.923736654804,
-        "mape": 97.26847868605708,
-        "smape": 56.84778495231739,
-        "wape": 24.903185132377423,
-        "r2": 0.9412
-      },
-      "n_observations": 281
+      "naive_baseline_wape_pct": 25.51,
+      "naive_baseline_r2": 0.9197
     }
   },
   "business_health_score": {
-    "selected_algorithm": "TransparentKPIScorecard + Random_Forest",
-    "model_name": "TransparentKPIScorecard + Random_Forest",
-    "selected_artifact": "ml/models/health_score_pipeline.pkl",
-    "artifact_file": "health_score_pipeline.pkl",
-    "artifact_path": "ml/models/health_score_pipeline.pkl",
+    "selected_algorithm": "TransparentKPIScorecard + Linear_Regression",
+    "model_name": "TransparentKPIScorecard + Linear_Regression",
+    "selected_artifact": "ml/models/health_score_selected.pkl",
+    "artifact_file": "health_score_selected.pkl",
+    "artifact_path": "ml/models/health_score_selected.pkl",
+    "dataset_version": "synthetic_v2",
+    "training_period": "2022-01 to 2026-02",
     "training_companies": [
       "00000000-0000-0000-0000-000000000001",
       "00000000-0000-0000-0000-000000000002"
     ],
     "holdout_company": "00000000-0000-0000-0000-000000000003",
+    "algorithm_artifacts": {
+      "scorecard_pipeline": "ml/models/health_score_pipeline.pkl",
+      "transition_linear": "ml/models/health_score_selected.pkl"
+    },
     "artifact_exists": true,
-    "registered_at": "2026-10-21T12:45:42.082779",
+    "registered_at": "2026-11-02T21:37:53.128158",
     "status": "production",
     "selection_metric": "val_mae",
     "scorecard_weights": {
@@ -381,103 +412,111 @@
       "inventory_turnover": 0.15,
       "payment_collection": 0.15
     },
+    "metrics": {
+      "val_mae": 4.75,
+      "val_rmse": 5.52,
+      "val_wape_pct": 14.16,
+      "val_r2": 0.3784,
+      "val_bias_pct": -6.94,
+      "val_mase": 0.6888,
+      "test_mae": 3.76,
+      "test_rmse": 4.82,
+      "test_wape_pct": 11.82,
+      "test_r2": 0.0703,
+      "test_bias_pct": -0.59,
+      "test_mase": 0.5449,
+      "is_baseline": false
+    },
     "transition_metrics": {
-      "val_metrics": {
-        "rmse": 2.1844365205555176,
-        "mae": 2.009985493941372,
-        "mape": 6.436989738142953,
-        "smape": 6.385714526963536,
-        "wape": 6.356522842876918,
-        "r2": 0.3842
-      },
-      "test_metrics": {
-        "rmse": 5.208078543746177,
-        "mae": 3.826838190449627,
-        "mape": 10.86969714197494,
-        "smape": 11.489097063023355,
-        "wape": 11.577184058235147,
-        "r2": -0.1495
-      }
+      "val_mae": 4.75,
+      "val_rmse": 5.52,
+      "val_wape_pct": 14.16,
+      "val_r2": 0.3784,
+      "val_bias_pct": -6.94,
+      "val_mase": 0.6888,
+      "test_mae": 3.76,
+      "test_rmse": 4.82,
+      "test_wape_pct": 11.82,
+      "test_r2": 0.0703,
+      "test_bias_pct": -0.59,
+      "test_mase": 0.5449,
+      "is_baseline": false
     },
     "holdout_company3_metrics": {
-      "rmse": 3.5342017916053354,
-      "mae": 2.7688848395931585,
-      "mape": 8.654660587455663,
-      "smape": 8.851924263979361,
-      "wape": 8.689696333144486,
-      "r2": -0.2569,
+      "mae": 2.92,
+      "rmse": 3.74,
+      "wape_pct": 9.18,
+      "r2": -0.1276,
+      "bias_pct": -4.05,
+      "mase": 0.4242,
       "baseline_persistence_metrics": {
-        "rmse": 4.8787091384036065,
-        "mae": 4.034000000000001,
-        "mape": 13.067275787197415,
-        "smape": 12.912910455073042,
-        "wape": 12.66005523474768,
-        "r2": -1.3952
+        "rmse": 5.661953664438239,
+        "mae": 4.759649122807017,
+        "mape": 14.971300374949761,
+        "smape": 14.92089975167855,
+        "wape": 14.938604702384229,
+        "r2": -1.5844,
+        "bias": 0.1377,
+        "mase": 0.6905
       },
-      "n_observations": 35
+      "baseline_persistence_mae": 4.76,
+      "baseline_persistence_r2": -1.5844
     }
   },
   "anomaly_detection": {
-    "selected_algorithm": "Isolation_Forest",
-    "model_name": "Isolation_Forest",
-    "selected_artifact": "ml/models/anomaly_detection_isolation_forest.pkl",
-    "artifact_file": "anomaly_detection_isolation_forest.pkl",
-    "artifact_path": "ml/models/anomaly_detection_isolation_forest.pkl",
+    "selected_algorithm": "Rule_Based_Detector",
+    "model_name": "Rule_Based_Detector",
+    "selected_artifact": "ml/models/anomaly_detection_selected.pkl",
+    "artifact_file": "anomaly_detection_selected.pkl",
+    "artifact_path": "ml/models/anomaly_detection_selected.pkl",
     "secondary_config": "ml/models/anomaly_detection_lof_config.json",
+    "dataset_version": "synthetic_v2",
+    "training_period": "2022-01 to 2026-02",
     "training_companies": [
       "00000000-0000-0000-0000-000000000001",
       "00000000-0000-0000-0000-000000000002"
     ],
     "holdout_company": "00000000-0000-0000-0000-000000000003",
+    "algorithm_artifacts": {
+      "rule_based": "ml/models/anomaly_detection_rule_based.pkl",
+      "isolation_forest": "ml/models/anomaly_detection_isolation_forest.pkl",
+      "robust_mad": "ml/models/anomaly_detection_robust_mad.pkl",
+      "pca": "ml/models/anomaly_detection_pca.pkl"
+    },
     "artifact_exists": true,
-    "registered_at": "2026-10-21T12:45:42.082779",
+    "registered_at": "2026-11-02T21:37:53.128158",
     "status": "production",
     "selection_metric": "val_f1_score",
     "metrics": {
-      "val_metrics": {
-        "precision": 0.8333,
-        "recall": 0.5,
-        "f1_score": 0.625,
-        "total_anomalies_actual": 10,
-        "total_anomalies_flagged": 6,
-        "roc_auc": 0.9792,
-        "pr_auc": 0.6523
-      },
-      "test_metrics": {
-        "precision": 0.4,
-        "recall": 0.5,
-        "f1_score": 0.4444,
-        "total_anomalies_actual": 8,
-        "total_anomalies_flagged": 10,
-        "roc_auc": 0.9457,
-        "pr_auc": 0.4279
-      }
+      "val_precision": 1.0,
+      "val_recall": 0.5,
+      "val_f1_score": 0.6667,
+      "val_fpr": 0.0,
+      "val_pr_auc": 0.0,
+      "val_roc_auc": 0.5,
+      "test_precision": 1.0,
+      "test_recall": 0.8095,
+      "test_f1_score": 0.8947,
+      "test_fpr": 0.0,
+      "test_pr_auc": 0.0,
+      "test_roc_auc": 0.5,
+      "is_baseline": false
     },
     "holdout_company3_metrics": {
-      "precision": 0.5,
-      "recall": 0.2927,
-      "f1_score": 0.3692,
-      "total_anomalies_actual": 41,
-      "total_anomalies_flagged": 24,
-      "roc_auc": 0.9111,
-      "pr_auc": 0.3549,
+      "precision": 1.0,
+      "recall": 0.4684,
+      "f1_score": 0.6379,
+      "false_positive_rate": 0.0,
+      "total_anomalies_actual": 79,
+      "total_anomalies_flagged": 37,
       "baseline_zscore_metrics": {
-        "precision": 0.1681,
-        "recall": 0.4634,
-        "f1_score": 0.2468,
-        "total_anomalies_actual": 41,
-        "total_anomalies_flagged": 113,
-        "roc_auc": 0.7381,
-        "pr_auc": 0.2821
-      },
-      "baseline_iqr_metrics": {
-        "precision": 0.1579,
-        "recall": 0.439,
-        "f1_score": 0.2323,
-        "total_anomalies_actual": 41,
-        "total_anomalies_flagged": 114
-      },
-      "n_observations": 3619
+        "precision": 0.196,
+        "recall": 0.4937,
+        "f1_score": 0.2806,
+        "false_positive_rate": 0.0251,
+        "total_anomalies_actual": 79,
+        "total_anomalies_flagged": 199
+      }
     }
   }
 }

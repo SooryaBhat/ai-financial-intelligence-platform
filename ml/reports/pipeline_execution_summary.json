@@ -1,58 +1,58 @@
 {
-  "timestamp": "2026-10-21T12:44:54.659675",
+  "timestamp": "2026-11-02T21:36:52.592222",
   "steps": [
     {
       "step": "Step 0: Validate Synthetic Dataset",
-      "command": "python ml/datasets/synthetic/validate_synthetic_data.py",
+      "command": "\"C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\backend\\venv\\Scripts\\python.exe\" ml/datasets/synthetic/validate_synthetic_data.py",
       "passed": true
     },
     {
       "step": "Step 1: Preprocess Raw Synthetic Data",
-      "command": "python ml/scripts/preprocess.py",
+      "command": "\"C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\backend\\venv\\Scripts\\python.exe\" ml/scripts/preprocess.py",
       "passed": true
     },
     {
       "step": "Step 2: Feature Engineering (All 6 Tables)",
-      "command": "python ml/scripts/feature_engineering.py",
+      "command": "\"C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\backend\\venv\\Scripts\\python.exe\" ml/scripts/feature_engineering.py",
       "passed": true
     },
     {
       "step": "Pipeline 1: Revenue Forecasting",
-      "command": "python ml/scripts/train_revenue.py",
+      "command": "\"C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\backend\\venv\\Scripts\\python.exe\" ml/scripts/train_revenue.py",
       "passed": true
     },
     {
       "step": "Pipeline 2: Sales Forecasting (Product & Category)",
-      "command": "python ml/scripts/train_sales.py",
+      "command": "\"C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\backend\\venv\\Scripts\\python.exe\" ml/scripts/train_sales.py",
       "passed": true
     },
     {
       "step": "Pipeline 3: Inventory Demand & Reorders",
-      "command": "python ml/scripts/train_inventory.py",
+      "command": "\"C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\backend\\venv\\Scripts\\python.exe\" ml/scripts/train_inventory.py",
       "passed": true
     },
     {
       "step": "Pipeline 4: Profit Prediction",
-      "command": "python ml/scripts/train_profit.py",
+      "command": "\"C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\backend\\venv\\Scripts\\python.exe\" ml/scripts/train_profit.py",
       "passed": true
     },
     {
       "step": "Pipeline 5: Operating Expense Forecasting",
-      "command": "python ml/scripts/train_expenses.py",
+      "command": "\"C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\backend\\venv\\Scripts\\python.exe\" ml/scripts/train_expenses.py",
       "passed": true
     },
     {
       "step": "Pipeline 6: Business Health Scoring",
-      "command": "python ml/scripts/train_health_score.py",
+      "command": "\"C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\backend\\venv\\Scripts\\python.exe\" ml/scripts/train_health_score.py",
       "passed": true
     },
     {
       "step": "Pipeline 7: Transaction Anomaly Detection",
-      "command": "python ml/scripts/train_anomaly.py",
+      "command": "\"C:\\Users\\soory\\OneDrive\\Documents\\Ai_financial_intelligence_platform\\ai-financial-intelligence-platform\\backend\\venv\\Scripts\\python.exe\" ml/scripts/train_anomaly.py",
       "passed": true
     }
   ],
   "overall_status": "PASSED",
   "backend_model_loader_verified": true,
-  "total_runtime_seconds": 54.43
+  "total_runtime_seconds": 67.72
 }

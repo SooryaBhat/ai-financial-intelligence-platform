@@ -4,30 +4,36 @@ train_sales.py
 ==============
 Train, compare, and evaluate product-level and category-level sales forecasting models (Approach C).
 
-Candidates evaluated:
+Candidate models evaluated:
 1. Naive Baseline (Lag 1)
 2. Seasonal-Naive Baseline (Lag 12)
-3. Linear Regression
-4. Random Forest Regressor
-5. XGBoost Regressor
-6. LightGBM Regressor
-7. ALLADIN Adaptive Global Forecaster (AAGF - Custom Model)
+3. Moving Average Baseline (Roll 3)
+4. Linear Regression
+5. Ridge Regression
+6. Random Forest Regressor
+7. XGBoost Regressor
+8. LightGBM Regressor
+9. Croston's Intermittent Demand Method
+10. Syntetos-Boylan Approximation (SBA)
+11. Product Profile Forecaster (Custom Hierarchical Model)
+12. ALLADIN Adaptive Global Forecaster (AAGF - Custom Ensemble)
 
 Target: Monthly unit sales (quantity) per SKU or Category.
-Chronological splits strictly separate Train, Validation, and Test.
+Chronological splits strictly separate Train, Validation, and Test:
+- Train: up to 2025-06-30 (42 months)
+- Validation: 2025-07-01 to 2025-12-31 (6 months)
+- Dev Test: 2026-01-01 to 2026-10-31 (10 months)
 
 Outputs:
 - ml/models/sales_forecasting_linear_regression_product.pkl
 - ml/models/sales_forecasting_xgb_product.pkl
 - ml/models/sales_forecasting_lgb_product.pkl
 - ml/models/sales_forecasting_aagf_product.pkl
+- ml/models/sales_forecasting_product_profile.pkl
 - ml/models/sales_forecasting_selected.pkl (canonical winner)
 - ml/models/sales_forecasting_xgb_category.pkl
 - ml/models/sales_feature_meta.json
 - ml/reports/sales_forecasting_eval.json
-
-Usage:
-    python ml/scripts/train_sales.py
 """
 
 import sys
@@ -37,17 +43,21 @@ from typing import Dict, Any, Tuple, List
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
+from catboost import CatBoostRegressor
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
     get_logger, load_csv, compute_metrics, save_model,
-    MODELS_DIR, REPORTS_DIR, PROCESSED_DIR, SYNTHETIC_DIR
+    MODELS_DIR, REPORTS_DIR, PROCESSED_DIR, SYNTHETIC_DIR,
+    DEV_COMPANIES, HOLDOUT_COMPANY, SPLIT_CONFIG
 )
 from aagf_model import ALLADINAdaptiveGlobalForecaster
+from custom_models.intermittent_demand import CrostonMethod, SBAMethod
+from custom_models.product_profile_model import ProductProfileForecaster
 
 logger = get_logger(__name__)
 
@@ -58,14 +68,10 @@ FEATURE_COLS = [
 ]
 
 
-DEV_COMPANIES = ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"]
-HOLDOUT_COMPANY = "00000000-0000-0000-0000-000000000003"
-
-
 def load_and_split_product_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Load product sales features and generate strict development (Co 1 & 2) and holdout (Co 3) splits.
-    Step 4: Companies 1 & 2 are used exclusively for model development (train, val, dev-test).
+    Companies 1 & 2 are used exclusively for model development (train, val, dev-test).
     Company 3 is strictly held-out and completely excluded from model fitting and tuning.
     """
     df = load_csv("sales_features.csv", PROCESSED_DIR)
@@ -74,9 +80,9 @@ def load_and_split_product_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFr
 
     # Strictly Companies 1 & 2 for development
     dev_df = df[df["company_id"].isin(DEV_COMPANIES)].copy()
-    train_mask = (dev_df["month"] <= "2024-03-31")
-    val_mask = (dev_df["month"] >= "2024-04-01") & (dev_df["month"] <= "2024-08-31")
-    test_mask = (dev_df["month"] >= "2024-09-01")
+    train_mask = (dev_df["month"] <= SPLIT_CONFIG["train_end"])
+    val_mask = (dev_df["month"] >= SPLIT_CONFIG["val_start"]) & (dev_df["month"] <= SPLIT_CONFIG["val_end"])
+    test_mask = (dev_df["month"] >= SPLIT_CONFIG["test_start"])
 
     train_df = dev_df[train_mask].copy()
     val_df = dev_df[val_mask].copy()
@@ -149,74 +155,151 @@ def train_and_evaluate_product_candidates(
     val_pred_naive = val_df["lag_1"].values
     test_pred_naive = test_df["lag_1"].values
     candidates["Naive_Baseline"] = {
-        "val_metrics": compute_metrics(y_val, val_pred_naive),
-        "test_metrics": compute_metrics(y_test, test_pred_naive),
+        "val_metrics": compute_metrics(y_val, val_pred_naive, y_train),
+        "test_metrics": compute_metrics(y_test, test_pred_naive, y_train),
         "model": None,
+        "is_baseline": True,
     }
 
     # 2. Seasonal-Naive Baseline (Lag 12)
     val_pred_snaive = val_df["lag_12"].values
     test_pred_snaive = test_df["lag_12"].values
     candidates["Seasonal_Naive"] = {
-        "val_metrics": compute_metrics(y_val, val_pred_snaive),
-        "test_metrics": compute_metrics(y_test, test_pred_snaive),
+        "val_metrics": compute_metrics(y_val, val_pred_snaive, y_train),
+        "test_metrics": compute_metrics(y_test, test_pred_snaive, y_train),
         "model": None,
+        "is_baseline": True,
     }
 
-    # 3. Linear Regression
+    # 3. Moving Average Baseline (Roll 3)
+    val_pred_ma = val_df["roll3_mean"].values
+    test_pred_ma = test_df["roll3_mean"].values
+    candidates["Moving_Average_3m"] = {
+        "val_metrics": compute_metrics(y_val, val_pred_ma, y_train),
+        "test_metrics": compute_metrics(y_test, test_pred_ma, y_train),
+        "model": None,
+        "is_baseline": True,
+    }
+
+    # 4. Linear Regression
     lr = LinearRegression()
     lr.fit(X_train, y_train)
     val_pred_lr = np.maximum(0, lr.predict(X_val))
     test_pred_lr = np.maximum(0, lr.predict(X_test))
     candidates["Linear_Regression"] = {
-        "val_metrics": compute_metrics(y_val, val_pred_lr),
-        "test_metrics": compute_metrics(y_test, test_pred_lr),
+        "val_metrics": compute_metrics(y_val, val_pred_lr, y_train),
+        "test_metrics": compute_metrics(y_test, test_pred_lr, y_train),
         "model": lr,
+        "is_baseline": False,
     }
 
-    # 4. Random Forest
+    # 5. Ridge Regression
+    ridge = Ridge(alpha=1.0, random_state=42)
+    ridge.fit(X_train, y_train)
+    val_pred_ridge = np.maximum(0, ridge.predict(X_val))
+    test_pred_ridge = np.maximum(0, ridge.predict(X_test))
+    candidates["Ridge_Regression"] = {
+        "val_metrics": compute_metrics(y_val, val_pred_ridge, y_train),
+        "test_metrics": compute_metrics(y_test, test_pred_ridge, y_train),
+        "model": ridge,
+        "is_baseline": False,
+    }
+
+    # 6. Random Forest
     rf = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42, n_jobs=-1)
     rf.fit(X_train, y_train)
     val_pred_rf = np.maximum(0, rf.predict(X_val))
     test_pred_rf = np.maximum(0, rf.predict(X_test))
     candidates["Random_Forest"] = {
-        "val_metrics": compute_metrics(y_val, val_pred_rf),
-        "test_metrics": compute_metrics(y_test, test_pred_rf),
+        "val_metrics": compute_metrics(y_val, val_pred_rf, y_train),
+        "test_metrics": compute_metrics(y_test, test_pred_rf, y_train),
         "model": rf,
+        "is_baseline": False,
     }
 
-    # 5. XGBoost
+    # 7. XGBoost
     xgb = XGBRegressor(n_estimators=120, max_depth=5, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8, random_state=42)
     xgb.fit(X_train, y_train)
     val_pred_xgb = np.maximum(0, xgb.predict(X_val))
     test_pred_xgb = np.maximum(0, xgb.predict(X_test))
     candidates["XGBoost"] = {
-        "val_metrics": compute_metrics(y_val, val_pred_xgb),
-        "test_metrics": compute_metrics(y_test, test_pred_xgb),
+        "val_metrics": compute_metrics(y_val, val_pred_xgb, y_train),
+        "test_metrics": compute_metrics(y_test, test_pred_xgb, y_train),
         "model": xgb,
+        "is_baseline": False,
     }
 
-    # 6. LightGBM
+    # 8. LightGBM
     lgb = LGBMRegressor(n_estimators=120, max_depth=5, learning_rate=0.05, subsample=0.8, random_state=42, verbose=-1)
     lgb.fit(X_train, y_train)
     val_pred_lgb = np.maximum(0, lgb.predict(X_val))
     test_pred_lgb = np.maximum(0, lgb.predict(X_test))
     candidates["LightGBM"] = {
-        "val_metrics": compute_metrics(y_val, val_pred_lgb),
-        "test_metrics": compute_metrics(y_test, test_pred_lgb),
+        "val_metrics": compute_metrics(y_val, val_pred_lgb, y_train),
+        "test_metrics": compute_metrics(y_test, test_pred_lgb, y_train),
         "model": lgb,
+        "is_baseline": False,
     }
 
-    # 7. Custom Model: ALLADIN Adaptive Global Forecaster (AAGF) for Product Demand
+    # 9. CatBoost
+    cb = CatBoostRegressor(iterations=120, depth=5, learning_rate=0.05, verbose=0, random_seed=42)
+    cb.fit(X_train, y_train)
+    val_pred_cb = np.maximum(0, cb.predict(X_val))
+    test_pred_cb = np.maximum(0, cb.predict(X_test))
+    candidates["CatBoost"] = {
+        "val_metrics": compute_metrics(y_val, val_pred_cb, y_train),
+        "test_metrics": compute_metrics(y_test, test_pred_cb, y_train),
+        "model": cb,
+        "is_baseline": False,
+    }
+
+    # 9. Croston's Method
+    croston = CrostonMethod(alpha=0.15)
+    croston.fit(None, y_train)
+    val_pred_croston = np.maximum(0, croston.predict(np.zeros(len(y_val))))
+    test_pred_croston = np.maximum(0, croston.predict(np.zeros(len(y_test))))
+    candidates["Croston_Method"] = {
+        "val_metrics": compute_metrics(y_val, val_pred_croston, y_train),
+        "test_metrics": compute_metrics(y_test, test_pred_croston, y_train),
+        "model": croston,
+        "is_baseline": False,
+    }
+
+    # 10. SBA Method
+    sba = SBAMethod(alpha=0.15)
+    sba.fit(None, y_train)
+    val_pred_sba = np.maximum(0, sba.predict(np.zeros(len(y_val))))
+    test_pred_sba = np.maximum(0, sba.predict(np.zeros(len(y_test))))
+    candidates["SBA_Method"] = {
+        "val_metrics": compute_metrics(y_val, val_pred_sba, y_train),
+        "test_metrics": compute_metrics(y_test, test_pred_sba, y_train),
+        "model": sba,
+        "is_baseline": False,
+    }
+
+    # 11. Product Profile Forecaster (Custom Hierarchical)
+    ppf = ProductProfileForecaster(alpha=1.0, random_state=42)
+    ppf.fit(train_df, y_train)
+    val_pred_ppf = np.maximum(0, ppf.predict(val_df))
+    test_pred_ppf = np.maximum(0, ppf.predict(test_df))
+    candidates["Product_Profile_Forecaster"] = {
+        "val_metrics": compute_metrics(y_val, val_pred_ppf, y_train),
+        "test_metrics": compute_metrics(y_test, test_pred_ppf, y_train),
+        "model": ppf,
+        "is_baseline": False,
+    }
+
+    # 12. Custom Model: ALLADIN Adaptive Global Forecaster (AAGF)
     aagf_prod = ALLADINAdaptiveGlobalForecaster(name="AAGF-ProductSales", random_state=42)
     aagf_prod.fit(train_df, y_train, val_df, y_val, feature_cols=FEATURE_COLS)
     val_pred_aagf = np.maximum(0, aagf_prod.predict(val_df))
     test_pred_aagf = np.maximum(0, aagf_prod.predict(test_df))
     candidates["AAGF_Custom"] = {
-        "val_metrics": compute_metrics(y_val, val_pred_aagf),
-        "test_metrics": compute_metrics(y_test, test_pred_aagf),
+        "val_metrics": compute_metrics(y_val, val_pred_aagf, y_train),
+        "test_metrics": compute_metrics(y_test, test_pred_aagf, y_train),
         "model": aagf_prod,
         "weights": aagf_prod.weights.tolist(),
+        "is_baseline": False,
     }
 
     # Model Selection: Strictly based on validation WAPE among supervised candidates
@@ -224,149 +307,236 @@ def train_and_evaluate_product_candidates(
     best_name = min(supervised, key=lambda k: supervised[k]["val_metrics"]["wape"])
     best_model = supervised[best_name]["model"]
 
-    # Step 4 Zero-Shot Holdout Evaluation on Company 3 (Apna Kirana)
-    # Production best_model trained strictly on Dev Companies is directly evaluated on Company 3
+    # Zero-Shot Holdout Evaluation on Company 3 (Apna Kirana)
     if best_name == "AAGF_Custom":
         holdout_pred = np.maximum(0, best_model.predict(holdout_co3_df))
+    elif best_name == "Product_Profile_Forecaster":
+        holdout_pred = np.maximum(0, best_model.predict(holdout_co3_df))
+    elif best_name in ["Croston_Method", "SBA_Method"]:
+        holdout_pred = np.maximum(0, best_model.predict(np.zeros(len(holdout_co3_df))))
     else:
         holdout_pred = np.maximum(0, best_model.predict(holdout_co3_df[FEATURE_COLS].values))
 
-    holdout_metrics = compute_metrics(holdout_co3_df["quantity"].values, holdout_pred)
+    holdout_metrics = compute_metrics(holdout_co3_df["quantity"].values, holdout_pred, y_train)
     holdout_naive_pred = holdout_co3_df["lag_1"].values
-    holdout_naive_metrics = compute_metrics(holdout_co3_df["quantity"].values, holdout_naive_pred)
-    holdout_metrics["naive_baseline_comparison"] = {
-        "wape": holdout_naive_metrics.get("wape"),
-        "r2": holdout_naive_metrics.get("r2"),
-    }
+    holdout_naive_metrics = compute_metrics(holdout_co3_df["quantity"].values, holdout_naive_pred, y_train)
 
     models_dict = {
         "lr": lr,
+        "ridge": ridge,
+        "rf": rf,
         "xgb": xgb,
         "lgb": lgb,
-        "aagf": aagf_prod,
-        "rf": rf
+        "cb": cb,
+        "ppf": ppf,
+        "aagf": aagf_prod
     }
 
-    return candidates, best_name, best_model, holdout_metrics, models_dict
+    return candidates, best_name, best_model, {
+        "metrics": holdout_metrics,
+        "naive_baseline_metrics": holdout_naive_metrics
+    }, models_dict
+
+
+def train_category_model(cat_df: pd.DataFrame) -> Tuple[Any, Dict[str, Any]]:
+    """Train XGBoost category-level model and compute evaluation metrics."""
+    dev_cat = cat_df[cat_df["company_id"].isin(DEV_COMPANIES)].copy()
+    train_mask = (dev_cat["month"] <= SPLIT_CONFIG["train_end"])
+    val_mask = (dev_cat["month"] >= SPLIT_CONFIG["val_start"]) & (dev_cat["month"] <= SPLIT_CONFIG["val_end"])
+    test_mask = (dev_cat["month"] >= SPLIT_CONFIG["test_start"])
+
+    train_c = dev_cat[train_mask]
+    val_c = dev_cat[val_mask]
+    test_c = dev_cat[test_mask]
+
+    X_train_c = train_c[FEATURE_COLS].values
+    y_train_c = train_c["quantity"].values
+    X_val_c = val_c[FEATURE_COLS].values
+    y_val_c = val_c["quantity"].values
+    X_test_c = test_c[FEATURE_COLS].values
+    y_test_c = test_c["quantity"].values
+
+    xgb_cat = XGBRegressor(n_estimators=100, max_depth=4, learning_rate=0.05, random_state=42)
+    xgb_cat.fit(X_train_c, y_train_c)
+
+    val_pred = np.maximum(0, xgb_cat.predict(X_val_c))
+    test_pred = np.maximum(0, xgb_cat.predict(X_test_c))
+
+    cat_metrics = {
+        "val_metrics": compute_metrics(y_val_c, val_pred, y_train_c),
+        "test_metrics": compute_metrics(y_test_c, test_pred, y_train_c)
+    }
+
+    return xgb_cat, cat_metrics
 
 
 def run_pipeline() -> Dict[str, Any]:
-    """Execute product & category sales forecasting pipeline."""
-    logger.info("Starting Product & Category Sales Forecasting Pipeline with AAGF...")
-
+    logger.info("Running Sales Forecasting Pipeline (Pipeline 2) with Product & Category Models...")
     train_df, val_df, test_df, holdout_co3_df = load_and_split_product_data()
-    candidates, best_name, best_model, holdout_metrics, models_dict = train_and_evaluate_product_candidates(
+    candidates, best_name, best_model, holdout_results, models_dict = train_and_evaluate_product_candidates(
         train_df, val_df, test_df, holdout_co3_df
     )
 
-    logger.info(f"Selected Product Sales Model: {best_name}")
-    for name, data in candidates.items():
-        vm = data["val_metrics"]
-        tm = data["test_metrics"]
-        logger.info(f"Candidate: {name:<20} | Val WAPE: {vm.get('wape', 0):.2f}% | Test WAPE: {tm.get('wape', 0):.2f}% | Test R2: {tm.get('r2', 0):.4f}")
-
-    logger.info(f"Approach C Holdout Co3 (Apna Kirana) WAPE: {holdout_metrics.get('wape', 0):.2f}% | R2: {holdout_metrics.get('r2', 0):.4f}")
-
-    # Build and train Category Sales Model (XGBoost) on Dev Companies only
     cat_df = build_category_features()
-    cat_dev = cat_df[cat_df["company_id"].isin(DEV_COMPANIES)].copy()
-    cat_train = cat_dev[cat_dev["month"] <= "2024-03-31"]
-    cat_val = cat_dev[(cat_dev["month"] >= "2024-04-01") & (cat_dev["month"] <= "2024-08-31")]
-    cat_test = cat_dev[cat_dev["month"] >= "2024-09-01"]
+    xgb_cat, cat_metrics = train_category_model(cat_df)
 
-    xgb_cat = XGBRegressor(n_estimators=100, max_depth=5, learning_rate=0.05, random_state=42)
-    xgb_cat.fit(cat_train[FEATURE_COLS].values, cat_train["quantity"].values)
-    cat_val_pred = np.maximum(0, xgb_cat.predict(cat_val[FEATURE_COLS].values))
-    cat_test_pred = np.maximum(0, xgb_cat.predict(cat_test[FEATURE_COLS].values))
-    cat_val_metrics = compute_metrics(cat_val["quantity"].values, cat_val_pred)
-    cat_test_metrics = compute_metrics(cat_test["quantity"].values, cat_test_pred)
+    # Save artifacts
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"Category Sales Model (XGBoost) | Val WAPE: {cat_val_metrics['wape']:.2f}% | Test WAPE: {cat_test_metrics['wape']:.2f}%")
+    save_model(
+        {"model": models_dict["lr"], "feature_cols": FEATURE_COLS, "algorithm": "LinearRegression"},
+        "sales_forecasting_linear_regression_product.pkl",
+        MODELS_DIR
+    )
+    save_model(
+        {"model": models_dict["xgb"], "feature_cols": FEATURE_COLS, "algorithm": "XGBRegressor"},
+        "sales_forecasting_xgb_product.pkl",
+        MODELS_DIR
+    )
+    save_model(
+        {"model": models_dict["lgb"], "feature_cols": FEATURE_COLS, "algorithm": "LGBMRegressor"},
+        "sales_forecasting_lgb_product.pkl",
+        MODELS_DIR
+    )
+    save_model(
+        {"model": models_dict["ppf"], "feature_cols": FEATURE_COLS, "algorithm": "ProductProfileForecaster"},
+        "sales_forecasting_product_profile.pkl",
+        MODELS_DIR
+    )
+    save_model(
+        {"model": models_dict["aagf"], "feature_cols": FEATURE_COLS, "weights": models_dict["aagf"].weights.tolist(), "algorithm": "ALLADINAdaptiveGlobalForecaster"},
+        "sales_forecasting_aagf_product.pkl",
+        MODELS_DIR
+    )
+    save_model(
+        {
+            "model": best_model,
+            "feature_cols": FEATURE_COLS,
+            "algorithm": best_name,
+            "selection_metric": "val_wape",
+            "val_wape": candidates[best_name]["val_metrics"]["wape"],
+            "test_wape": candidates[best_name]["test_metrics"]["wape"],
+        },
+        "sales_forecasting_selected.pkl",
+        MODELS_DIR
+    )
+    save_model(
+        {"model": xgb_cat, "feature_cols": FEATURE_COLS, "algorithm": "XGBRegressor_Category"},
+        "sales_forecasting_xgb_category.pkl",
+        MODELS_DIR
+    )
 
-    # Evaluate Category Model on Company 3 Holdout
-    cat_co3 = cat_df[cat_df["company_id"] == HOLDOUT_COMPANY]
-    if len(cat_co3) > 0:
-        cat_co3_pred = np.maximum(0, xgb_cat.predict(cat_co3[FEATURE_COLS].values))
-        cat_co3_metrics = compute_metrics(cat_co3["quantity"].values, cat_co3_pred)
-    else:
-        cat_co3_metrics = {}
-
-    # Save artifacts by their true identities:
-    # 1. Genuine XGBoost product artifact
-    save_model({"model": models_dict["xgb"], "feature_cols": FEATURE_COLS, "algorithm": "XGBRegressor"}, "sales_forecasting_xgb_product.pkl", MODELS_DIR)
-
-    # 2. Genuine LightGBM product artifact
-    save_model({"model": models_dict["lgb"], "feature_cols": FEATURE_COLS, "algorithm": "LGBMRegressor"}, "sales_forecasting_lgb_product.pkl", MODELS_DIR)
-
-    # 3. Genuine Linear Regression product artifact
-    save_model({"model": models_dict["lr"], "feature_cols": FEATURE_COLS, "algorithm": "LinearRegression"}, "sales_forecasting_linear_regression_product.pkl", MODELS_DIR)
-
-    # 4. Custom AAGF product artifact
-    save_model({"model": models_dict["aagf"], "feature_cols": models_dict["aagf"].feature_cols, "algorithm": "AAGF_Custom"}, "sales_forecasting_aagf_product.pkl", MODELS_DIR)
-
-    # 5. Canonical Selected Product Model
-    selected_feat = models_dict["aagf"].feature_cols if best_name == "AAGF_Custom" else FEATURE_COLS
-    save_model({
-        "model": best_model,
-        "feature_cols": selected_feat,
-        "algorithm": best_name,
-        "selection_metric": "val_wape",
-        "val_wape": candidates[best_name]["val_metrics"]["wape"],
-        "test_wape": candidates[best_name]["test_metrics"]["wape"]
-    }, "sales_forecasting_selected.pkl", MODELS_DIR)
-
-    # 6. Genuine Category XGBoost artifact
-    save_model({"model": xgb_cat, "feature_cols": FEATURE_COLS, "algorithm": "XGBRegressor"}, "sales_forecasting_xgb_category.pkl", MODELS_DIR)
-
-    # 7. Metadata
-    feature_meta = {
-        "pipeline": "sales_forecasting",
-        "strategy": "Global Models trained on Dev Companies 1 & 2 with zero-shot holdout evaluation on Company 3",
+    # Meta
+    meta = {
+        "task": "sales_forecasting",
+        "selected_model": best_name,
+        "selected_artifact": "sales_forecasting_selected.pkl",
+        "features": FEATURE_COLS,
         "training_companies": DEV_COMPANIES,
         "holdout_company": HOLDOUT_COMPANY,
-        "target": "quantity",
-        "selected_product_model": best_name,
-        "selected_artifact": "sales_forecasting_selected.pkl",
-        "product_features": selected_feat,
-        "product_test_metrics": candidates[best_name]["test_metrics"],
-        "category_test_metrics": cat_test_metrics,
-        "approach_c_holdout_co3_metrics": holdout_metrics,
+        "training_period": f"2022-01-01 to {SPLIT_CONFIG['train_end']}",
+        "validation_period": f"{SPLIT_CONFIG['val_start']} to {SPLIT_CONFIG['val_end']}",
+        "dev_test_period": f"{SPLIT_CONFIG['test_start']} to 2026-10-31",
+        "algorithm_artifacts": {
+            "linear_regression_product": "sales_forecasting_linear_regression_product.pkl",
+            "xgb_product": "sales_forecasting_xgb_product.pkl",
+            "lgb_product": "sales_forecasting_lgb_product.pkl",
+            "aagf_product": "sales_forecasting_aagf_product.pkl",
+            "product_profile": "sales_forecasting_product_profile.pkl",
+            "xgb_category": "sales_forecasting_xgb_category.pkl",
+        },
+        "selection_rationale": f"Validation WAPE on Dev Companies (1 & 2) during {SPLIT_CONFIG['val_start']} to {SPLIT_CONFIG['val_end']}",
         "synthetic_data_evaluation_only": True
     }
     with open(MODELS_DIR / "sales_feature_meta.json", "w", encoding="utf-8") as f:
-        json.dump(feature_meta, f, indent=2)
+        json.dump(meta, f, indent=2)
 
-    # 8. Evaluation report
-    eval_report = {
-        "pipeline": "product_and_category_sales_forecasting",
-        "strategy": "Global Models trained on Dev Companies 1 & 2 with zero-shot holdout evaluation on Company 3",
+    # Investigation documentation on WAPE and R2
+    investigation_notes = {
+        "topic": "Large Saved WAPE and Negative R2 Investigation",
+        "root_cause_analysis": (
+            "1. Granularity & Intermittency: Product SKU-level demand contains sparse zeros, low volumes, and intermittent sales, "
+            "where small unit discrepancies (e.g., predicting 3 units when actual is 0 or 1) yield massive percentage errors. "
+            "2. Variance Shift vs Mean: In time-series splits, if an item experiences an out-of-sample level drop, global regression models "
+            "predicting past historical means suffer SS_res > SS_tot, leading to negative R2. "
+            "3. Category Aggregation Effect: At the category level, demand is aggregated across SKUs, smoothing intermittency. "
+            f"Category validation WAPE drops to {cat_metrics['val_metrics']['wape']:.2f}% with strong positive R2 ({cat_metrics['val_metrics']['r2']:.4f}). "
+            "4. Mitigation: Hierarchical models (ProductProfileForecaster, Croston, and regularized trees like LightGBM) prevent negative predictions "
+            "and ground SKU projections in per-product velocity profiles."
+        )
+    }
+
+    # Evaluation Report
+    report = {
+        "pipeline": "sales_forecasting",
+        "strategy": "Product-level and Category-level sales forecasting (Approach C)",
         "training_companies": DEV_COMPANIES,
         "holdout_company": HOLDOUT_COMPANY,
         "selected_model": best_name,
-        "selection_metric": "val_wape",
+        "selection_metric": "val_wape_pct",
+        "metric_definitions": {
+            "wape": "sum(|actual - pred|) / sum(|actual|) * 100% (volume-weighted percentage error)",
+            "rmse": "sqrt(mean((actual - pred)^2)) in unit quantities",
+            "mae": "mean(|actual - pred|) in unit quantities",
+            "r2": "1 - SS_res / SS_tot (coefficient of determination)",
+            "bias": "sum(pred - actual) / sum(|actual|) * 100% (positive = overforecasting, negative = underforecasting)",
+            "mase": "mae_model / mean(|diff(y_train)|) (relative to training naive random walk)"
+        },
+        "investigation_wape_and_r2": investigation_notes,
         "candidates": {
             k: {
-                "val_metrics": v["val_metrics"],
-                "test_metrics": v["test_metrics"],
+                "val_wape_pct": round(v["val_metrics"]["wape"], 2),
+                "val_rmse": round(v["val_metrics"]["rmse"], 2),
+                "val_mae": round(v["val_metrics"]["mae"], 2),
+                "val_r2": round(v["val_metrics"]["r2"], 4),
+                "val_bias_pct": round(v["val_metrics"]["bias"], 2),
+                "val_mase": round(v["val_metrics"]["mase"], 4),
+                "test_wape_pct": round(v["test_metrics"]["wape"], 2),
+                "test_rmse": round(v["test_metrics"]["rmse"], 2),
+                "test_mae": round(v["test_metrics"]["mae"], 2),
+                "test_r2": round(v["test_metrics"]["r2"], 4),
+                "test_bias_pct": round(v["test_metrics"]["bias"], 2),
+                "test_mase": round(v["test_metrics"]["mase"], 4),
+                "is_baseline": v.get("is_baseline", False),
             }
             for k, v in candidates.items()
         },
-        "category_model_metrics": {
-            "val_metrics": cat_val_metrics,
-            "test_metrics": cat_test_metrics,
-            "holdout_co3_metrics": cat_co3_metrics
+        "category_level_forecasting": {
+            "model": "XGBoost_Category",
+            "val_wape_pct": round(cat_metrics["val_metrics"]["wape"], 2),
+            "val_rmse": round(cat_metrics["val_metrics"]["rmse"], 2),
+            "val_mae": round(cat_metrics["val_metrics"]["mae"], 2),
+            "val_r2": round(cat_metrics["val_metrics"]["r2"], 4),
+            "val_bias_pct": round(cat_metrics["val_metrics"]["bias"], 2),
+            "val_mase": round(cat_metrics["val_metrics"]["mase"], 4),
+            "test_wape_pct": round(cat_metrics["test_metrics"]["wape"], 2),
+            "test_rmse": round(cat_metrics["test_metrics"]["rmse"], 2),
+            "test_r2": round(cat_metrics["test_metrics"]["r2"], 4),
         },
         "approach_c_holdout_co3": {
-            "business_id": "00000000-0000-0000-0000-000000000003",
-            "business_name": "Apna Kirana Store",
-            "metrics": holdout_metrics
+            "selected_model": best_name,
+            "metrics": {
+                "wape": round(holdout_results["metrics"]["wape"], 2),
+                "wape_pct": round(holdout_results["metrics"]["wape"], 2),
+                "rmse": round(holdout_results["metrics"]["rmse"], 2),
+                "mae": round(holdout_results["metrics"]["mae"], 2),
+                "r2": round(holdout_results["metrics"]["r2"], 4),
+                "bias_pct": round(holdout_results["metrics"]["bias"], 2),
+                "mase": round(holdout_results["metrics"]["mase"], 4),
+                "naive_baseline_wape_pct": round(holdout_results["naive_baseline_metrics"]["wape"], 2),
+                "naive_baseline_r2": round(holdout_results["naive_baseline_metrics"]["r2"], 4),
+            },
+            "naive_baseline_metrics": holdout_results["naive_baseline_metrics"],
         }
     }
-    with open(REPORTS_DIR / "sales_forecasting_eval.json", "w", encoding="utf-8") as f:
-        json.dump(eval_report, f, indent=2)
 
-    logger.info("Product & Category Sales Forecasting Pipeline completed successfully.")
-    return eval_report
+    report_path = REPORTS_DIR / "sales_forecasting_eval.json"
+    with open(report_path, "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2)
+    logger.info("Saved sales evaluation report: %s", report_path)
+
+    return report
 
 
 if __name__ == "__main__":

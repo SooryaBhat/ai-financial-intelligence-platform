@@ -1,0 +1,238 @@
+{
+  "ollama": [
+    {
+      "q_num": 1,
+      "question": "What is the name of my company, and what business data can you access for it?",
+      "provider_requested": "ollama",
+      "elapsed_seconds": 4.08,
+      "http_status": 201,
+      "model_used": null,
+      "provider_recorded": null,
+      "status": "error",
+      "tools_used": [],
+      "citations": [],
+      "reply": "\u26a0\ufe0f **Local Ollama Error**: Unable to generate response using local model 'qwen3:4b'.\n\n**Details**: Ollama provider failed: [Errno 111] Connection refused\n\n**Troubleshooting**:\n- Ensure Ollama is running (`ollama serve` or check `http://localhost:11434`).\n- Confirm model `qwen3:4b` is installed (`ollama list`).\n- Or switch to **Gemini (Cloud)** using the model selector at the top."
+    },
+    {
+      "q_num": 1,
+      "question": "What is the name of my company, and what business data can you access for it?",
+      "error": "'charmap' codec can't encode characters in position 7-8: character maps to <undefined>"
+    },
+    {
+      "q_num": 2,
+      "question": "Explain the accounting equation \u2014 Assets = Liabilities + Owner\u2019s Equity \u2014 with a simple supermarket example. Explain how a business owner can use it to understand financial position.",
+      "provider_requested": "ollama",
+      "elapsed_seconds": 4.01,
+      "http_status": 201,
+      "model_used": null,
+      "provider_recorded": null,
+      "status": "error",
+      "tools_used": [],
+      "citations": [],
+      "reply": "\u26a0\ufe0f **Local Ollama Error**: Unable to generate response using local model 'qwen3:4b'.\n\n**Details**: Ollama provider failed: [Errno 111] Connection refused\n\n**Troubleshooting**:\n- Ensure Ollama is running (`ollama serve` or check `http://localhost:11434`).\n- Confirm model `qwen3:4b` is installed (`ollama list`).\n- Or switch to **Gemini (Cloud)** using the model selector at the top."
+    },
+    {
+      "q_num": 2,
+      "question": "Explain the accounting equation \u2014 Assets = Liabilities + Owner\u2019s Equity \u2014 with a simple supermarket example. Explain how a business owner can use it to understand financial position.",
+      "error": "'charmap' codec can't encode characters in position 7-8: character maps to <undefined>"
+    },
+    {
+      "q_num": 3,
+      "question": "How can a small supermarket improve cash flow and working capital? Give practical steps and explain the financial principles behind them.",
+      "provider_requested": "ollama",
+      "elapsed_seconds": 2.95,
+      "http_status": 201,
+      "model_used": null,
+      "provider_recorded": null,
+      "status": "error",
+      "tools_used": [],
+      "citations": [],
+      "reply": "\u26a0\ufe0f **Local Ollama Error**: Unable to generate response using local model 'qwen3:4b'.\n\n**Details**: Ollama provider failed: [Errno 111] Connection refused\n\n**Troubleshooting**:\n- Ensure Ollama is running (`ollama serve` or check `http://localhost:11434`).\n- Confirm model `qwen3:4b` is installed (`ollama list`).\n- Or switch to **Gemini (Cloud)** using the model selector at the top."
+    },
+    {
+      "q_num": 3,
+      "question": "How can a small supermarket improve cash flow and working capital? Give practical steps and explain the financial principles behind them.",
+      "error": "'charmap' codec can't encode characters in position 7-8: character maps to <undefined>"
+    },
+    {
+      "q_num": 4,
+      "question": "How can a supermarket reduce excess inventory and stockouts without tying up too much working capital?",
+      "provider_requested": "ollama",
+      "elapsed_seconds": 4.51,
+      "http_status": 201,
+      "model_used": null,
+      "provider_recorded": null,
+      "status": "error",
+      "tools_used": [],
+      "citations": [],
+      "reply": "\u26a0\ufe0f **Local Ollama Error**: Unable to generate response using local model 'qwen3:4b'.\n\n**Details**: Ollama provider failed: [Errno 111] Connection refused\n\n**Troubleshooting**:\n- Ensure Ollama is running (`ollama serve` or check `http://localhost:11434`).\n- Confirm model `qwen3:4b` is installed (`ollama list`).\n- Or switch to **Gemini (Cloud)** using the model selector at the top."
+    },
+    {
+      "q_num": 4,
+      "question": "How can a supermarket reduce excess inventory and stockouts without tying up too much working capital?",
+      "error": "'charmap' codec can't encode characters in position 7-8: character maps to <undefined>"
+    },
+    {
+      "q_num": 5,
+      "question": "What financial indicators should a small supermarket owner monitor every month, and how should they interpret them?",
+      "provider_requested": "ollama",
+      "elapsed_seconds": 4.35,
+      "http_status": 201,
+      "model_used": null,
+      "provider_recorded": null,
+      "status": "error",
+      "tools_used": [],
+      "citations": [],
+      "reply": "\u26a0\ufe0f **Local Ollama Error**: Unable to generate response using local model 'qwen3:4b'.\n\n**Details**: Ollama provider failed: [Errno 111] Connection refused\n\n**Troubleshooting**:\n- Ensure Ollama is running (`ollama serve` or check `http://localhost:11434`).\n- Confirm model `qwen3:4b` is installed (`ollama list`).\n- Or switch to **Gemini (Cloud)** using the model selector at the top."
+    },
+    {
+      "q_num": 5,
+      "question": "What financial indicators should a small supermarket owner monitor every month, and how should they interpret them?",
+      "error": "'charmap' codec can't encode characters in position 7-8: character maps to <undefined>"
+    },
+    {
+      "q_num": 6,
+      "question": "What does the knowledge base say about the relationship between assets, liabilities, and owner\u2019s equity? Name the exact source you used.",
+      "provider_requested": "ollama",
+      "elapsed_seconds": 3.79,
+      "http_status": 201,
+      "model_used": null,
+      "provider_recorded": null,
+      "status": "error",
+      "tools_used": [],
+      "citations": [],
+      "reply": "\u26a0\ufe0f **Local Ollama Error**: Unable to generate response using local model 'qwen3:4b'.\n\n**Details**: Ollama provider failed: [Errno 111] Connection refused\n\n**Troubleshooting**:\n- Ensure Ollama is running (`ollama serve` or check `http://localhost:11434`).\n- Confirm model `qwen3:4b` is installed (`ollama list`).\n- Or switch to **Gemini (Cloud)** using the model selector at the top."
+    },
+    {
+      "q_num": 6,
+      "question": "What does the knowledge base say about the relationship between assets, liabilities, and owner\u2019s equity? Name the exact source you used.",
+      "error": "'charmap' codec can't encode characters in position 7-8: character maps to <undefined>"
+    },
+    {
+      "q_num": 7,
+      "question": "What is the current benchmark repo rate in 2026 according to public internet news?",
+      "provider_requested": "ollama",
+      "elapsed_seconds": 4.05,
+      "http_status": 201,
+      "model_used": null,
+      "provider_recorded": null,
+      "status": "error",
+      "tools_used": [],
+      "citations": [],
+      "reply": "\u26a0\ufe0f **Local Ollama Error**: Unable to generate response using local model 'qwen3:4b'.\n\n**Details**: Ollama provider failed: [Errno 111] Connection refused\n\n**Troubleshooting**:\n- Ensure Ollama is running (`ollama serve` or check `http://localhost:11434`).\n- Confirm model `qwen3:4b` is installed (`ollama list`).\n- Or switch to **Gemini (Cloud)** using the model selector at the top."
+    },
+    {
+      "q_num": 7,
+      "question": "What is the current benchmark repo rate in 2026 according to public internet news?",
+      "error": "'charmap' codec can't encode characters in position 7-8: character maps to <undefined>"
+    }
+  ],
+  "gemini": [
+    {
+      "q_num": 1,
+      "question": "What is the name of my company, and what business data can you access for it?",
+      "provider_requested": "gemini",
+      "elapsed_seconds": 4.62,
+      "http_status": 201,
+      "model_used": null,
+      "provider_recorded": null,
+      "status": "error",
+      "tools_used": [],
+      "citations": [],
+      "reply": "\u26a0\ufe0f **Gemini Cloud Error**: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}\n\nPlease check your Gemini API quota or switch to **Ollama (Local)** using the model selector above."
+    },
+    {
+      "q_num": 1,
+      "question": "What is the name of my company, and what business data can you access for it?",
+      "error": "'charmap' codec can't encode characters in position 7-8: character maps to <undefined>"
+    },
+    {
+      "q_num": 2,
+      "question": "Explain the accounting equation \u2014 Assets = Liabilities + Owner\u2019s Equity \u2014 with a simple supermarket example. Explain how a business owner can use it to understand financial position.",
+      "provider_requested": "gemini",
+      "elapsed_seconds": 6.57,
+      "http_status": 201,
+      "model_used": null,
+      "provider_recorded": null,
+      "status": "error",
+      "tools_used": [],
+      "citations": [],
+      "reply": "\u26a0\ufe0f **Gemini Cloud Error**: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}\n\nPlease check your Gemini API quota or switch to **Ollama (Local)** using the model selector above."
+    },
+    {
+      "q_num": 2,
+      "question": "Explain the accounting equation \u2014 Assets = Liabilities + Owner\u2019s Equity \u2014 with a simple supermarket example. Explain how a business owner can use it to understand financial position.",
+      "error": "'charmap' codec can't encode characters in position 7-8: character maps to <undefined>"
+    },
+    {
+      "q_num": 3,
+      "question": "How can a small supermarket improve cash flow and working capital? Give practical steps and explain the financial principles behind them.",
+      "provider_requested": "gemini",
+      "elapsed_seconds": 33.88,
+      "http_status": 201,
+      "model_used": null,
+      "provider_recorded": null,
+      "status": "error",
+      "tools_used": [],
+      "citations": [],
+      "reply": "Retrieved 4 relevant knowledge passages from official guides and policies."
+    },
+    {
+      "q_num": 4,
+      "question": "How can a supermarket reduce excess inventory and stockouts without tying up too much working capital?",
+      "provider_requested": "gemini",
+      "elapsed_seconds": 50.97,
+      "http_status": 201,
+      "model_used": null,
+      "provider_recorded": null,
+      "status": "error",
+      "tools_used": [],
+      "citations": [],
+      "reply": "Retrieved 4 relevant knowledge passages from official guides and policies.\n\nInventory check across 20 catalog SKUs and 13,825 total units: no critical low-stock items detected at or below reorder threshold."
+    },
+    {
+      "q_num": 5,
+      "question": "What financial indicators should a small supermarket owner monitor every month, and how should they interpret them?",
+      "provider_requested": "gemini",
+      "elapsed_seconds": 5.41,
+      "http_status": 201,
+      "model_used": null,
+      "provider_recorded": null,
+      "status": "error",
+      "tools_used": [],
+      "citations": [],
+      "reply": "\u26a0\ufe0f **Gemini Cloud Error**: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}\n\nPlease check your Gemini API quota or switch to **Ollama (Local)** using the model selector above."
+    },
+    {
+      "q_num": 5,
+      "question": "What financial indicators should a small supermarket owner monitor every month, and how should they interpret them?",
+      "error": "'charmap' codec can't encode characters in position 7-8: character maps to <undefined>"
+    },
+    {
+      "q_num": 6,
+      "question": "What does the knowledge base say about the relationship between assets, liabilities, and owner\u2019s equity? Name the exact source you used.",
+      "provider_requested": "gemini",
+      "elapsed_seconds": 60.58,
+      "http_status": 201,
+      "model_used": null,
+      "provider_recorded": null,
+      "status": "error",
+      "tools_used": [],
+      "citations": [],
+      "reply": "Based on the knowledge base, the relationship between assets, liabilities, and owner\u2019s equity is governed by the **fundamental accounting equation**:\n\n$$\\text{Assets} = \\text{Liabilities} + \\text{Owner's Equity}$$\n\nAlternatively expressed to show net worth:\n\n$$\\text{Equity} = \\text{Assets} - \\text{Liabilities}$$\n\n---\n\n### Core Principles & Relationship Explained\n\n1. **Sources and Claims Perspective**:\n   - **Assets** represent all economic resources owned or controlled by the business expected to provide future economic benefits (e.g., cash, accounts receivable, inventory, equipment).\n   - These assets are acquired either through borrowing from external parties (**Liabilities**) or through funding provided by the business owners (**Equity**).\n   - Stated differently, every asset in a business has a claim against it\u2014either by creditors (liabilities) or by owners (equity).\n\n2. **Components of the Equation**:\n   - **Assets**: What the business owns or controls.\n   - **Liabilities**: Debts and obligations owed to third parties (such as supplier accounts payable, bank loans, or taxes due).\n   - **Owner\u2019s Equity**: The residual interest or net worth remaining for the owners after deducting total liabilities from total assets.\n\n3. **Double-Entry Balance**:\n   - Every transaction affects at least two accounts to keep the accounting equation in constant balance at any given point in time (for example, purchasing inventory for cash increases Inventory while simultaneously decreasing Cash by the same amount).\n\n---\n\n### Exact Sources Used\n\n1. **Official / Verified Source**:\n   * **Document Title**: *Principles of Accounting, Volume 1: Financial Accounting*\n   * **Authors / Organization**: Mitchell Franklin, Patty Graybeal, Dixon Cooper (OpenStax / Rice University)\n   * **Section**: Chapter 2: The Fundamental Accounting Equation ($\\text{Assets} = \\text{Liabilities} + \\text{Equity}$) & Financial Statements (Pages 78 & 84)\n   * **Status**: Official Document / Verified Source\n   * **URL**: [https://openstax.org/details/books/principles-financial-accounting](https://openstax.org/details/books/principles-financial-accounting)\n\n2. **Internal Project Reference**:\n   * **Document Title**: *Accounting Fundamentals and Financial Statements*\n   * **Author / Organization**: AI-assisted draft for the ALLADIN project\n   * **Section**: Section 2: Basic bookkeeping concepts & Section 3.2: Balance sheet\n   * **Status**: **Internal AI-assisted draft (unverified project document)** *(Note: This document is an unverified internal project draft and not official or statutory guidance).*"
+    },
+    {
+      "q_num": 7,
+      "question": "What is the current benchmark repo rate in 2026 according to public internet news?",
+      "provider_requested": "gemini",
+      "elapsed_seconds": 41.83,
+      "http_status": 201,
+      "model_used": null,
+      "provider_recorded": null,
+      "status": "error",
+      "tools_used": [],
+      "citations": [],
+      "reply": "Retrieved 4 relevant knowledge passages from official guides and policies."
+    }
+  ]
+}

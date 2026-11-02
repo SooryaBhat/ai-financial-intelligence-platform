@@ -22,15 +22,16 @@
     "00000000-0000-0000-0000-000000000002"
   ],
   "holdout_company": "00000000-0000-0000-0000-000000000003",
-  "training_period": "2022-07-31 to 2023-12-31",
-  "validation_period": "2024-01-01 to 2024-06-30",
-  "dev_test_period": "2024-07-01 to 2024-12-31",
+  "training_period": "2022-01-01 to 2025-06-30",
+  "validation_period": "2025-07-01 to 2025-12-31",
+  "dev_test_period": "2026-01-01 to 2026-10-31",
   "algorithm_artifacts": {
     "linear_regression": "revenue_forecasting_linear_regression.pkl",
     "xgboost": "revenue_forecasting_xgboost.pkl",
     "aagf_custom": "revenue_forecasting_aagf.pkl",
+    "calendar_seasonal": "revenue_forecasting_calendar_seasonal.pkl",
     "sarima": "revenue_forecasting_sarima.pkl"
   },
-  "selection_rationale": "Validation WAPE on Dev Companies (1 & 2) 2024-01-01 to 2024-06-30",
+  "selection_rationale": "Validation WAPE on Dev Companies (1 & 2) during 2025-07-01 to 2025-12-31",
   "synthetic_data_evaluation_only": true
 }

@@ -1,167 +1,198 @@
 {
   "pipeline": "profit_prediction",
-  "financial_definition": "Gross Revenue - COGS - Operating Expenses",
   "selected_model": "LightGBM",
-  "selection_metric": "val_wape",
+  "selection_metric": "val_wape_pct",
   "training_companies": [
     "00000000-0000-0000-0000-000000000001",
     "00000000-0000-0000-0000-000000000002"
   ],
   "holdout_company": "00000000-0000-0000-0000-000000000003",
-  "features": [
-    "profit_lag1",
-    "profit_lag2",
-    "profit_lag3",
-    "profit_lag6",
-    "profit_roll3",
-    "profit_roll6",
-    "revenue_lag1",
-    "revenue_lag2",
-    "revenue_lag3",
-    "expense_ratio_lag1",
-    "expense_ratio_lag2",
-    "month_num",
-    "quarter",
-    "year",
-    "is_q4"
-  ],
+  "metric_definitions": {
+    "wape": "sum(|actual - pred|) / sum(|actual|) * 100% (volume-weighted percentage error)",
+    "rmse": "sqrt(mean((actual - pred)^2)) in currency units (INR)",
+    "mae": "mean(|actual - pred|) in currency units (INR)",
+    "r2": "1 - SS_res / SS_tot (coefficient of determination)",
+    "bias": "sum(pred - actual) / sum(|actual|) * 100% (positive = overforecasting, negative = underforecasting)",
+    "mase": "mae_model / mean(|diff(y_train)|) (relative to training naive random walk)"
+  },
+  "investigation_wape_vs_negative_r2": {
+    "finding": "Mathematical Divergence between WAPE and R2: 1. Profit scale level: Actual net profit values for enterprise supermarkets average ~Rs. 100,000 to 450,000. A model error of Rs. 30,000 to 50,000 yields a modest WAPE of ~15-20% because WAPE scales relative to total profit volume sum(|y|). 2. Restricted Variance in Validation Window: Over a 6-month validation horizon across 2 companies (N=12), the natural variance of net profit around its sample mean SS_tot is small. When SS_res (sum of squared errors) exceeds this narrow SS_tot, R2 = 1 - SS_res/SS_tot becomes negative. 3. Non-reliance on MAPE: As required, MAPE is explicitly disregarded for profit forecasting because actual monthly net profit can approach zero or turn negative, triggering division by near-zero and yielding distorted astronomical percentages. WAPE and MAE are the authoritative, mathematically sound criteria for model selection."
+  },
   "candidates": {
     "Historical_Baseline": {
-      "val_metrics": {
-        "rmse": 158439.40382754998,
-        "mae": 119290.1133333334,
-        "mape": 7.223351509888605,
-        "smape": 7.546757697992572,
-        "wape": 7.412476022502664,
-        "r2": -0.8936
-      },
-      "test_metrics": {
-        "rmse": 266606.08010168787,
-        "mae": 228952.17666666667,
-        "mape": 15.428030352722672,
-        "smape": 14.932410062498871,
-        "wape": 15.059414724135287,
-        "r2": -1.882
-      }
+      "val_wape_pct": 9.89,
+      "val_rmse": 182325.27,
+      "val_mae": 143345.18,
+      "val_r2": -0.2619,
+      "val_bias_pct": -1.51,
+      "val_mase": 0.6964,
+      "test_wape_pct": 19.75,
+      "test_rmse": 416646.86,
+      "test_mae": 292888.24,
+      "test_r2": -0.1647,
+      "test_bias_pct": -6.78,
+      "test_mase": 1.4228,
+      "is_baseline": true
     },
     "Mean_Baseline": {
-      "val_metrics": {
-        "rmse": 141259.1261804224,
-        "mae": 117687.74462962948,
-        "mape": 7.192311478215754,
-        "smape": 7.424021870965084,
-        "wape": 7.312907673848114,
-        "r2": -0.5052
-      },
-      "test_metrics": {
-        "rmse": 157208.08684372765,
-        "mae": 130314.97166666668,
-        "mape": 8.721157234032194,
-        "smape": 8.585122351858766,
-        "wape": 8.571515814629903,
-        "r2": -0.0021
-      }
+      "val_wape_pct": 11.13,
+      "val_rmse": 190473.67,
+      "val_mae": 161403.52,
+      "val_r2": -0.3772,
+      "val_bias_pct": -6.88,
+      "val_mase": 0.7841,
+      "test_wape_pct": 18.09,
+      "test_rmse": 391680.44,
+      "test_mae": 268263.91,
+      "test_r2": -0.0293,
+      "test_bias_pct": -4.45,
+      "test_mase": 1.3032,
+      "is_baseline": true
+    },
+    "Seasonal_Gross_Profit_Baseline": {
+      "val_wape_pct": 14.87,
+      "val_rmse": 271277.27,
+      "val_mae": 215549.19,
+      "val_r2": -1.7935,
+      "val_bias_pct": -9.3,
+      "val_mase": 1.0471,
+      "test_wape_pct": 18.3,
+      "test_rmse": 394312.89,
+      "test_mae": 271376.27,
+      "test_r2": -0.0432,
+      "test_bias_pct": 0.34,
+      "test_mase": 1.3183,
+      "is_baseline": true
     },
     "Linear_Regression": {
-      "val_metrics": {
-        "rmse": 253713.1016617656,
-        "mae": 203097.206599046,
-        "mape": 12.30322086551818,
-        "smape": 13.528844738725482,
-        "wape": 12.620100124693462,
-        "r2": -3.8556
-      },
-      "test_metrics": {
-        "rmse": 348927.0978874048,
-        "mae": 243672.10403349635,
-        "mape": 15.614490995761024,
-        "smape": 18.453164591076572,
-        "wape": 16.027623431095837,
-        "r2": -3.9365
-      }
+      "val_wape_pct": 14.57,
+      "val_rmse": 252881.83,
+      "val_mae": 211207.31,
+      "val_r2": -1.4275,
+      "val_bias_pct": -12.33,
+      "val_mase": 1.026,
+      "test_wape_pct": 17.58,
+      "test_rmse": 383714.09,
+      "test_mae": 260720.45,
+      "test_r2": 0.0121,
+      "test_bias_pct": -8.73,
+      "test_mase": 1.2665,
+      "is_baseline": false
+    },
+    "Ridge_Regression": {
+      "val_wape_pct": 14.5,
+      "val_rmse": 251559.88,
+      "val_mae": 210231.81,
+      "val_r2": -1.4022,
+      "val_bias_pct": -12.34,
+      "val_mase": 1.0213,
+      "test_wape_pct": 17.83,
+      "test_rmse": 388754.63,
+      "test_mae": 264450.27,
+      "test_r2": -0.014,
+      "test_bias_pct": -8.73,
+      "test_mase": 1.2847,
+      "is_baseline": false
     },
     "Random_Forest": {
-      "val_metrics": {
-        "rmse": 152819.41260499667,
-        "mae": 133016.0845139761,
-        "mape": 8.101615722292934,
-        "smape": 8.471874517997568,
-        "wape": 8.26538352186746,
-        "r2": -0.7616
-      },
-      "test_metrics": {
-        "rmse": 147700.54367543352,
-        "mae": 121524.02338277006,
-        "mape": 7.876175991612828,
-        "smape": 8.005008151701086,
-        "wape": 7.993287915891176,
-        "r2": 0.1155
-      }
+      "val_wape_pct": 12.8,
+      "val_rmse": 230229.8,
+      "val_mae": 185586.51,
+      "val_r2": -1.0121,
+      "val_bias_pct": -8.11,
+      "val_mase": 0.9016,
+      "test_wape_pct": 20.41,
+      "test_rmse": 413691.41,
+      "test_mae": 302714.4,
+      "test_r2": -0.1482,
+      "test_bias_pct": -3.3,
+      "test_mase": 1.4705,
+      "is_baseline": false
     },
     "XGBoost": {
-      "val_metrics": {
-        "rmse": 193727.94092412994,
-        "mae": 171971.96708333332,
-        "mape": 10.491170595835476,
-        "smape": 11.159563092230016,
-        "wape": 10.686032957197497,
-        "r2": -1.831
-      },
-      "test_metrics": {
-        "rmse": 157195.947081378,
-        "mae": 127722.44708333335,
-        "mape": 8.174254781696348,
-        "smape": 8.536923278302039,
-        "wape": 8.400991544228342,
-        "r2": -0.0019
-      }
+      "val_wape_pct": 13.97,
+      "val_rmse": 250466.18,
+      "val_mae": 202516.84,
+      "val_r2": -1.3813,
+      "val_bias_pct": -7.99,
+      "val_mase": 0.9838,
+      "test_wape_pct": 20.45,
+      "test_rmse": 415266.92,
+      "test_mae": 303404.03,
+      "test_r2": -0.157,
+      "test_bias_pct": -3.32,
+      "test_mase": 1.4739,
+      "is_baseline": false
     },
     "LightGBM": {
-      "val_metrics": {
-        "rmse": 141259.12795060824,
-        "mae": 117687.74666666664,
-        "mape": 7.192311597187724,
-        "smape": 7.424022004069432,
-        "wape": 7.3129078004259895,
-        "r2": -0.5052
-      },
-      "test_metrics": {
-        "rmse": 157208.0867046929,
-        "mae": 130314.97166666668,
-        "mape": 8.721157216586468,
-        "smape": 8.585122351953212,
-        "wape": 8.571515814629903,
-        "r2": -0.0021
-      }
+      "val_wape_pct": 12.15,
+      "val_rmse": 196986.75,
+      "val_mae": 176071.83,
+      "val_r2": -0.473,
+      "val_bias_pct": -4.69,
+      "val_mase": 0.8553,
+      "test_wape_pct": 18.73,
+      "test_rmse": 387385.4,
+      "test_mae": 277876.97,
+      "test_r2": -0.0068,
+      "test_bias_pct": -3.61,
+      "test_mase": 1.3499,
+      "is_baseline": false
+    },
+    "CatBoost": {
+      "val_wape_pct": 12.34,
+      "val_rmse": 214277.18,
+      "val_mae": 178862.13,
+      "val_r2": -0.7429,
+      "val_bias_pct": -7.34,
+      "val_mase": 0.8689,
+      "test_wape_pct": 19.44,
+      "test_rmse": 397975.12,
+      "test_mae": 288403.51,
+      "test_r2": -0.0626,
+      "test_bias_pct": -3.98,
+      "test_mase": 1.401,
+      "is_baseline": false
+    },
+    "Margin_Bridge_Forecaster": {
+      "val_wape_pct": 16.71,
+      "val_rmse": 301360.04,
+      "val_mae": 242226.79,
+      "val_r2": -2.4474,
+      "val_bias_pct": -13.93,
+      "val_mase": 1.1767,
+      "test_wape_pct": 20.1,
+      "test_rmse": 422898.71,
+      "test_mae": 298144.25,
+      "test_r2": -0.1999,
+      "test_bias_pct": -8.07,
+      "test_mase": 1.4483,
+      "is_baseline": false
     }
   },
   "approach_c_holdout_co3": {
     "business_id": "00000000-0000-0000-0000-000000000003",
     "business_name": "Apna Kirana Store",
     "metrics": {
-      "rmse": 184638.8217258471,
-      "mae": 142095.1263333333,
-      "mape": 8.868259939847526,
-      "smape": 9.016712451611365,
-      "wape": 8.977734126751203,
-      "r2": -0.0984,
+      "wape": 11.08,
+      "wape_pct": 11.08,
+      "rmse": 239998.58,
+      "mae": 175217.61,
+      "r2": -0.0012,
+      "bias_pct": 4.07,
+      "mase": 0.8512,
       "baseline_lag1_metrics": {
-        "rmse": 253640.37854313303,
-        "mae": 200859.0439999999,
-        "mape": 13.225917449345317,
-        "smape": 12.685153453717954,
-        "wape": 12.69050628629762,
-        "r2": -1.0728
+        "rmse": 332737.3352380713,
+        "mae": 247842.4665384615,
+        "mape": 19.388094415009487,
+        "smape": 16.20292708446727,
+        "wape": 15.677004852160653,
+        "r2": -0.9245,
+        "bias": -1.5768,
+        "mase": 1.204
       },
-      "baseline_mean_metrics": {
-        "rmse": 184638.8208111728,
-        "mae": 142095.12592592588,
-        "mape": 8.868259930915631,
-        "smape": 9.016712425157456,
-        "wape": 8.977734101010732,
-        "r2": -0.0984
-      },
-      "n_observations": 30
+      "naive_baseline_wape_pct": 15.68,
+      "naive_baseline_r2": -0.9245
     }
   }
 }

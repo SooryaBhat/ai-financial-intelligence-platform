@@ -110,24 +110,26 @@ def update_model_registry() -> Dict[str, Any]:
                 "aagf": "ml/models/revenue_forecasting_aagf.pkl",
                 "linear_regression": "ml/models/revenue_forecasting_linear_regression.pkl",
                 "xgboost": "ml/models/revenue_forecasting_xgboost.pkl",
+                "calendar_seasonal": "ml/models/revenue_forecasting_calendar_seasonal.pkl",
                 "sarima": "ml/models/revenue_forecasting_sarima.pkl"
             },
             "artifact_exists": (MODELS_DIR / "revenue_forecasting_selected.pkl").exists(),
             "registered_at": datetime.now().isoformat(),
             "status": "production",
             "selection_metric": "val_wape",
-            "metrics": (rev_eval.get("candidates") or rev_eval.get("candidate_comparisons") or {}).get(rev_eval.get("selected_model", "AAGF_Custom"), {}),
+            "metrics": (rev_eval.get("candidates") or {}).get(rev_eval.get("selected_model", "AAGF_Custom"), {}),
             "holdout_company3_metrics": rev_eval.get("approach_c_holdout_company3_metrics", {})
         },
         "sales_forecasting": {
-            "selected_algorithm": sales_eval.get("selected_model", "AAGF_Custom"),
-            "model_name": "ALLADIN Adaptive Global Forecaster (AAGF) Product" if sales_eval.get("selected_model") == "AAGF_Custom" else sales_eval.get("selected_model"),
+            "selected_algorithm": sales_eval.get("selected_model", "Product_Profile_Forecaster"),
+            "model_name": sales_eval.get("selected_model", "Product_Profile_Forecaster"),
             "selected_artifact": "ml/models/sales_forecasting_selected.pkl",
             "artifact_file": "sales_forecasting_selected.pkl",
             "artifact_path": "ml/models/sales_forecasting_selected.pkl",
             "training_companies": DEV_CO,
             "holdout_company": HOLD_CO,
             "algorithm_artifacts": {
+                "product_profile": "ml/models/sales_forecasting_product_profile.pkl",
                 "aagf_product": "ml/models/sales_forecasting_aagf_product.pkl",
                 "xgb_product": "ml/models/sales_forecasting_xgb_product.pkl",
                 "lgb_product": "ml/models/sales_forecasting_lgb_product.pkl",
@@ -138,7 +140,7 @@ def update_model_registry() -> Dict[str, Any]:
             "registered_at": datetime.now().isoformat(),
             "status": "production",
             "selection_metric": "val_wape",
-            "metrics": sales_eval.get("candidates", {}).get(sales_eval.get("selected_model", "AAGF_Custom"), {}),
+            "metrics": sales_eval.get("candidates", {}).get(sales_eval.get("selected_model", "Product_Profile_Forecaster"), {}),
             "holdout_company3_metrics": sales_eval.get("approach_c_holdout_co3", {}).get("metrics", {})
         },
         "inventory_prediction": {
@@ -152,14 +154,15 @@ def update_model_registry() -> Dict[str, Any]:
             "algorithm_artifacts": {
                 "lightgbm": "ml/models/inventory_demand_lightgbm.pkl",
                 "xgboost": "ml/models/inventory_demand_xgboost.pkl",
-                "random_forest": "ml/models/inventory_demand_random_forest.pkl"
+                "random_forest": "ml/models/inventory_demand_random_forest.pkl",
+                "censored": "ml/models/inventory_demand_censored.pkl"
             },
             "artifact_exists": (MODELS_DIR / "inventory_demand_selected.pkl").exists(),
             "registered_at": datetime.now().isoformat(),
             "status": "production",
             "selection_metric": "val_wape",
             "metrics": inv_eval.get("demand_candidates", {}).get(inv_eval.get("selected_model", "LightGBM"), {}),
-            "dev_reorder_evaluation": inv_eval.get("dev_reorder_policy_evaluation") or inv_eval.get("independent_reorder_policy_evaluation", {}),
+            "dev_reorder_evaluation": inv_eval.get("dev_reorder_policy_evaluation", {}),
             "co3_reorder_evaluation": inv_eval.get("co3_reorder_policy_evaluation", {}),
             "holdout_company3_metrics": inv_eval.get("approach_c_holdout_co3", {}).get("metrics", {})
         },
@@ -175,7 +178,8 @@ def update_model_registry() -> Dict[str, Any]:
                 "lightgbm": "ml/models/profit_prediction_selected.pkl",
                 "random_forest": "ml/models/profit_prediction_random_forest.pkl",
                 "xgboost": "ml/models/profit_prediction_xgboost.pkl",
-                "linear_regression": "ml/models/profit_prediction_linear_regression.pkl"
+                "linear_regression": "ml/models/profit_prediction_linear_regression.pkl",
+                "margin_bridge": "ml/models/profit_prediction_margin_bridge.pkl"
             },
             "artifact_exists": (MODELS_DIR / "profit_prediction_selected.pkl").exists(),
             "registered_at": datetime.now().isoformat(),
@@ -185,55 +189,71 @@ def update_model_registry() -> Dict[str, Any]:
             "holdout_company3_metrics": profit_eval.get("approach_c_holdout_co3", {}).get("metrics", {})
         },
         "expense_prediction": {
-            "selected_algorithm": exp_eval.get("selected_model", "LightGBM"),
-            "model_name": exp_eval.get("selected_model", "LightGBM"),
+            "selected_algorithm": exp_eval.get("selected_model", "Random_Forest"),
+            "model_name": exp_eval.get("selected_model", "Random_Forest"),
             "selected_artifact": "ml/models/expense_prediction_selected.pkl",
             "artifact_file": "expense_prediction_selected.pkl",
             "artifact_path": "ml/models/expense_prediction_selected.pkl",
             "training_companies": DEV_CO,
             "holdout_company": HOLD_CO,
             "algorithm_artifacts": {
-                "lightgbm": "ml/models/expense_prediction_selected.pkl",
+                "random_forest": "ml/models/expense_prediction_selected.pkl",
                 "xgboost": "ml/models/expense_prediction_xgboost.pkl",
-                "linear_regression": "ml/models/expense_prediction_linear_regression.pkl"
+                "linear_regression": "ml/models/expense_prediction_linear_regression.pkl",
+                "recurring": "ml/models/expense_prediction_recurring.pkl"
             },
             "artifact_exists": (MODELS_DIR / "expense_prediction_selected.pkl").exists(),
             "registered_at": datetime.now().isoformat(),
             "status": "production",
             "selection_metric": "val_wape",
-            "metrics": exp_eval.get("candidates", {}).get(exp_eval.get("selected_model", "LightGBM"), {}),
+            "metrics": exp_eval.get("candidates", {}).get(exp_eval.get("selected_model", "Random_Forest"), {}),
             "holdout_company3_metrics": exp_eval.get("approach_c_holdout_co3", {}).get("metrics", {})
         },
         "business_health_score": {
-            "selected_algorithm": "TransparentKPIScorecard + " + health_eval.get("selected_transition_model", "Random_Forest"),
-            "model_name": "TransparentKPIScorecard + " + health_eval.get("selected_transition_model", "Random_Forest"),
-            "selected_artifact": "ml/models/health_score_pipeline.pkl",
-            "artifact_file": "health_score_pipeline.pkl",
-            "artifact_path": "ml/models/health_score_pipeline.pkl",
+            "selected_algorithm": "TransparentKPIScorecard + " + health_eval.get("selected_transition_model", "Linear_Regression"),
+            "model_name": "TransparentKPIScorecard + " + health_eval.get("selected_transition_model", "Linear_Regression"),
+            "selected_artifact": "ml/models/health_score_selected.pkl",
+            "artifact_file": "health_score_selected.pkl",
+            "artifact_path": "ml/models/health_score_selected.pkl",
+            "dataset_version": "synthetic_v2",
+            "training_period": "2022-01 to 2026-02",
             "training_companies": DEV_CO,
             "holdout_company": HOLD_CO,
-            "artifact_exists": (MODELS_DIR / "health_score_pipeline.pkl").exists(),
+            "algorithm_artifacts": {
+                "scorecard_pipeline": "ml/models/health_score_pipeline.pkl",
+                "transition_linear": "ml/models/health_score_selected.pkl"
+            },
+            "artifact_exists": (MODELS_DIR / "health_score_selected.pkl").exists(),
             "registered_at": datetime.now().isoformat(),
             "status": "production",
             "selection_metric": "val_mae",
             "scorecard_weights": health_eval.get("scorecard_weights", {}),
-            "transition_metrics": health_eval.get("transition_candidates", {}).get(health_eval.get("selected_transition_model", "Random_Forest"), {}),
+            "metrics": health_eval.get("transition_candidates", {}).get(health_eval.get("selected_transition_model", "Linear_Regression"), {}),
+            "transition_metrics": health_eval.get("transition_candidates", {}).get(health_eval.get("selected_transition_model", "Linear_Regression"), {}),
             "holdout_company3_metrics": health_eval.get("approach_c_holdout_co3", {}).get("metrics", {})
         },
         "anomaly_detection": {
-            "selected_algorithm": anomaly_eval.get("selected_model", "Isolation_Forest"),
-            "model_name": anomaly_eval.get("selected_model", "Isolation_Forest"),
-            "selected_artifact": "ml/models/anomaly_detection_isolation_forest.pkl",
-            "artifact_file": "anomaly_detection_isolation_forest.pkl",
-            "artifact_path": "ml/models/anomaly_detection_isolation_forest.pkl",
+            "selected_algorithm": anomaly_eval.get("selected_model", "Rule_Based_Detector"),
+            "model_name": anomaly_eval.get("selected_model", "Rule_Based_Detector"),
+            "selected_artifact": "ml/models/anomaly_detection_selected.pkl",
+            "artifact_file": "anomaly_detection_selected.pkl",
+            "artifact_path": "ml/models/anomaly_detection_selected.pkl",
             "secondary_config": "ml/models/anomaly_detection_lof_config.json",
+            "dataset_version": "synthetic_v2",
+            "training_period": "2022-01 to 2026-02",
             "training_companies": DEV_CO,
             "holdout_company": HOLD_CO,
-            "artifact_exists": (MODELS_DIR / "anomaly_detection_isolation_forest.pkl").exists(),
+            "algorithm_artifacts": {
+                "rule_based": "ml/models/anomaly_detection_rule_based.pkl",
+                "isolation_forest": "ml/models/anomaly_detection_isolation_forest.pkl",
+                "robust_mad": "ml/models/anomaly_detection_robust_mad.pkl",
+                "pca": "ml/models/anomaly_detection_pca.pkl"
+            },
+            "artifact_exists": (MODELS_DIR / "anomaly_detection_selected.pkl").exists(),
             "registered_at": datetime.now().isoformat(),
             "status": "production",
             "selection_metric": "val_f1_score",
-            "metrics": anomaly_eval.get("candidates", {}).get(anomaly_eval.get("selected_model", "Isolation_Forest"), {}),
+            "metrics": anomaly_eval.get("candidates", {}).get(anomaly_eval.get("selected_model", "Rule_Based_Detector"), {}),
             "holdout_company3_metrics": anomaly_eval.get("approach_c_holdout_co3", {}).get("metrics", {})
         }
     }
@@ -254,29 +274,35 @@ def update_model_registry() -> Dict[str, Any]:
         art = info.get("artifact_file", "N/A")
         mod = info.get("selected_algorithm", "N/A")
         m = info.get("metrics", {})
-        vm = m.get("val_metrics", {})
-        tm = m.get("test_metrics", {})
 
-        if "wape" in vm:
-            val_str = f"WAPE: {vm.get('wape'):.2f}%"
-            test_str = f"WAPE: {tm.get('wape'):.2f}%" if "wape" in tm else "N/A"
-        elif "f1_score" in vm:
-            val_str = f"F1: {vm.get('f1_score'):.4f}"
-            test_str = f"F1: {tm.get('f1_score'):.4f}" if "f1_score" in tm else "N/A"
-        elif "mae" in vm:
-            val_str = f"MAE: {vm.get('mae'):.2f} pts"
-            test_str = f"MAE: {tm.get('mae'):.2f} pts" if "mae" in tm else "N/A"
+        val_wape = m.get("val_wape_pct", m.get("val_wape"))
+        test_wape = m.get("test_wape_pct", m.get("test_wape"))
+
+        if pipe_name == "business_health_score" and "val_mae" in m:
+            val_str = f"MAE: {float(m.get('val_mae')):.2f} pts"
+            test_str = f"MAE: {float(m.get('test_mae')):.2f} pts" if "test_mae" in m else "N/A"
+        elif "val_f1_score" in m:
+            val_str = f"F1: {float(m.get('val_f1_score')):.4f}"
+            test_str = f"F1: {float(m.get('test_f1_score')):.4f}" if "test_f1_score" in m else "N/A"
+        elif val_wape is not None:
+            val_str = f"WAPE: {float(val_wape):.2f}%"
+            test_str = f"WAPE: {float(test_wape):.2f}%" if test_wape is not None else "N/A"
+        elif "val_mae" in m:
+            val_str = f"MAE: {float(m.get('val_mae')):.2f} pts"
+            test_str = f"MAE: {float(m.get('test_mae')):.2f} pts" if "test_mae" in m else "N/A"
         else:
             val_str = "Verified"
             test_str = "Verified"
 
         h = info.get("holdout_company3_metrics", {})
-        if "wape" in h or "wape_pct" in h:
-            h_str = f"WAPE: {h.get('wape', h.get('wape_pct')):.2f}%"
+        if pipe_name == "business_health_score" and "mae" in h:
+            h_str = f"MAE: {float(h.get('mae')):.2f} pts"
         elif "f1_score" in h:
-            h_str = f"F1: {h.get('f1_score'):.4f}"
+            h_str = f"F1: {float(h.get('f1_score')):.4f}"
+        elif "wape_pct" in h or "wape" in h:
+            h_str = f"WAPE: {float(h.get('wape_pct', h.get('wape'))):.2f}%"
         elif "mae" in h:
-            h_str = f"MAE: {h.get('mae'):.2f} pts"
+            h_str = f"MAE: {float(h.get('mae')):.2f} pts"
         else:
             h_str = "Evaluated"
 
@@ -372,17 +398,18 @@ def main() -> None:
     print_step_header("ALLADIN Part 2: Master ML Training Suite")
     start_total = time.time()
 
+    py_exe = f'"{sys.executable}"'
     pipeline_steps = [
-        ("python ml/datasets/synthetic/validate_synthetic_data.py", "Step 0: Validate Synthetic Dataset"),
-        ("python ml/scripts/preprocess.py", "Step 1: Preprocess Raw Synthetic Data"),
-        ("python ml/scripts/feature_engineering.py", "Step 2: Feature Engineering (All 6 Tables)"),
-        ("python ml/scripts/train_revenue.py", "Pipeline 1: Revenue Forecasting"),
-        ("python ml/scripts/train_sales.py", "Pipeline 2: Sales Forecasting (Product & Category)"),
-        ("python ml/scripts/train_inventory.py", "Pipeline 3: Inventory Demand & Reorders"),
-        ("python ml/scripts/train_profit.py", "Pipeline 4: Profit Prediction"),
-        ("python ml/scripts/train_expenses.py", "Pipeline 5: Operating Expense Forecasting"),
-        ("python ml/scripts/train_health_score.py", "Pipeline 6: Business Health Scoring"),
-        ("python ml/scripts/train_anomaly.py", "Pipeline 7: Transaction Anomaly Detection"),
+        (f"{py_exe} ml/datasets/synthetic/validate_synthetic_data.py", "Step 0: Validate Synthetic Dataset"),
+        (f"{py_exe} ml/scripts/preprocess.py", "Step 1: Preprocess Raw Synthetic Data"),
+        (f"{py_exe} ml/scripts/feature_engineering.py", "Step 2: Feature Engineering (All 6 Tables)"),
+        (f"{py_exe} ml/scripts/train_revenue.py", "Pipeline 1: Revenue Forecasting"),
+        (f"{py_exe} ml/scripts/train_sales.py", "Pipeline 2: Sales Forecasting (Product & Category)"),
+        (f"{py_exe} ml/scripts/train_inventory.py", "Pipeline 3: Inventory Demand & Reorders"),
+        (f"{py_exe} ml/scripts/train_profit.py", "Pipeline 4: Profit Prediction"),
+        (f"{py_exe} ml/scripts/train_expenses.py", "Pipeline 5: Operating Expense Forecasting"),
+        (f"{py_exe} ml/scripts/train_health_score.py", "Pipeline 6: Business Health Scoring"),
+        (f"{py_exe} ml/scripts/train_anomaly.py", "Pipeline 7: Transaction Anomaly Detection"),
     ]
 
     summary = {

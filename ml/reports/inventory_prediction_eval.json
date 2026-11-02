@@ -1,212 +1,324 @@
 {
   "pipeline": "inventory_demand_and_reorder_prediction",
   "selected_model": "LightGBM",
-  "selection_metric": "val_wape",
+  "selection_metric": "val_wape_pct",
   "training_companies": [
     "00000000-0000-0000-0000-000000000001",
     "00000000-0000-0000-0000-000000000002"
   ],
   "holdout_company": "00000000-0000-0000-0000-000000000003",
-  "features": [
-    "lag_1",
-    "lag_2",
-    "lag_3",
-    "lag_6",
-    "roll3_mean",
-    "roll6_mean",
-    "month_num",
-    "quarter",
-    "year",
-    "is_q4",
-    "is_q1"
-  ],
+  "sample_counts": {
+    "train_rows": 4902,
+    "val_rows": 926,
+    "test_rows": 1500,
+    "holdout_co3_rows": 4443
+  },
+  "metric_definitions": {
+    "wape": "sum(|actual - pred|) / sum(|actual|) * 100% (volume-weighted percentage error)",
+    "rmse": "sqrt(mean((actual - pred)^2)) in unit quantities",
+    "mae": "mean(|actual - pred|) in unit quantities",
+    "r2": "1 - SS_res / SS_tot (coefficient of determination)",
+    "bias": "sum(pred - actual) / sum(|actual|) * 100% (positive = overforecasting, negative = underforecasting)",
+    "mase": "mae_model / mean(|diff(y_train)|) (relative to training naive random walk)"
+  },
+  "dataset_limitations": {
+    "finding": "Product-level demand in synthetic_v2 exhibits stochastic variance due to discrete uniform transaction generation across 300 SKUs (noise floor ~56-58% WAPE).",
+    "stockout_impact": "54 stockout events observed in raw transactions with 63% demand suppression. Censored demand models adjust for stockout clipping, but real-world unconstrained demand logs are required for lower variance."
+  },
   "demand_candidates": {
     "Demand_History_Baseline": {
-      "val_metrics": {
-        "rmse": 17.815787176750643,
-        "mae": 12.354545454545455,
-        "mape": 160.80605469998292,
-        "smape": 76.48424707795223,
-        "wape": 78.75977977397855,
-        "r2": -0.9482
-      },
-      "test_metrics": {
-        "rmse": 19.215073448182487,
-        "mae": 13.284656084656085,
-        "mape": 169.3107700335165,
-        "smape": 78.51548785226223,
-        "wape": 79.77885104219624,
-        "r2": -1.0221
-      }
+      "val_wape_pct": 79.98,
+      "val_rmse": 19.56,
+      "val_mae": 13.83,
+      "val_r2": -0.8334,
+      "val_bias_pct": -3.04,
+      "val_mase": 1.1084,
+      "test_wape_pct": 79.36,
+      "test_rmse": 18.59,
+      "test_mae": 13.25,
+      "test_r2": -0.9081,
+      "test_bias_pct": 2.24,
+      "test_mase": 1.0618,
+      "is_baseline": true
     },
     "Moving_Average_Baseline": {
-      "val_metrics": {
-        "rmse": 14.513242820669582,
-        "mae": 10.369318181818182,
-        "mape": 151.58772316395846,
-        "smape": 65.21464415698486,
-        "wape": 66.10402781802375,
-        "r2": -0.2929
-      },
-      "test_metrics": {
-        "rmse": 15.395850620973413,
-        "mae": 10.7015873015873,
-        "mape": 150.02102696432195,
-        "smape": 64.88250326877304,
-        "wape": 64.26664972038637,
-        "r2": -0.2981
-      }
+      "val_wape_pct": 64.26,
+      "val_rmse": 15.94,
+      "val_mae": 11.11,
+      "val_r2": -0.2176,
+      "val_bias_pct": -5.02,
+      "val_mase": 0.8905,
+      "test_wape_pct": 67.07,
+      "test_rmse": 15.28,
+      "test_mae": 11.2,
+      "test_r2": -0.2899,
+      "test_bias_pct": 2.98,
+      "test_mase": 0.8973,
+      "is_baseline": true
+    },
+    "Product_Historical_Mean_Baseline": {
+      "val_wape_pct": 56.95,
+      "val_rmse": 14.44,
+      "val_mae": 9.85,
+      "val_r2": 0.0013,
+      "val_bias_pct": -9.52,
+      "val_mase": 0.7892,
+      "test_wape_pct": 56.89,
+      "test_rmse": 13.43,
+      "test_mae": 9.5,
+      "test_r2": 0.0045,
+      "test_bias_pct": -5.61,
+      "test_mase": 0.7611,
+      "is_baseline": true
+    },
+    "Seasonal_Naive": {
+      "val_wape_pct": 73.61,
+      "val_rmse": 18.35,
+      "val_mae": 12.73,
+      "val_r2": -0.6135,
+      "val_bias_pct": -4.8,
+      "val_mase": 1.0202,
+      "test_wape_pct": 80.61,
+      "test_rmse": 19.12,
+      "test_mae": 13.45,
+      "test_r2": -1.0185,
+      "test_bias_pct": 1.21,
+      "test_mase": 1.0784,
+      "is_baseline": true
+    },
+    "Linear_Regression": {
+      "val_wape_pct": 57.94,
+      "val_rmse": 14.29,
+      "val_mae": 10.02,
+      "val_r2": 0.0219,
+      "val_bias_pct": -2.12,
+      "val_mase": 0.803,
+      "test_wape_pct": 59.45,
+      "test_rmse": 13.5,
+      "test_mae": 9.92,
+      "test_r2": -0.0068,
+      "test_bias_pct": -0.22,
+      "test_mase": 0.7954,
+      "is_baseline": false
     },
     "Random_Forest": {
-      "val_metrics": {
-        "rmse": 13.36474885718879,
-        "mae": 9.357239652682976,
-        "mape": 151.43473223845547,
-        "smape": 60.012790452832846,
-        "wape": 59.65206385367298,
-        "r2": -0.0963
-      },
-      "test_metrics": {
-        "rmse": 13.766544547218178,
-        "mae": 9.35627838707071,
-        "mape": 140.35347826120756,
-        "smape": 58.29801767129088,
-        "wape": 56.18761486897446,
-        "r2": -0.0379
-      }
+      "val_wape_pct": 57.74,
+      "val_rmse": 14.42,
+      "val_mae": 9.98,
+      "val_r2": 0.0038,
+      "val_bias_pct": -3.5,
+      "val_mase": 0.8002,
+      "test_wape_pct": 59.13,
+      "test_rmse": 13.63,
+      "test_mae": 9.87,
+      "test_r2": -0.0256,
+      "test_bias_pct": -3.78,
+      "test_mase": 0.791,
+      "is_baseline": false
     },
     "XGBoost": {
-      "val_metrics": {
-        "rmse": 13.072886080842622,
-        "mae": 9.262436254457993,
-        "mape": 147.71560584113047,
-        "smape": 60.31971856411115,
-        "wape": 59.04769562389912,
-        "r2": -0.049
-      },
-      "test_metrics": {
-        "rmse": 13.735343921207894,
-        "mae": 9.30149631601162,
-        "mape": 137.59841757618355,
-        "smape": 58.15837048900042,
-        "wape": 55.858630011635626,
-        "r2": -0.0332
-      }
+      "val_wape_pct": 57.08,
+      "val_rmse": 14.32,
+      "val_mae": 9.87,
+      "val_r2": 0.0172,
+      "val_bias_pct": -5.63,
+      "val_mase": 0.7911,
+      "test_wape_pct": 58.38,
+      "test_rmse": 13.53,
+      "test_mae": 9.75,
+      "test_r2": -0.0107,
+      "test_bias_pct": -4.76,
+      "test_mase": 0.7811,
+      "is_baseline": false
     },
     "LightGBM": {
-      "val_metrics": {
-        "rmse": 12.946215470130014,
-        "mae": 9.155816946640423,
-        "mape": 146.38502044370708,
-        "smape": 60.03017213880386,
-        "wape": 58.36800139846111,
-        "r2": -0.0287
-      },
-      "test_metrics": {
-        "rmse": 13.636079109850709,
-        "mae": 9.257264832772938,
-        "mape": 137.14939459433182,
-        "smape": 58.18084571615947,
-        "wape": 55.59300500108303,
-        "r2": -0.0183
-      }
+      "val_wape_pct": 56.88,
+      "val_rmse": 14.3,
+      "val_mae": 9.84,
+      "val_r2": 0.0203,
+      "val_bias_pct": -6.02,
+      "val_mase": 0.7883,
+      "test_wape_pct": 58.19,
+      "test_rmse": 13.5,
+      "test_mae": 9.71,
+      "test_r2": -0.0069,
+      "test_bias_pct": -5.16,
+      "test_mase": 0.7785,
+      "is_baseline": false
+    },
+    "Croston_Method": {
+      "val_wape_pct": 60.31,
+      "val_rmse": 16.44,
+      "val_mae": 10.43,
+      "val_r2": -0.2949,
+      "val_bias_pct": -45.38,
+      "val_mase": 0.8358,
+      "test_wape_pct": 60.16,
+      "test_rmse": 15.28,
+      "test_mae": 10.04,
+      "test_r2": -0.2901,
+      "test_bias_pct": -43.42,
+      "test_mase": 0.8049,
+      "is_baseline": false
+    },
+    "SBA_Method": {
+      "val_wape_pct": 61.91,
+      "val_rmse": 16.79,
+      "val_mae": 10.7,
+      "val_r2": -0.3506,
+      "val_bias_pct": -49.47,
+      "val_mase": 0.858,
+      "test_wape_pct": 61.75,
+      "test_rmse": 15.63,
+      "test_mae": 10.31,
+      "test_r2": -0.3496,
+      "test_bias_pct": -47.66,
+      "test_mase": 0.8261,
+      "is_baseline": false
+    },
+    "Censored_Demand_Forecaster": {
+      "val_wape_pct": 57.94,
+      "val_rmse": 14.29,
+      "val_mae": 10.02,
+      "val_r2": 0.0219,
+      "val_bias_pct": -2.11,
+      "val_mase": 0.803,
+      "test_wape_pct": 59.45,
+      "test_rmse": 13.5,
+      "test_mae": 9.92,
+      "test_r2": -0.0067,
+      "test_bias_pct": -0.22,
+      "test_mase": 0.7953,
+      "is_baseline": false
     }
   },
   "dev_reorder_policy_evaluation": {
-    "evaluation_type": "Multi-period chronological evaluation with boundary simulation and native baseline audit",
-    "test_period_total_observations": 945,
-    "unique_products_evaluated": 200,
-    "safety_stock_units": 10.32,
-    "lead_time_days": 7,
-    "boundary_simulation_metrics": {
-      "description": "Replenishment decision accuracy when stock varies around the reorder threshold (0.5x to 1.5x ROP)",
-      "sample_size": 945,
-      "true_positives": 413,
-      "false_positives": 60,
-      "false_negatives": 77,
-      "true_negatives": 395,
-      "precision": 0.8732,
-      "recall": 0.8429,
-      "f1_score": 0.8577,
-      "accuracy": 0.855,
-      "positive_support_count": 490,
-      "positive_support_pct": 51.85
+    "sample_size": 1500,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1_score": 0.0,
+    "service_level_pct": 100.0,
+    "confusion_matrix": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 1500
     },
+    "safety_stock_units": 11.37,
+    "lead_time_days": 7.0,
     "native_baseline_audit": {
-      "description": "Evaluation on native synthetic inventory where buffer stock was high (~1,200 units vs ~18 monthly sales)",
-      "sample_size": 200,
+      "sample_size": 1500,
       "true_positives": 0,
-      "false_positives": 0,
-      "false_negatives": 0,
-      "true_negatives": 200,
-      "precision": null,
-      "recall": null,
-      "f1_score": null,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
       "service_level_pct": 100.0,
-      "limitation": "Native synthetic inventory generator maintained excess buffer stock; zero natural stockout events occurred. Claiming F1=1.0 on zero positive support is mathematically degenerate; boundary simulation provides the genuine predictive policy score."
+      "confusion_matrix": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "tn": 1500
+      },
+      "safety_stock_units": 11.37,
+      "lead_time_days": 7.0,
+      "audit_note": "Under normal ERP inventory stock levels, safety buffers prevent depletion below ROP; true positives = 0."
+    },
+    "boundary_simulation_metrics": {
+      "sample_size": 1500,
+      "positive_support_count": 741,
+      "true_positives": 686,
+      "precision": 0.8979,
+      "recall": 0.9258,
+      "f1_score": 0.9116,
+      "service_level_pct": 91.13,
+      "confusion_matrix": {
+        "tp": 686,
+        "fp": 78,
+        "fn": 55,
+        "tn": 681
+      },
+      "simulation_methodology": "Uniform stress perturbation around calculated ROP boundary"
     }
   },
   "co3_reorder_policy_evaluation": {
-    "evaluation_type": "Multi-period chronological evaluation with boundary simulation and native baseline audit",
-    "test_period_total_observations": 534,
-    "unique_products_evaluated": 100,
-    "safety_stock_units": 10.32,
-    "lead_time_days": 7,
-    "boundary_simulation_metrics": {
-      "description": "Replenishment decision accuracy when stock varies around the reorder threshold (0.5x to 1.5x ROP)",
-      "sample_size": 534,
-      "true_positives": 232,
-      "false_positives": 21,
-      "false_negatives": 66,
-      "true_negatives": 215,
-      "precision": 0.917,
-      "recall": 0.7785,
-      "f1_score": 0.8421,
-      "accuracy": 0.8371,
-      "positive_support_count": 298,
-      "positive_support_pct": 55.81
+    "sample_size": 926,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1_score": 0.0,
+    "service_level_pct": 100.0,
+    "confusion_matrix": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "tn": 926
     },
+    "safety_stock_units": 11.37,
+    "lead_time_days": 7.0,
     "native_baseline_audit": {
-      "description": "Evaluation on native synthetic inventory where buffer stock was high (~1,200 units vs ~18 monthly sales)",
-      "sample_size": 100,
+      "sample_size": 926,
       "true_positives": 0,
-      "false_positives": 0,
-      "false_negatives": 0,
-      "true_negatives": 100,
-      "precision": null,
-      "recall": null,
-      "f1_score": null,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
       "service_level_pct": 100.0,
-      "limitation": "Native synthetic inventory generator maintained excess buffer stock; zero natural stockout events occurred. Claiming F1=1.0 on zero positive support is mathematically degenerate; boundary simulation provides the genuine predictive policy score."
+      "confusion_matrix": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "tn": 926
+      },
+      "safety_stock_units": 11.37,
+      "lead_time_days": 7.0,
+      "audit_note": "Under normal ERP inventory stock levels, safety buffers prevent depletion below ROP; true positives = 0."
+    },
+    "boundary_simulation_metrics": {
+      "sample_size": 926,
+      "positive_support_count": 464,
+      "true_positives": 408,
+      "precision": 0.9007,
+      "recall": 0.8793,
+      "f1_score": 0.8899,
+      "service_level_pct": 89.09,
+      "confusion_matrix": {
+        "tp": 408,
+        "fp": 45,
+        "fn": 56,
+        "tn": 417
+      },
+      "simulation_methodology": "Uniform stress perturbation around calculated ROP boundary"
     }
   },
   "approach_c_holdout_co3": {
     "business_id": "00000000-0000-0000-0000-000000000003",
     "business_name": "Apna Kirana Store",
     "metrics": {
-      "rmse": 15.28797570055675,
-      "mae": 10.545407068428784,
-      "mape": 119.53463723688911,
-      "smape": 58.54329533009789,
-      "wape": 54.59132109122464,
-      "r2": -0.0816,
+      "wape": 53.7,
+      "wape_pct": 53.7,
+      "rmse": 16.51,
+      "mae": 11.14,
+      "r2": -0.0744,
+      "bias_pct": -21.43,
+      "mase": 0.8927,
       "baseline_lag1_metrics": {
-        "rmse": 20.68759371103615,
-        "mae": 15.073281185673116,
-        "mape": 161.65148741905895,
-        "smape": 78.55193179007645,
-        "wape": 78.03115875620725,
-        "r2": -0.9805
+        "rmse": 22.475469910393425,
+        "mae": 16.185685347738016,
+        "mape": 167.06867242169417,
+        "smape": 77.84693134689574,
+        "wape": 78.04414828963363,
+        "r2": -0.9919,
+        "bias": -0.4829,
+        "mase": 1.2973
       },
       "baseline_ma_metrics": {
-        "rmse": 16.873520787455565,
-        "mae": 12.383696994648004,
-        "mape": 148.49555310167867,
-        "smape": 65.29111133867308,
-        "wape": 64.10775558918182,
-        "r2": -0.3176
-      },
-      "n_observations": 2429
+        "rmse": 18.232766959023778,
+        "mae": 13.27496436341811,
+        "mape": 149.99643353929156,
+        "smape": 64.86094482411889,
+        "wape": 64.00923192683915,
+        "r2": -0.3109,
+        "bias": -1.1525,
+        "mase": 1.064
+      }
     }
   }
 }
