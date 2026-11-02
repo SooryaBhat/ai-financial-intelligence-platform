@@ -1,0 +1,24 @@
+{
+  "company_id": "33333333-0000-0000-0000-000000000001",
+  "company_name": "ALLADIN Supermarket Retail Ltd",
+  "date_range": "2026-01-01 to 2026-10-26",
+  "total_sales_count": 918,
+  "total_sale_items_count": 918,
+  "total_revenue_inr": 445326.62,
+  "total_cogs_inr": 329296.0,
+  "gross_profit_inr": 116030.62,
+  "gross_margin_pct": 26.06,
+  "total_operating_expenses_inr": 303500.0,
+  "net_operating_profit_inr": -187469.38,
+  "operating_margin_pct": -42.1,
+  "total_purchases_count": 40,
+  "total_purchase_items_count": 800,
+  "total_stock_movements_count": 1718,
+  "total_invoices_count": 918,
+  "total_payments_count": 918,
+  "reconciliation_checks": {
+    "negative_stock_violations": 0,
+    "unreconciled_invoices": 0,
+    "sale_items_total_matches_sales_header": true
+  }
+}

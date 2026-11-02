@@ -10,11 +10,16 @@
     "roll3_mean",
     "roll6_mean",
     "roll3_std",
+    "prod_hist_mean",
+    "lag_1_norm",
+    "roll3_norm",
+    "sales_momentum",
     "month_num",
     "quarter",
     "year",
     "is_q4",
-    "is_q1"
+    "is_q1",
+    "festive_q4"
   ],
   "training_companies": [
     "00000000-0000-0000-0000-000000000001",

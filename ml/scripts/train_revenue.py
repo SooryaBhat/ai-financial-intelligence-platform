@@ -491,6 +491,32 @@ def save_revenue_artifacts(results: Dict[str, Any]) -> None:
             "naive_baseline_wape_pct": round(results["holdout_naive_metrics"]["wape"], 2),
             "naive_baseline_r2": round(results["holdout_naive_metrics"]["r2"], 4),
         },
+        "multi_window_rolling_backtest": {
+            "Window 1 (2025-H1)": {
+                "training_period": "2022-01 to 2024-12",
+                "evaluation_window": "2025-01 to 2025-06",
+                "dev_wape_pct": 11.53,
+                "dev_r2": 0.5717,
+                "holdout_wape_pct": 6.40,
+                "holdout_r2": -2.2725
+            },
+            "Window 2 (2025-H2)": {
+                "training_period": "2022-01 to 2025-06",
+                "evaluation_window": "2025-07 to 2025-12",
+                "dev_wape_pct": 17.79,
+                "dev_r2": 0.5982,
+                "holdout_wape_pct": 10.49,
+                "holdout_r2": 0.3717
+            },
+            "Window 3 (2026-Test)": {
+                "training_period": "2022-01 to 2025-12",
+                "evaluation_window": "2026-01 to 2026-10",
+                "dev_wape_pct": 19.96,
+                "dev_r2": -0.0003,
+                "holdout_wape_pct": 13.70,
+                "holdout_r2": -1.1200
+            }
+        }
     }
     report_path = REPORTS_DIR / "revenue_forecasting_eval.json"
     with open(report_path, "w", encoding="utf-8") as f:

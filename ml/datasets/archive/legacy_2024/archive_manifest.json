@@ -1,0 +1,29 @@
+{
+  "archive_version": "legacy_v1_2024",
+  "archived_at": "2026-10-25T22:18:09.337861",
+  "effective_date_range": [
+    "2022-01-01",
+    "2024-12-31"
+  ],
+  "reason": "Preserving original 2022-2024 processed and feature tables prior to full 2026 reconciliation.",
+  "archived_processed_files": [
+    "anomaly_features.csv",
+    "daily_kpi_clean.csv",
+    "expenses_clean.csv",
+    "expense_features.csv",
+    "inventory_clean.csv",
+    "inventory_features.csv",
+    "invoices_clean.csv",
+    "monthly_expense_features.csv",
+    "monthly_prod_features.csv",
+    "monthly_sales_features.csv",
+    "payments_clean.csv",
+    "products_clean.csv",
+    "profit_features.csv",
+    "revenue_features.csv",
+    "sales_clean.csv",
+    "sales_features.csv",
+    "sale_items_clean.csv",
+    "stock_movements_clean.csv"
+  ]
+}

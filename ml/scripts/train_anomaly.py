@@ -43,6 +43,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, average_precision_score
+from catboost import CatBoostClassifier
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
@@ -52,10 +53,13 @@ from utils import (
 )
 from custom_models.anomaly_detectors import (
     RuleBasedAnomalyDetector, RobustMADAnomalyDetector,
-    PCAReconstructionAnomalyDetector, ContextAwareAnomalyDetector
+    PCAReconstructionAnomalyDetector, ContextAwareAnomalyDetector,
+    CatBoostAnomalyDetector
 )
 
 logger = get_logger(__name__)
+
+
 
 FEATURE_COLS = [
     "net_amount", "discount_pct", "day_of_week", "is_weekend",
@@ -100,6 +104,11 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_sco
     neg_mask = (y_true == 0)
     fpr = float(np.sum((y_pred == 1) & neg_mask) / max(1, np.sum(neg_mask)))
 
+    tp = int(np.sum((y_true == 1) & (y_pred == 1)))
+    fp = int(np.sum((y_true == 0) & (y_pred == 1)))
+    fn = int(np.sum((y_true == 1) & (y_pred == 0)))
+    tn = int(np.sum((y_true == 0) & (y_pred == 0)))
+
     metrics = {
         "precision": round(p, 4),
         "recall": round(r, 4),
@@ -107,6 +116,12 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_sco
         "false_positive_rate": round(fpr, 4),
         "total_anomalies_actual": int(np.sum(y_true)),
         "total_anomalies_flagged": int(np.sum(y_pred)),
+        "confusion_matrix": {
+            "true_positives": tp,
+            "false_positives": fp,
+            "false_negatives": fn,
+            "true_negatives": tn
+        }
     }
 
     if y_scores is not None and len(np.unique(y_true)) > 1:
@@ -296,6 +311,34 @@ def train_and_evaluate_candidates(
         "is_baseline": False,
     }
 
+    # 9. Supervised CatBoost Anomaly Detector (Trained strictly on Dev Train, Threshold tuned on Dev Val)
+    cb_clf = CatBoostClassifier(iterations=150, depth=4, learning_rate=0.05, verbose=0, random_seed=42, auto_class_weights='Balanced')
+    cb_clf.fit(X_train_raw, train_df["is_anomaly_int"])
+
+    val_probs_cb = cb_clf.predict_proba(X_val_raw)[:, 1]
+    best_th = 0.5
+    best_f1_th = 0.0
+    for th_cand in np.arange(0.2, 0.95, 0.05):
+        cand_p = (val_probs_cb >= th_cand).astype(int)
+        cand_f1 = f1_score(y_val, cand_p, zero_division=0)
+        if cand_f1 > best_f1_th:
+            best_f1_th = cand_f1
+            best_th = float(th_cand)
+
+    cb_detector = CatBoostAnomalyDetector(cb_clf, threshold=best_th, feature_cols=FEATURE_COLS)
+    val_pred_cb = (cb_detector.predict(val_df) == -1).astype(int)
+    test_pred_cb = (cb_detector.predict(test_df) == -1).astype(int)
+    val_scores_cb = -cb_detector.decision_function(val_df)
+    test_scores_cb = -cb_detector.decision_function(test_df)
+
+    candidates["Supervised_CatBoost"] = {
+        "val_metrics": compute_classification_metrics(y_val, val_pred_cb, val_scores_cb),
+        "test_metrics": compute_classification_metrics(y_test, test_pred_cb, test_scores_cb),
+        "model": cb_detector,
+        "tuned_threshold": round(best_th, 4),
+        "is_baseline": False,
+    }
+
     # Contamination sensitivity curve
     sensitivity_curve = evaluate_contamination_sensitivity(X_train_scaled, X_val_scaled, y_val)
 
@@ -316,6 +359,9 @@ def train_and_evaluate_candidates(
         elif best_name == "PCA_Reconstruction_Detector":
             h_pred = (best_model.predict(holdout_co3_df[FEATURE_COLS]) == -1).astype(int)
             h_scores = -best_model.decision_function(holdout_co3_df[FEATURE_COLS])
+        elif best_name == "Supervised_CatBoost":
+            h_pred = (best_model.predict(holdout_co3_df) == -1).astype(int)
+            h_scores = -best_model.decision_function(holdout_co3_df)
         else:
             h_pred = (best_model.predict(holdout_co3_df) == -1).astype(int)
             h_scores = None
@@ -332,6 +378,7 @@ def train_and_evaluate_candidates(
         "mad": mad_detector,
         "pca": pca_detector,
         "context": context_detector,
+        "catboost": cb_detector,
         "scaler": scaler
     }
 
@@ -374,6 +421,18 @@ def run_pipeline() -> Dict[str, Any]:
     save_model(
         {"model": models_dict["pca"], "feature_cols": FEATURE_COLS, "algorithm": "PCAReconstructionAnomalyDetector"},
         "anomaly_detection_pca.pkl",
+        MODELS_DIR
+    )
+    save_model(
+        {
+            "model": models_dict["catboost"],
+            "feature_cols": FEATURE_COLS,
+            "algorithm": "Supervised_CatBoost",
+            "threshold": models_dict["catboost"].threshold,
+            "training_companies": DEV_COMPANIES,
+            "holdout_company": HOLDOUT_COMPANY,
+        },
+        "anomaly_detection_catboost.pkl",
         MODELS_DIR
     )
     save_model(

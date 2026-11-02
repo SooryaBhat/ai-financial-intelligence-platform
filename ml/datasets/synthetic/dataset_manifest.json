@@ -1,0 +1,306 @@
+{
+  "dataset_version": "synthetic_v2",
+  "status": "authoritative_raw",
+  "created_at": "2026-10-25T22:18:27.147260",
+  "effective_date_range": [
+    "2022-01-01",
+    "2026-10-21"
+  ],
+  "consecutive_calendar_days": 1755,
+  "total_records": 142791,
+  "table_count": 18,
+  "random_seed": 42,
+  "generator_script": "ml/datasets/synthetic/generate_synthetic_data.py",
+  "validation_suite": "ml/datasets/synthetic/validate_synthetic_data.py",
+  "validation_status": "100% PASSED (0 FAIL, 0 ERROR)",
+  "companies": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "name": "FreshMart Hypermarket Ltd",
+      "industry": "Supermarket",
+      "margin": 0.263
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "name": "GreenRoots Gourmet & Organics",
+      "industry": "Specialty Retail",
+      "margin": 0.355
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000003",
+      "name": "Apna Kirana QuickRetail",
+      "industry": "Grocery",
+      "margin": 0.218
+    }
+  ],
+  "table_statistics": {
+    "branches.csv": {
+      "rows": 9,
+      "cols": 6,
+      "columns": [
+        "id",
+        "company_id",
+        "name",
+        "city",
+        "is_headquarters",
+        "created_at"
+      ]
+    },
+    "categories.csv": {
+      "rows": 90,
+      "cols": 6,
+      "columns": [
+        "id",
+        "company_id",
+        "name",
+        "type",
+        "description",
+        "created_at"
+      ]
+    },
+    "companies.csv": {
+      "rows": 3,
+      "cols": 6,
+      "columns": [
+        "id",
+        "name",
+        "industry",
+        "country",
+        "currency",
+        "created_at"
+      ]
+    },
+    "customers.csv": {
+      "rows": 510,
+      "cols": 9,
+      "columns": [
+        "id",
+        "company_id",
+        "name",
+        "email",
+        "phone",
+        "city",
+        "customer_type",
+        "credit_limit",
+        "created_at"
+      ]
+    },
+    "daily_kpi_summary.csv": {
+      "rows": 5265,
+      "cols": 13,
+      "columns": [
+        "company_id",
+        "date",
+        "revenue",
+        "cogs",
+        "gross_profit",
+        "operating_expenses",
+        "net_profit",
+        "order_count",
+        "units_sold",
+        "unconstrained_demand_units",
+        "stockout_count",
+        "low_stock_skus",
+        "is_anomaly"
+      ]
+    },
+    "expenses.csv": {
+      "rows": 4748,
+      "cols": 12,
+      "columns": [
+        "id",
+        "company_id",
+        "branch_id",
+        "user_id",
+        "category_id",
+        "category",
+        "description",
+        "amount",
+        "expense_date",
+        "status",
+        "is_anomaly",
+        "created_at"
+      ]
+    },
+    "inventory.csv": {
+      "rows": 581,
+      "cols": 7,
+      "columns": [
+        "id",
+        "product_id",
+        "warehouse_id",
+        "quantity_on_hand",
+        "reorder_level",
+        "reorder_quantity",
+        "updated_at"
+      ]
+    },
+    "invoices.csv": {
+      "rows": 14878,
+      "cols": 12,
+      "columns": [
+        "id",
+        "company_id",
+        "invoice_type",
+        "sale_id",
+        "customer_id",
+        "invoice_number",
+        "invoice_date",
+        "due_date",
+        "total_amount",
+        "paid_amount",
+        "status",
+        "created_at"
+      ]
+    },
+    "payments.csv": {
+      "rows": 16010,
+      "cols": 8,
+      "columns": [
+        "id",
+        "company_id",
+        "reference_type",
+        "reference_id",
+        "amount",
+        "payment_method",
+        "payment_date",
+        "created_at"
+      ]
+    },
+    "products.csv": {
+      "rows": 300,
+      "cols": 10,
+      "columns": [
+        "id",
+        "company_id",
+        "category_id",
+        "name",
+        "sku",
+        "cost_price",
+        "selling_price",
+        "unit",
+        "is_active",
+        "created_at"
+      ]
+    },
+    "purchase_items.csv": {
+      "rows": 9853,
+      "cols": 6,
+      "columns": [
+        "id",
+        "purchase_id",
+        "product_id",
+        "quantity",
+        "unit_cost",
+        "line_total"
+      ]
+    },
+    "purchases.csv": {
+      "rows": 4641,
+      "cols": 12,
+      "columns": [
+        "id",
+        "company_id",
+        "branch_id",
+        "supplier_id",
+        "user_id",
+        "purchase_date",
+        "status",
+        "total_amount",
+        "tax_amount",
+        "net_amount",
+        "payment_status",
+        "created_at"
+      ]
+    },
+    "sale_items.csv": {
+      "rows": 33643,
+      "cols": 9,
+      "columns": [
+        "id",
+        "sale_id",
+        "product_id",
+        "quantity",
+        "unit_price",
+        "discount_pct",
+        "line_total",
+        "unconstrained_demand",
+        "stockout_flag"
+      ]
+    },
+    "sales.csv": {
+      "rows": 14878,
+      "cols": 15,
+      "columns": [
+        "id",
+        "company_id",
+        "branch_id",
+        "customer_id",
+        "user_id",
+        "sale_date",
+        "status",
+        "total_amount",
+        "discount_amount",
+        "tax_amount",
+        "net_amount",
+        "payment_status",
+        "is_anomaly",
+        "has_stockout",
+        "created_at"
+      ]
+    },
+    "stock_movements.csv": {
+      "rows": 37283,
+      "cols": 8,
+      "columns": [
+        "id",
+        "product_id",
+        "warehouse_id",
+        "movement_type",
+        "quantity",
+        "reason",
+        "reference_id",
+        "moved_at"
+      ]
+    },
+    "suppliers.csv": {
+      "rows": 51,
+      "cols": 8,
+      "columns": [
+        "id",
+        "company_id",
+        "name",
+        "contact_email",
+        "phone",
+        "city",
+        "payment_terms_days",
+        "created_at"
+      ]
+    },
+    "users.csv": {
+      "rows": 36,
+      "cols": 7,
+      "columns": [
+        "id",
+        "company_id",
+        "branch_id",
+        "name",
+        "email",
+        "role",
+        "created_at"
+      ]
+    },
+    "warehouses.csv": {
+      "rows": 12,
+      "cols": 6,
+      "columns": [
+        "id",
+        "company_id",
+        "branch_id",
+        "name",
+        "location",
+        "created_at"
+      ]
+    }
+  }
+}

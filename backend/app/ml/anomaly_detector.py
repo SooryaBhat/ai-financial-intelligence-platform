@@ -53,11 +53,16 @@ def detect_anomaly(
             model_key = "anomaly_pca"
             model_name = "PCA Reconstruction Error Detector"
             model_version = "anomaly_detection_pca.pkl"
-        else:
-            # Production winner: Rule_Based_Detector (F1 = 0.8947, 0% FPR)
+        elif model_type in ["rule", "rule_based"]:
             model_key = "anomaly_rule_based"
-            model_name = "Rule-Based Anomaly Detector (Winner, F1=0.895)"
+            model_name = "Rule-Based Anomaly Detector"
+            model_version = "anomaly_detection_rule_based.pkl"
+        else:
+            # Production winner: Supervised CatBoost (F1 = 0.7552, Recall = 0.6835, Precision = 0.8438)
+            model_key = "anomaly_selected"
+            model_name = "Supervised CatBoost Anomaly Detector (Winner, F1=0.755, Recall=0.684)"
             model_version = "anomaly_detection_selected.pkl"
+
 
         model_obj = loader.get_model(model_key) or loader.get_model("anomaly_selected") or loader.get_model("anomaly_detection")
         if not model_obj or not isinstance(model_obj, dict):

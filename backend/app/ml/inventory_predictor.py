@@ -96,6 +96,12 @@ def predict_inventory(
                 "year": float(y_idx),
                 "is_q4": 1.0 if quarter == 4 else 0.0,
                 "is_q1": 1.0 if quarter == 1 else 0.0,
+                "product_hist_mean": float(np.mean(history)),
+                "product_hist_std": float(np.std(history)),
+                "lag_1_norm": float(history[-1] / max(1.0, float(np.mean(history)))),
+                "roll3_norm": float(np.mean(history[-3:]) / max(1.0, float(np.mean(history)))),
+                "demand_momentum": float((history[-1] - history[-2]) / max(1.0, history[-2])),
+                "festive_q4": 1.0 if quarter == 4 else 0.0,
             }
 
         X = np.array([[feat_dict.get(col, 0.0) for col in feat_cols]], dtype=np.float32)

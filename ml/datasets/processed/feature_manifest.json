@@ -1,0 +1,96 @@
+{
+  "dataset_version": "processed_v2",
+  "source_raw_version": "synthetic_v2",
+  "pipeline_script": "ml/scripts/feature_engineering.py",
+  "execution_timestamp": "2026-11-02T22:36:23.319406",
+  "effective_date_range": [
+    "2022-01-01",
+    "2026-10-21"
+  ],
+  "pipelines": {
+    "revenue_forecasting": {
+      "file": "revenue_features.csv",
+      "rows": 138,
+      "cols": 21,
+      "target": "revenue",
+      "date_col": "month",
+      "date_range": [
+        "2023-01-31 00:00:00",
+        "2026-10-31 00:00:00"
+      ],
+      "leakage_audit": "PASSED (strictly historical lags lag_1..lag_12 and rolling means)"
+    },
+    "sales_forecasting": {
+      "file": "sales_features.csv",
+      "rows": 9924,
+      "cols": 29,
+      "target": "quantity",
+      "date_col": "month",
+      "date_range": [
+        "2023-01-31 00:00:00",
+        "2026-10-31 00:00:00"
+      ],
+      "leakage_audit": "PASSED (strictly historical lags lag_1..lag_12 and rolling means)"
+    },
+    "inventory_demand": {
+      "file": "inventory_features.csv",
+      "rows": 11771,
+      "cols": 24,
+      "target": "units_out",
+      "date_col": "month",
+      "date_range": [
+        "2022-07-31 00:00:00",
+        "2026-10-31 00:00:00"
+      ],
+      "leakage_audit": "PASSED (strictly historical outbound lags lag_1..lag_6)"
+    },
+    "profit_prediction": {
+      "file": "profit_features.csv",
+      "rows": 156,
+      "cols": 27,
+      "target": "net_profit",
+      "date_col": "month",
+      "date_range": [
+        "2022-07-31 00:00:00",
+        "2026-10-31 00:00:00"
+      ],
+      "leakage_audit": "PASSED (strictly historical profit lags and expense ratios lag_1..lag_6)"
+    },
+    "expense_prediction": {
+      "file": "expense_features.csv",
+      "rows": 1462,
+      "cols": 22,
+      "target": "total_expense",
+      "date_col": "month",
+      "date_range": [
+        "2022-07-31 00:00:00",
+        "2026-10-31 00:00:00"
+      ],
+      "leakage_audit": "PASSED (strictly historical expense lags and lagged transaction count)"
+    },
+    "business_health": {
+      "file": "health_features.csv",
+      "rows": 174,
+      "cols": 22,
+      "target": "next_health_score",
+      "date_col": "month",
+      "date_range": [
+        "2022-01-31 00:00:00",
+        "2026-10-31 00:00:00"
+      ],
+      "leakage_audit": "PASSED (period t KPI scorecard predicts t+1 forward transition)"
+    },
+    "anomaly_detection": {
+      "file": "anomaly_features.csv",
+      "rows": 14878,
+      "cols": 23,
+      "target": "is_anomaly (evaluation only; excluded from model inputs)",
+      "date_col": "sale_date",
+      "date_range": [
+        "2022-01-01 00:00:00",
+        "2026-10-21 00:00:00"
+      ],
+      "leakage_audit": "PASSED (shift(1) rolling mean/std prevents transaction self-leakage)"
+    }
+  }
+}

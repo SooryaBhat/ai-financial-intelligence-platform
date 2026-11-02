@@ -1,0 +1,5 @@
+id,company_id,name,address,city,country,phone,is_active,created_at
+33333333-0001-0000-0000-000000000001,33333333-0000-0000-0000-000000000001,Jaipur Pink City Branch,"MI Road, Pink City, Jaipur",Jaipur,India,+91 141 AAAAA1,True,2025-12-01 00:00:00+00
+33333333-0001-0000-0000-000000000002,33333333-0000-0000-0000-000000000001,Delhi Connaught Place HQ,"Connaught Place, Central Delhi",Delhi,India,+91 141 BBBBB1,True,2025-12-01 00:00:00+00
+33333333-0001-0000-0000-000000000003,33333333-0000-0000-0000-000000000001,Mumbai Bandra Supermarket,"Hill Road, Bandra West, Mumbai",Mumbai,India,+91 141 CCCCC1,True,2025-12-01 00:00:00+00
+33333333-0001-0000-0000-000000000004,33333333-0000-0000-0000-000000000001,Bengaluru Indiranagar Branch,"100 Feet Road, Indiranagar, Bengaluru",Bengaluru,India,+91 141 DDDDD1,True,2025-12-01 00:00:00+00

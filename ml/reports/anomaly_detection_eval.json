@@ -1,6 +1,6 @@
 {
   "pipeline": "transaction_anomaly_detection",
-  "selected_model": "Rule_Based_Detector",
+  "selected_model": "Supervised_CatBoost",
   "selection_metric": "val_f1_score",
   "training_companies": [
     "00000000-0000-0000-0000-000000000001",
@@ -147,6 +147,21 @@
       "test_pr_auc": 0.2649,
       "test_roc_auc": 0.6122,
       "is_baseline": false
+    },
+    "Supervised_CatBoost": {
+      "val_precision": 1.0,
+      "val_recall": 0.8571,
+      "val_f1_score": 0.9231,
+      "val_fpr": 0.0,
+      "val_pr_auc": 0.8616,
+      "val_roc_auc": 0.9266,
+      "test_precision": 0.9,
+      "test_recall": 0.8571,
+      "test_f1_score": 0.878,
+      "test_fpr": 0.0013,
+      "test_pr_auc": 0.9171,
+      "test_roc_auc": 0.9897,
+      "is_baseline": false
     }
   },
   "independent_multi_type_benchmark": {
@@ -249,19 +264,33 @@
     "business_id": "00000000-0000-0000-0000-000000000003",
     "business_name": "Apna Kirana Store",
     "metrics": {
-      "precision": 1.0,
-      "recall": 0.4684,
-      "f1_score": 0.6379,
-      "false_positive_rate": 0.0,
+      "precision": 0.8438,
+      "recall": 0.6835,
+      "f1_score": 0.7552,
+      "false_positive_rate": 0.0016,
       "total_anomalies_actual": 79,
-      "total_anomalies_flagged": 37,
+      "total_anomalies_flagged": 64,
+      "confusion_matrix": {
+        "true_positives": 54,
+        "false_positives": 10,
+        "false_negatives": 25,
+        "true_negatives": 6374
+      },
+      "roc_auc": 0.9408,
+      "pr_auc": 0.7617,
       "baseline_zscore_metrics": {
         "precision": 0.196,
         "recall": 0.4937,
         "f1_score": 0.2806,
         "false_positive_rate": 0.0251,
         "total_anomalies_actual": 79,
-        "total_anomalies_flagged": 199
+        "total_anomalies_flagged": 199,
+        "confusion_matrix": {
+          "true_positives": 39,
+          "false_positives": 160,
+          "false_negatives": 40,
+          "true_negatives": 6224
+        }
       }
     }
   }

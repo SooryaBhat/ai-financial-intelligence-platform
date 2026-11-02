@@ -64,10 +64,10 @@ logger = get_logger(__name__)
 
 FEATURE_COLS = [
     "profit_lag1", "profit_lag2", "profit_lag3", "profit_lag6",
-    "profit_roll3", "profit_roll6",
-    "revenue_lag1", "revenue_lag2", "revenue_lag3",
-    "expense_ratio_lag1", "expense_ratio_lag2",
-    "month_num", "quarter", "year", "is_q4"
+    "profit_roll3", "profit_roll6", "profit_momentum",
+    "revenue_lag1", "revenue_lag2", "cogs_lag1", "gross_profit_lag1",
+    "gross_margin_lag1", "operating_expenses_lag1", "expense_to_rev_lag1",
+    "expense_ratio_lag1", "month_num", "quarter", "year", "is_q4"
 ]
 
 
@@ -179,8 +179,8 @@ def train_and_evaluate_candidates(
         "is_baseline": False,
     }
 
-    # 8. LightGBM
-    lgb = LGBMRegressor(n_estimators=100, max_depth=4, learning_rate=0.05, random_state=42, verbose=-1)
+    # 8. LightGBM (Tuned with structural features)
+    lgb = LGBMRegressor(n_estimators=100, max_depth=2, learning_rate=0.02, random_state=42, verbose=-1)
     lgb.fit(X_train, y_train)
     candidates["LightGBM"] = {
         "val_metrics": compute_metrics(y_val, lgb.predict(X_val), y_train),
@@ -189,8 +189,8 @@ def train_and_evaluate_candidates(
         "is_baseline": False,
     }
 
-    # 9. CatBoost
-    cb = CatBoostRegressor(iterations=120, depth=4, learning_rate=0.04, verbose=0, random_seed=42)
+    # 9. CatBoost (Tuned with structural features)
+    cb = CatBoostRegressor(iterations=100, depth=2, learning_rate=0.02, verbose=0, random_seed=42)
     cb.fit(X_train, y_train)
     candidates["CatBoost"] = {
         "val_metrics": compute_metrics(y_val, cb.predict(X_val), y_train),
@@ -199,7 +199,7 @@ def train_and_evaluate_candidates(
         "is_baseline": False,
     }
 
-    # 9. Margin-Bridge Forecaster (Custom)
+    # 10. Margin-Bridge Forecaster (Custom)
     mbf = MarginBridgeForecaster(alpha=1.0, random_state=42)
     mbf.fit(train_df[FEATURE_COLS], y_train)
     candidates["Margin_Bridge_Forecaster"] = {
@@ -226,6 +226,19 @@ def train_and_evaluate_candidates(
     holdout_metrics = compute_metrics(y_co3, co3_pred, y_train)
     co3_pred_lag1 = holdout_co3_df["profit_lag1"].values
     holdout_naive_metrics = compute_metrics(y_co3, co3_pred_lag1, y_train)
+    holdout_metrics["baseline_lag1_metrics"] = holdout_naive_metrics
+
+    # Test window holdout evaluation (strictly 2026-01-01 to 2026-10-31)
+    co3_test_mask = (holdout_co3_df["month"] >= SPLIT_CONFIG["test_start"])
+    ho_test_df = holdout_co3_df[co3_test_mask]
+    if len(ho_test_df) > 0:
+        if best_name == "Margin_Bridge_Forecaster":
+            ho_test_pred = best_model.predict(ho_test_df[FEATURE_COLS])
+        else:
+            ho_test_pred = best_model.predict(ho_test_df[FEATURE_COLS].values)
+        ho_test_metrics = compute_metrics(ho_test_df["net_profit"].values, ho_test_pred, y_train)
+    else:
+        ho_test_metrics = holdout_metrics
 
     models_dict = {
         "lr": lr,
@@ -233,12 +246,15 @@ def train_and_evaluate_candidates(
         "rf": rf,
         "xgb": xgb,
         "lgb": lgb,
+        "cb": cb,
         "mbf": mbf
     }
 
     return candidates, best_name, best_model, {
         "metrics": holdout_metrics,
-        "naive_baseline_metrics": holdout_naive_metrics
+        "test_window_metrics": ho_test_metrics,
+        "naive_baseline_metrics": holdout_naive_metrics,
+        "baseline_lag1_metrics": holdout_naive_metrics,
     }, models_dict
 
 

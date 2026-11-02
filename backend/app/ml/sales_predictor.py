@@ -126,6 +126,12 @@ def predict_sales(
                     "is_q4": 1.0 if quarter == 4 else 0.0,
                     "is_q1": 1.0 if quarter == 1 else 0.0,
                     "is_jan": 1.0 if m_idx == 1 else 0.0,
+                    "prod_hist_mean": float(np.mean(curr_history)),
+                    "prod_hist_std": float(np.std(curr_history)),
+                    "lag_1_norm": float(curr_history[-1] / max(1.0, float(np.mean(curr_history)))),
+                    "roll3_norm": float(np.mean(curr_history[-3:]) / max(1.0, float(np.mean(curr_history)))),
+                    "sales_momentum": float((curr_history[-1] - curr_history[-2]) / max(1.0, curr_history[-2])),
+                    "festive_q4": 1.0 if quarter == 4 else 0.0,
                 }
                 if request.entity_id:
                     feat_dict["product_id"] = request.entity_id

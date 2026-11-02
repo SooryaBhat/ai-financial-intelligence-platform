@@ -8,11 +8,17 @@
     "lag_6",
     "roll3_mean",
     "roll6_mean",
+    "product_hist_mean",
+    "product_hist_std",
+    "lag_1_norm",
+    "roll3_norm",
+    "demand_momentum",
     "month_num",
     "quarter",
     "year",
     "is_q4",
-    "is_q1"
+    "is_q1",
+    "festive_q4"
   ],
   "selected_model": "LightGBM",
   "selected_artifact": "inventory_demand_selected.pkl",
@@ -28,14 +34,14 @@
     "holdout_co3_rows": 4443
   },
   "demand_test_metrics": {
-    "rmse": 13.501607623218375,
-    "mae": 9.713137231138278,
-    "mape": 147.99298640169994,
-    "smape": 61.510888330721144,
-    "wape": 58.19037401832182,
-    "r2": -0.0069,
-    "bias": -5.1604,
-    "mase": 0.7785
+    "rmse": 13.454946656601873,
+    "mae": 9.671776171043724,
+    "mape": 147.91217499398607,
+    "smape": 61.25881137152833,
+    "wape": 57.9425842981292,
+    "r2": 0.0001,
+    "bias": -4.6729,
+    "mase": 0.7752
   },
   "reorder_policy_evaluation_dev": {
     "sample_size": 1500,
@@ -49,7 +55,7 @@
       "fn": 0,
       "tn": 1500
     },
-    "safety_stock_units": 11.37,
+    "safety_stock_units": 11.32,
     "lead_time_days": 7.0,
     "native_baseline_audit": {
       "sample_size": 1500,
@@ -64,23 +70,23 @@
         "fn": 0,
         "tn": 1500
       },
-      "safety_stock_units": 11.37,
+      "safety_stock_units": 11.32,
       "lead_time_days": 7.0,
       "audit_note": "Under normal ERP inventory stock levels, safety buffers prevent depletion below ROP; true positives = 0."
     },
     "boundary_simulation_metrics": {
       "sample_size": 1500,
       "positive_support_count": 741,
-      "true_positives": 686,
-      "precision": 0.8979,
-      "recall": 0.9258,
-      "f1_score": 0.9116,
-      "service_level_pct": 91.13,
+      "true_positives": 684,
+      "precision": 0.8965,
+      "recall": 0.9231,
+      "f1_score": 0.9096,
+      "service_level_pct": 90.93,
       "confusion_matrix": {
-        "tp": 686,
-        "fp": 78,
-        "fn": 55,
-        "tn": 681
+        "tp": 684,
+        "fp": 79,
+        "fn": 57,
+        "tn": 680
       },
       "simulation_methodology": "Uniform stress perturbation around calculated ROP boundary"
     }
@@ -97,7 +103,7 @@
       "fn": 0,
       "tn": 926
     },
-    "safety_stock_units": 11.37,
+    "safety_stock_units": 11.32,
     "lead_time_days": 7.0,
     "native_baseline_audit": {
       "sample_size": 926,
@@ -112,36 +118,36 @@
         "fn": 0,
         "tn": 926
       },
-      "safety_stock_units": 11.37,
+      "safety_stock_units": 11.32,
       "lead_time_days": 7.0,
       "audit_note": "Under normal ERP inventory stock levels, safety buffers prevent depletion below ROP; true positives = 0."
     },
     "boundary_simulation_metrics": {
       "sample_size": 926,
       "positive_support_count": 464,
-      "true_positives": 408,
-      "precision": 0.9007,
-      "recall": 0.8793,
-      "f1_score": 0.8899,
-      "service_level_pct": 89.09,
+      "true_positives": 410,
+      "precision": 0.8991,
+      "recall": 0.8836,
+      "f1_score": 0.8913,
+      "service_level_pct": 89.2,
       "confusion_matrix": {
-        "tp": 408,
-        "fp": 45,
-        "fn": 56,
-        "tn": 417
+        "tp": 410,
+        "fp": 46,
+        "fn": 54,
+        "tn": 416
       },
       "simulation_methodology": "Uniform stress perturbation around calculated ROP boundary"
     }
   },
   "approach_c_holdout_co3_metrics": {
-    "rmse": 16.506538191087326,
-    "mae": 11.137836835727457,
-    "mape": 113.34826823990352,
-    "smape": 57.77871842667965,
-    "wape": 53.70442900366501,
-    "r2": -0.0744,
-    "bias": -21.427,
-    "mase": 0.8927,
+    "rmse": 16.408724424439562,
+    "mae": 11.116833814646524,
+    "mape": 114.68568930580577,
+    "smape": 57.65179728699391,
+    "wape": 53.603156622758405,
+    "r2": -0.0617,
+    "bias": -20.1931,
+    "mase": 0.891,
     "baseline_lag1_metrics": {
       "rmse": 22.475469910393425,
       "mae": 16.185685347738016,
@@ -162,6 +168,16 @@
       "bias": -1.1525,
       "mase": 1.064
     },
-    "n_observations": 4443
+    "n_observations": 4443,
+    "test_window_metrics": {
+      "rmse": 17.0538026486064,
+      "mae": 11.683832398320186,
+      "mape": 104.63562619881701,
+      "smape": 57.25932573202302,
+      "wape": 52.94200822491922,
+      "r2": -0.1153,
+      "bias": -24.3233,
+      "mase": 0.9365
+    }
   }
 }

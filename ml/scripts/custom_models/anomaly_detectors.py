@@ -205,3 +205,38 @@ class ContextAwareAnomalyDetector(BaseEstimator):
         """Flag anomalies (-1 = anomaly, 1 = normal)."""
         scores = self.decision_function(X)
         return np.where(scores < -self.z_threshold, -1, 1)
+
+
+class CatBoostAnomalyDetector(BaseEstimator):
+    """
+    Supervised Anomaly Detector using CatBoost with class imbalance compensation.
+    predict: returns -1 for anomaly, 1 for normal.
+    decision_function: returns higher positive values for normal, negative for anomaly.
+    """
+    def __init__(self, model=None, threshold: float = 0.80, feature_cols: Optional[List[str]] = None):
+        self.model = model
+        self.threshold = threshold
+        self.feature_cols = feature_cols
+
+    def predict(self, X) -> np.ndarray:
+        if self.model is None:
+            return np.ones(len(X), dtype=int)
+        if isinstance(X, pd.DataFrame) and self.feature_cols:
+            available_cols = [c for c in self.feature_cols if c in X.columns]
+            X_in = X[available_cols] if len(available_cols) == len(self.feature_cols) else X
+        else:
+            X_in = X
+        probs = self.model.predict_proba(X_in)[:, 1]
+        return np.where(probs >= self.threshold, -1, 1)
+
+    def decision_function(self, X) -> np.ndarray:
+        if self.model is None:
+            return np.zeros(len(X))
+        if isinstance(X, pd.DataFrame) and self.feature_cols:
+            available_cols = [c for c in self.feature_cols if c in X.columns]
+            X_in = X[available_cols] if len(available_cols) == len(self.feature_cols) else X
+        else:
+            X_in = X
+        probs = self.model.predict_proba(X_in)[:, 1]
+        return float(self.threshold) - probs
+

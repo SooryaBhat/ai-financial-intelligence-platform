@@ -46,6 +46,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
+from catboost import CatBoostRegressor
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
@@ -61,7 +62,9 @@ logger = get_logger(__name__)
 FEATURE_COLS = [
     "lag_1", "lag_2", "lag_3", "lag_6",
     "roll3_mean", "roll6_mean",
-    "month_num", "quarter", "year", "is_q4", "is_q1"
+    "product_hist_mean", "product_hist_std",
+    "lag_1_norm", "roll3_norm", "demand_momentum",
+    "month_num", "quarter", "year", "is_q4", "is_q1", "festive_q4"
 ]
 
 
@@ -212,7 +215,21 @@ def train_and_evaluate_candidates(
         "is_baseline": False,
     }
 
-    # 8. Croston's Method
+    # 8. CatBoost
+    cb = CatBoostRegressor(iterations=120, depth=4, learning_rate=0.04, verbose=0, random_seed=42)
+    cb.fit(X_train, y_train)
+    val_pred_cb = np.maximum(0, cb.predict(X_val))
+    test_pred_cb = np.maximum(0, cb.predict(X_test))
+    candidates["CatBoost"] = {
+        "val_metrics": compute_metrics(y_val, val_pred_cb, y_train),
+        "test_metrics": compute_metrics(y_test, test_pred_cb, y_train),
+        "val_preds": val_pred_cb,
+        "test_preds": test_pred_cb,
+        "model": cb,
+        "is_baseline": False,
+    }
+
+    # 9. Croston's Method
     croston = CrostonMethod(alpha=0.15)
     croston.fit(None, y_train)
     val_pred_croston = np.maximum(0, croston.predict(np.zeros(len(y_val))))
@@ -224,7 +241,7 @@ def train_and_evaluate_candidates(
         "is_baseline": False,
     }
 
-    # 9. SBA Method
+    # 10. SBA Method
     sba = SBAMethod(alpha=0.15)
     sba.fit(None, y_train)
     val_pred_sba = np.maximum(0, sba.predict(np.zeros(len(y_val))))
@@ -236,7 +253,7 @@ def train_and_evaluate_candidates(
         "is_baseline": False,
     }
 
-    # 10. Censored Demand Forecaster (Custom)
+    # 11. Censored Demand Forecaster (Custom)
     censored = CensoredDemandForecaster(alpha=1.0, random_state=42)
     censored.fit(train_df[FEATURE_COLS], y_train)
     val_pred_censored = np.maximum(0, censored.predict(val_df[FEATURE_COLS]))
@@ -271,6 +288,21 @@ def train_and_evaluate_candidates(
         holdout_metrics["baseline_lag1_metrics"] = compute_metrics(y_co3, co3_pred_lag1, y_train)
         holdout_metrics["baseline_ma_metrics"] = compute_metrics(y_co3, co3_pred_ma, y_train)
         holdout_metrics["n_observations"] = len(holdout_co3_df)
+
+        # Test window holdout evaluation (strictly 2026-01-01 to 2026-10-31)
+        co3_test_mask = (holdout_co3_df["month"] >= SPLIT_CONFIG["test_start"])
+        ho_test_df = holdout_co3_df[co3_test_mask]
+        if len(ho_test_df) > 0:
+            if best_name == "Censored_Demand_Forecaster":
+                ho_test_pred = np.maximum(0, best_model.predict(ho_test_df[FEATURE_COLS]))
+            elif best_name in ["Croston_Method", "SBA_Method"]:
+                ho_test_pred = np.maximum(0, best_model.predict(np.zeros(len(ho_test_df))))
+            else:
+                ho_test_pred = np.maximum(0, best_model.predict(ho_test_df[FEATURE_COLS].values))
+            ho_test_metrics = compute_metrics(ho_test_df["units_out"].values, ho_test_pred, y_train)
+        else:
+            ho_test_metrics = holdout_metrics
+        holdout_metrics["test_window_metrics"] = ho_test_metrics
     else:
         holdout_metrics = {}
 
@@ -278,6 +310,7 @@ def train_and_evaluate_candidates(
         "xgb": xgb,
         "rf": rf,
         "lgb": lgb,
+        "cb": cb,
         "lr": lr,
         "censored": censored
     }
@@ -434,6 +467,7 @@ def run_pipeline() -> Dict[str, Any]:
     save_model({"model": models_dict["xgb"], "feature_cols": FEATURE_COLS, "algorithm": "XGBRegressor"}, "inventory_demand_xgboost.pkl", MODELS_DIR)
     save_model({"model": models_dict["rf"], "feature_cols": FEATURE_COLS, "algorithm": "RandomForestRegressor"}, "inventory_demand_random_forest.pkl", MODELS_DIR)
     save_model({"model": models_dict["lgb"], "feature_cols": FEATURE_COLS, "algorithm": "LGBMRegressor"}, "inventory_demand_lightgbm.pkl", MODELS_DIR)
+    save_model({"model": models_dict["cb"], "feature_cols": FEATURE_COLS, "algorithm": "CatBoostRegressor"}, "inventory_demand_catboost.pkl", MODELS_DIR)
     save_model({"model": models_dict["censored"], "feature_cols": FEATURE_COLS, "algorithm": "CensoredDemandForecaster"}, "inventory_demand_censored.pkl", MODELS_DIR)
     save_model({
         "model": best_model,

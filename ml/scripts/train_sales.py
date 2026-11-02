@@ -64,6 +64,13 @@ logger = get_logger(__name__)
 FEATURE_COLS = [
     "lag_1", "lag_2", "lag_3", "lag_12",
     "roll3_mean", "roll6_mean", "roll3_std",
+    "prod_hist_mean", "lag_1_norm", "roll3_norm",
+    "sales_momentum", "month_num", "quarter", "year", "is_q4", "is_q1", "festive_q4"
+]
+
+CAT_FEATURE_COLS = [
+    "lag_1", "lag_2", "lag_3", "lag_12",
+    "roll3_mean", "roll6_mean", "roll3_std",
     "month_num", "quarter", "year", "is_q4", "is_q1"
 ]
 
@@ -321,6 +328,20 @@ def train_and_evaluate_product_candidates(
     holdout_naive_pred = holdout_co3_df["lag_1"].values
     holdout_naive_metrics = compute_metrics(holdout_co3_df["quantity"].values, holdout_naive_pred, y_train)
 
+    # Test window holdout evaluation (strictly 2026-01-01 to 2026-10-31)
+    co3_test_mask = (holdout_co3_df["month"] >= SPLIT_CONFIG["test_start"])
+    ho_test_df = holdout_co3_df[co3_test_mask]
+    if len(ho_test_df) > 0:
+        if best_name in ["AAGF_Custom", "Product_Profile_Forecaster"]:
+            ho_test_pred = np.maximum(0, best_model.predict(ho_test_df))
+        elif best_name in ["Croston_Method", "SBA_Method"]:
+            ho_test_pred = np.maximum(0, best_model.predict(np.zeros(len(ho_test_df))))
+        else:
+            ho_test_pred = np.maximum(0, best_model.predict(ho_test_df[FEATURE_COLS].values))
+        ho_test_metrics = compute_metrics(ho_test_df["quantity"].values, ho_test_pred, y_train)
+    else:
+        ho_test_metrics = holdout_metrics
+
     models_dict = {
         "lr": lr,
         "ridge": ridge,
@@ -334,6 +355,7 @@ def train_and_evaluate_product_candidates(
 
     return candidates, best_name, best_model, {
         "metrics": holdout_metrics,
+        "test_window_metrics": ho_test_metrics,
         "naive_baseline_metrics": holdout_naive_metrics
     }, models_dict
 
@@ -349,11 +371,11 @@ def train_category_model(cat_df: pd.DataFrame) -> Tuple[Any, Dict[str, Any]]:
     val_c = dev_cat[val_mask]
     test_c = dev_cat[test_mask]
 
-    X_train_c = train_c[FEATURE_COLS].values
+    X_train_c = train_c[CAT_FEATURE_COLS].values
     y_train_c = train_c["quantity"].values
-    X_val_c = val_c[FEATURE_COLS].values
+    X_val_c = val_c[CAT_FEATURE_COLS].values
     y_val_c = val_c["quantity"].values
-    X_test_c = test_c[FEATURE_COLS].values
+    X_test_c = test_c[CAT_FEATURE_COLS].values
     y_test_c = test_c["quantity"].values
 
     xgb_cat = XGBRegressor(n_estimators=100, max_depth=4, learning_rate=0.05, random_state=42)
@@ -422,10 +444,30 @@ def run_pipeline() -> Dict[str, Any]:
         MODELS_DIR
     )
     save_model(
-        {"model": xgb_cat, "feature_cols": FEATURE_COLS, "algorithm": "XGBRegressor_Category"},
+        {"model": xgb_cat, "feature_cols": CAT_FEATURE_COLS, "algorithm": "XGBRegressor_Category"},
         "sales_forecasting_xgb_category.pkl",
         MODELS_DIR
     )
+
+    # Hierarchical Category Reconciliation Evaluation on Holdout Co 3
+    ho_prod = holdout_co3_df.copy()
+    if best_name in ["AAGF_Custom", "Product_Profile_Forecaster"]:
+        ho_prod["pred_raw"] = np.maximum(0, best_model.predict(ho_prod))
+    elif best_name in ["Croston_Method", "SBA_Method"]:
+        ho_prod["pred_raw"] = np.maximum(0, best_model.predict(np.zeros(len(ho_prod))))
+    else:
+        ho_prod["pred_raw"] = np.maximum(0, best_model.predict(ho_prod[FEATURE_COLS].values))
+
+    ho_cat = cat_df[cat_df["company_id"] == HOLDOUT_COMPANY].copy()
+    ho_cat["cat_pred"] = np.maximum(0, xgb_cat.predict(ho_cat[CAT_FEATURE_COLS].values))
+
+    ho_prod = ho_prod.merge(ho_cat[["category_id", "month", "cat_pred"]], on=["category_id", "month"], how="left")
+    cat_sum = ho_prod.groupby(["category_id", "month"])["pred_raw"].sum().reset_index().rename(columns={"pred_raw": "cat_sum_raw"})
+    ho_prod = ho_prod.merge(cat_sum, on=["category_id", "month"], how="left")
+    ratio = np.clip(ho_prod["cat_pred"] / np.maximum(ho_prod["cat_sum_raw"], 1.0), 0.5, 2.0)
+    lam = 0.20
+    reconciled_pred = ho_prod["pred_raw"] * ((1 - lam) + lam * ratio)
+    reconciled_metrics = compute_metrics(ho_prod["quantity"].values, reconciled_pred.values, train_df["quantity"].values)
 
     # Meta
     meta = {
@@ -528,6 +570,23 @@ def run_pipeline() -> Dict[str, Any]:
                 "naive_baseline_r2": round(holdout_results["naive_baseline_metrics"]["r2"], 4),
             },
             "naive_baseline_metrics": holdout_results["naive_baseline_metrics"],
+            "hierarchical_reconciliation": {
+                "shrinkage_lambda": 0.20,
+                "reconciled_wape_pct": round(reconciled_metrics["wape"], 2),
+                "reconciled_rmse": round(reconciled_metrics["rmse"], 2),
+                "reconciled_mae": round(reconciled_metrics["mae"], 2),
+                "reconciled_r2": round(reconciled_metrics["r2"], 4),
+                "reconciled_bias_pct": round(reconciled_metrics["bias"], 2),
+                "reconciled_mase": round(reconciled_metrics["mase"], 4),
+            },
+            "test_window_holdout": {
+                "wape_pct": round(holdout_results.get("test_window_metrics", {}).get("wape", 0.0), 2),
+                "rmse": round(holdout_results.get("test_window_metrics", {}).get("rmse", 0.0), 2),
+                "mae": round(holdout_results.get("test_window_metrics", {}).get("mae", 0.0), 2),
+                "r2": round(holdout_results.get("test_window_metrics", {}).get("r2", 0.0), 4),
+                "bias_pct": round(holdout_results.get("test_window_metrics", {}).get("bias", 0.0), 2),
+                "mase": round(holdout_results.get("test_window_metrics", {}).get("mase", 0.0), 4),
+            }
         }
     }
 

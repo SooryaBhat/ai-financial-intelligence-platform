@@ -233,8 +233,8 @@ def update_model_registry() -> Dict[str, Any]:
             "holdout_company3_metrics": health_eval.get("approach_c_holdout_co3", {}).get("metrics", {})
         },
         "anomaly_detection": {
-            "selected_algorithm": anomaly_eval.get("selected_model", "Rule_Based_Detector"),
-            "model_name": anomaly_eval.get("selected_model", "Rule_Based_Detector"),
+            "selected_algorithm": anomaly_eval.get("selected_model", "Supervised_CatBoost"),
+            "model_name": anomaly_eval.get("selected_model", "Supervised_CatBoost"),
             "selected_artifact": "ml/models/anomaly_detection_selected.pkl",
             "artifact_file": "anomaly_detection_selected.pkl",
             "artifact_path": "ml/models/anomaly_detection_selected.pkl",
@@ -244,6 +244,7 @@ def update_model_registry() -> Dict[str, Any]:
             "training_companies": DEV_CO,
             "holdout_company": HOLD_CO,
             "algorithm_artifacts": {
+                "catboost": "ml/models/anomaly_detection_catboost.pkl",
                 "rule_based": "ml/models/anomaly_detection_rule_based.pkl",
                 "isolation_forest": "ml/models/anomaly_detection_isolation_forest.pkl",
                 "robust_mad": "ml/models/anomaly_detection_robust_mad.pkl",
@@ -253,7 +254,7 @@ def update_model_registry() -> Dict[str, Any]:
             "registered_at": datetime.now().isoformat(),
             "status": "production",
             "selection_metric": "val_f1_score",
-            "metrics": anomaly_eval.get("candidates", {}).get(anomaly_eval.get("selected_model", "Rule_Based_Detector"), {}),
+            "metrics": anomaly_eval.get("candidates", {}).get(anomaly_eval.get("selected_model", "Supervised_CatBoost"), {}),
             "holdout_company3_metrics": anomaly_eval.get("approach_c_holdout_co3", {}).get("metrics", {})
         }
     }

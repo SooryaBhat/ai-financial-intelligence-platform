@@ -1,0 +1,89 @@
+{
+  "dataset_version": "processed_v2",
+  "source_version": "synthetic_v2",
+  "preprocessor_script": "ml/scripts/preprocess.py",
+  "execution_timestamp": "2026-11-02T22:36:14.790023",
+  "tables": {
+    "sales_clean.csv": {
+      "rows": 14878,
+      "cols": 15,
+      "date_range": [
+        "2022-01-01 00:00:00",
+        "2026-10-21 00:00:00"
+      ],
+      "null_values": 0,
+      "primary_key_duplicates": 0
+    },
+    "sale_items_clean.csv": {
+      "rows": 33643,
+      "cols": 9,
+      "date_range": "N/A",
+      "null_values": 0,
+      "primary_key_duplicates": 0
+    },
+    "expenses_clean.csv": {
+      "rows": 4748,
+      "cols": 12,
+      "date_range": [
+        "2022-01-01 00:00:00",
+        "2026-10-21 00:00:00"
+      ],
+      "null_values": 0,
+      "primary_key_duplicates": 0
+    },
+    "inventory_clean.csv": {
+      "rows": 581,
+      "cols": 7,
+      "date_range": "N/A",
+      "null_values": 0,
+      "primary_key_duplicates": 0
+    },
+    "stock_movements_clean.csv": {
+      "rows": 37283,
+      "cols": 8,
+      "date_range": [
+        "2022-01-01 09:02:36",
+        "2026-10-21 21:39:25"
+      ],
+      "null_values": 500,
+      "primary_key_duplicates": 0
+    },
+    "daily_kpi_clean.csv": {
+      "rows": 5265,
+      "cols": 13,
+      "date_range": [
+        "2022-01-01 00:00:00",
+        "2026-10-21 00:00:00"
+      ],
+      "null_values": 0,
+      "primary_key_duplicates": 0
+    },
+    "invoices_clean.csv": {
+      "rows": 14878,
+      "cols": 12,
+      "date_range": [
+        "2022-01-01 00:00:00",
+        "2026-10-21 00:00:00"
+      ],
+      "null_values": 0,
+      "primary_key_duplicates": 0
+    },
+    "purchases_clean.csv": {
+      "rows": 4641,
+      "cols": 12,
+      "date_range": [
+        "2022-01-01 00:00:00",
+        "2026-10-21 00:00:00"
+      ],
+      "null_values": 0,
+      "primary_key_duplicates": 0
+    },
+    "purchase_items_clean.csv": {
+      "rows": 9853,
+      "cols": 6,
+      "date_range": "N/A",
+      "null_values": 0,
+      "primary_key_duplicates": 0
+    }
+  }
+}

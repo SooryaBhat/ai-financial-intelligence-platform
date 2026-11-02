@@ -1,0 +1,9 @@
+id,company_id,name,email,phone,address,country,payment_terms_days,currency,notes,created_at
+33333333-0007-0000-0000-000000000001,33333333-0000-0000-0000-000000000001,Amul India Dairy Federation,contact@amul.coop,+91 80000 00001,"Gujarat, India",India,30,INR,Primary supplier for Dairy,2025-12-01 00:00:00+00
+33333333-0007-0000-0000-000000000002,33333333-0000-0000-0000-000000000001,Tata Global Consumer Beverages,sales@tataconsumer.com,+91 80000 00002,"Bengaluru, Karnataka",India,30,INR,Primary supplier for Beverages,2025-12-01 00:00:00+00
+33333333-0007-0000-0000-000000000003,33333333-0000-0000-0000-000000000001,Britannia Bakeries & Confectionery,orders@britannia.in,+91 80000 00003,"Kolkata, West Bengal",India,30,INR,Primary supplier for Bakery,2025-12-01 00:00:00+00
+33333333-0007-0000-0000-000000000004,33333333-0000-0000-0000-000000000001,Fortune Adani Agro Oils & Staples,supply@fortuneagro.in,+91 80000 00004,"Ahmedabad, Gujarat",India,30,INR,Primary supplier for Grocery,2025-12-01 00:00:00+00
+33333333-0007-0000-0000-000000000005,33333333-0000-0000-0000-000000000001,Hindustan FMCG & Personal Care Ltd,care@hulretail.com,+91 80000 00005,"Mumbai, Maharashtra",India,30,INR,Primary supplier for Personal Care,2025-12-01 00:00:00+00
+33333333-0007-0000-0000-000000000006,33333333-0000-0000-0000-000000000001,Safal Mandi Fresh Farm Produce,procurement@safalfresh.com,+91 80000 00006,Delhi NCR,India,30,INR,Primary supplier for Fruits,2025-12-01 00:00:00+00
+33333333-0007-0000-0000-000000000007,33333333-0000-0000-0000-000000000001,Parle Agro Foods & Snacks Pvt Ltd,distributors@parle.biz,+91 80000 00007,"Mumbai, Maharashtra",India,30,INR,Primary supplier for Snacks,2025-12-01 00:00:00+00
+33333333-0007-0000-0000-000000000008,33333333-0000-0000-0000-000000000001,GreenField Agri Co-operative,apmc@greenfieldagri.in,+91 80000 00008,"Jaipur, Rajasthan",India,30,INR,Primary supplier for Vegetables,2025-12-01 00:00:00+00
