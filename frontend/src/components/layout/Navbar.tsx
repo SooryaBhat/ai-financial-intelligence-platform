@@ -75,11 +75,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   // Search input and suggestions state
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchFocused, setIsSearchFocused] = useState(false)
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false)
 
   const navRef = useRef<HTMLDivElement>(null)
   const adminRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const mobileSearchRef = useRef<HTMLDivElement>(null)
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null)
   const companyRef = useRef<HTMLDivElement>(null)
   const branchRef = useRef<HTMLDivElement>(null)
 
@@ -141,6 +144,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       if (searchRef.current && !searchRef.current.contains(target)) {
         setIsSearchFocused(false)
       }
+      if (mobileSearchRef.current && !mobileSearchRef.current.contains(target)) {
+        setIsMobileSearchOpen(false)
+      }
       if (companyRef.current && !companyRef.current.contains(target)) {
         setIsCompanyMenuOpen(false)
       }
@@ -159,6 +165,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     setIsBranchMenuOpen(false)
     setIsMobileMenuOpen(false)
     setIsSearchFocused(false)
+    setIsMobileSearchOpen(false)
   }, [location.pathname])
 
   const toggleDropdown = (key: DropdownKey) => {
@@ -189,9 +196,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isLauncherActive = location.pathname === '/apps'
 
   return (
-    <header className="sticky top-0 z-30 h-14 bg-white border-b border-slate-200 transition-colors flex items-center justify-between px-3 sm:px-5 select-none shadow-xs w-full max-w-full">
+    <header className="sticky top-0 z-40 h-14 bg-white border-b border-slate-200 transition-colors flex items-center justify-between px-3 sm:px-4 lg:px-5 select-none shadow-2xs w-full max-w-full">
       {/* ── Left section: Odoo App Launcher Button, Brand Logo, Modular Top Nav ── */}
-      <div className="flex items-center gap-1.5 sm:gap-3 min-w-0" ref={navRef}>
+      <div className="flex items-center gap-1 sm:gap-2 lg:gap-2.5 min-w-0 shrink-0" ref={navRef}>
         {/* Mobile Menu Toggle Button */}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -205,7 +212,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <Link
           to="/apps"
           className={cn(
-            'flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg transition-all duration-150 shrink-0',
+            'flex items-center gap-1.5 p-1.5 sm:px-2 sm:py-1.5 rounded-lg transition-all duration-150 shrink-0',
             isLauncherActive
               ? 'bg-teal-50 text-teal-800 ring-1 ring-teal-200'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -224,21 +231,21 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="h-4 w-px bg-slate-200 hidden lg:block shrink-0" />
 
         {/* ── Primary Modular Dropdowns (Odoo enterprise pattern) ── */}
-        <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 text-xs shrink min-w-0">
+        <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 text-xs shrink-0">
           {/* 1. Commercial & Sales */}
           <div className="relative">
             <button
               onClick={() => toggleDropdown('commercial')}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-semibold transition-colors',
+                'flex items-center gap-1 xl:gap-1.5 px-2 xl:px-2.5 py-1.5 rounded-md font-semibold transition-colors shrink-0 whitespace-nowrap',
                 isCommercialActive
                   ? 'bg-teal-50 text-teal-800'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               )}
             >
-              <ShoppingCart className="w-3.5 h-3.5 text-teal-700" />
+              <ShoppingCart className="w-3.5 h-3.5 text-teal-700 shrink-0" />
               <span>Sales</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
             </button>
 
             {activeDropdown === 'commercial' && (
@@ -297,15 +304,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={() => toggleDropdown('inventory')}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-semibold transition-colors',
+                'flex items-center gap-1 xl:gap-1.5 px-2 xl:px-2.5 py-1.5 rounded-md font-semibold transition-colors shrink-0 whitespace-nowrap',
                 isInventoryActive
                   ? 'bg-teal-50 text-teal-800'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               )}
             >
-              <Package className="w-3.5 h-3.5 text-teal-700" />
+              <Package className="w-3.5 h-3.5 text-teal-700 shrink-0" />
               <span>Inventory</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
             </button>
 
             {activeDropdown === 'inventory' && (
@@ -395,15 +402,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={() => toggleDropdown('finance')}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-semibold transition-colors',
+                'flex items-center gap-1 xl:gap-1.5 px-2 xl:px-2.5 py-1.5 rounded-md font-semibold transition-colors shrink-0 whitespace-nowrap',
                 isFinanceActive
                   ? 'bg-teal-50 text-teal-800'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               )}
             >
-              <DollarSign className="w-3.5 h-3.5 text-teal-700" />
+              <DollarSign className="w-3.5 h-3.5 text-teal-700 shrink-0" />
               <span>Accounting</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
             </button>
 
             {activeDropdown === 'finance' && (
@@ -472,18 +479,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={() => toggleDropdown('ml')}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md font-semibold transition-colors',
+                'flex items-center gap-1 xl:gap-1.5 px-2 xl:px-2.5 py-1.5 rounded-md font-semibold transition-colors shrink-0 whitespace-nowrap',
                 isMlActive
                   ? 'bg-teal-50 text-teal-800'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               )}
             >
-              <TrendingUp className="w-3.5 h-3.5 text-teal-700" />
+              <TrendingUp className="w-3.5 h-3.5 text-teal-700 shrink-0" />
               <span>Forecasts</span>
               <span className="hidden 2xl:inline-block px-1.5 py-0.2 text-[9px] font-bold rounded bg-purple-50 text-purple-700 border border-purple-200/60">
                 ML
               </span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
             </button>
 
             {activeDropdown === 'ml' && (
@@ -584,7 +591,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* ── Region 2: Center (Dedicated Search Bar with Controlled Width) ── */}
       <div
-        className="flex-1 flex items-center justify-center min-w-0 px-2 sm:px-3 max-w-[240px] md:max-w-[270px] lg:max-w-[300px] xl:max-w-[360px]"
+        className="hidden md:flex flex-1 items-center justify-center min-w-[170px] sm:min-w-[190px] max-w-[240px] lg:max-w-[280px] xl:max-w-[340px] 2xl:max-w-[400px] px-2 sm:px-3 mx-auto"
         ref={searchRef}
       >
         <div className="relative w-full min-w-0">
@@ -642,7 +649,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Anchored Suggestions Dropdown right below the search bar */}
           {isSearchFocused && (
-            <div className="absolute top-full left-0 mt-1.5 w-full min-w-[280px] sm:min-w-[320px] bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50 text-xs animate-fade-in">
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-[300px] sm:w-[340px] md:w-[380px] max-w-[90vw] bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50 text-xs animate-fade-in">
               <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 flex items-center justify-between">
                 <span>{searchQuery.trim() ? 'Matching Modules' : 'Quick Jump'}</span>
                 <span className="text-[10px] font-normal text-slate-400">Esc to close</span>
@@ -694,23 +701,36 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* ── Region 3: Right (Admin, Company, Outlet, Notifications, Profile) ── */}
-      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+      <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 shrink-0">
+        {/* Mobile Search Icon Toggle (< md) */}
+        <button
+          type="button"
+          onClick={() => {
+            setIsMobileSearchOpen(true)
+            setTimeout(() => mobileSearchInputRef.current?.focus(), 50)
+          }}
+          className="md:hidden p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0"
+          title="Search modules"
+        >
+          <SearchIcon className="w-4 h-4" />
+        </button>
+
         {/* Admin Navigation Dropdown */}
         {isAdminUser && (
-          <div className="relative" ref={adminRef}>
+          <div className="relative shrink-0" ref={adminRef}>
             <button
               onClick={() => toggleDropdown('admin')}
               className={cn(
-                'flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                'flex items-center gap-1 xl:gap-1.5 px-2 py-1.5 rounded-lg text-xs font-semibold transition-colors shrink-0 whitespace-nowrap',
                 isAdminActive
                   ? 'bg-teal-50 text-teal-800 ring-1 ring-teal-200'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               )}
               title="Workspace Administration & Settings"
             >
-              <Settings className="w-3.5 h-3.5 text-slate-500" />
+              <Settings className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               <span className="hidden sm:inline">Admin</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
             </button>
 
             {activeDropdown === 'admin' && (
@@ -787,17 +807,17 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
 
         {/* Company / Workspace Switcher Dropdown */}
-        <div className="relative hidden md:block" ref={companyRef}>
+        <div className="relative hidden md:block shrink-0" ref={companyRef}>
           <button
             onClick={() => setIsCompanyMenuOpen(!isCompanyMenuOpen)}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-800 transition-colors shadow-2xs"
+            className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-800 transition-colors shadow-2xs shrink-0"
             title="Current Organization Workspace"
           >
             <Building2 className="w-3.5 h-3.5 text-teal-700 shrink-0" />
-            <span className="max-w-[85px] xl:max-w-[120px] truncate">
+            <span className="max-w-[70px] lg:max-w-[85px] xl:max-w-[110px] 2xl:max-w-[140px] truncate">
               {activeCompany?.company_name || 'Organization'}
             </span>
-            <ChevronDown className="w-3 h-3 text-slate-400" />
+            <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
           </button>
 
           {isCompanyMenuOpen && (
@@ -843,17 +863,17 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Branch / Outlet Switcher Dropdown */}
-        <div className="relative hidden xl:block" ref={branchRef}>
+        <div className="relative hidden xl:block shrink-0" ref={branchRef}>
           <button
             onClick={() => setIsBranchMenuOpen(!isBranchMenuOpen)}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-800 transition-colors shadow-2xs"
+            className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-800 transition-colors shadow-2xs shrink-0"
             title="Active Branch Outlet"
           >
             <GitBranch className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-            <span className="max-w-[85px] xl:max-w-[110px] truncate">
+            <span className="max-w-[65px] 2xl:max-w-[100px] truncate">
               {activeBranch?.name || 'All Outlets'}
             </span>
-            <ChevronDown className="w-3 h-3 text-slate-400" />
+            <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
           </button>
 
           {isBranchMenuOpen && (
@@ -906,7 +926,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Notifications Icon Button */}
         <Link
           to="/notifications"
-          className="relative p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+          className="relative p-1.5 sm:p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0"
           title="Notifications & Alerts"
         >
           <Bell className="w-4 h-4" />
@@ -918,10 +938,100 @@ export const Navbar: React.FC<NavbarProps> = ({
         </Link>
 
         {/* User Profile Menu */}
-        <div className="pl-1 border-l border-slate-200">
+        <div className="pl-1 border-l border-slate-200 shrink-0">
           <ProfileMenu />
         </div>
       </div>
+
+      {/* ── Mobile Search Overlay (< md) ── */}
+      {isMobileSearchOpen && (
+        <div
+          ref={mobileSearchRef}
+          className="absolute inset-x-0 top-0 h-14 bg-white z-50 px-3 sm:px-4 flex items-center gap-2 border-b border-slate-200 shadow-md animate-fade-in md:hidden"
+        >
+          <SearchIcon className="w-4 h-4 text-teal-700 shrink-0" />
+          <input
+            ref={mobileSearchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setIsMobileSearchOpen(false)
+              } else if (e.key === 'Enter') {
+                if (filteredSuggestions.length > 0) {
+                  navigate(filteredSuggestions[0].href)
+                  setIsMobileSearchOpen(false)
+                  setSearchQuery('')
+                } else {
+                  setIsMobileSearchOpen(false)
+                  onOpenSearch()
+                }
+              }
+            }}
+            placeholder="Search modules, AI..."
+            className="flex-1 bg-transparent border-none text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+            autoFocus
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="p-1 text-slate-400 hover:text-slate-600 rounded shrink-0"
+              title="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setIsMobileSearchOpen(false)}
+            className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 text-xs font-semibold shrink-0"
+          >
+            Cancel
+          </button>
+
+          {/* Suggestions Dropdown in Mobile Overlay */}
+          <div className="absolute top-14 inset-x-0 bg-white border-b border-slate-200 shadow-xl py-2 z-50 text-xs max-h-72 overflow-y-auto">
+            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 flex items-center justify-between">
+              <span>{searchQuery.trim() ? 'Matching Modules' : 'Quick Jump'}</span>
+            </div>
+            <div className="py-1 divide-y divide-slate-50">
+              {filteredSuggestions.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    navigate(item.href)
+                    setIsMobileSearchOpen(false)
+                    setSearchQuery('')
+                  }}
+                  className="w-full text-left px-3 py-2.5 flex items-center gap-2.5 hover:bg-slate-50 transition-colors"
+                >
+                  <ModuleIcon name={item.iconName} size="xs" className="w-4 h-4 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-slate-800 truncate">{item.label}</div>
+                    <div className="text-[10px] text-slate-400 truncate">{item.category}</div>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                </button>
+              ))}
+            </div>
+            <div className="pt-1.5 border-t border-slate-100 px-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileSearchOpen(false)
+                  onOpenSearch()
+                }}
+                className="w-full py-1.5 text-center text-[11px] font-semibold text-teal-700 hover:bg-teal-50 rounded transition-colors flex items-center justify-center gap-1"
+              >
+                <span>Open Full Command Palette</span>
+                <span className="font-mono text-[10px]">(Ctrl+K)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Responsive Mobile Menu Overlay (Clean Top Modal, No Left Sidebar) ── */}
       {isMobileMenuOpen && (
